@@ -1,4 +1,4 @@
-import type { Owner, Room, UserProfile } from "./types";
+import type { Owner, Room } from "./types";
 
 const OWNERS: Record<string, Owner> = {
   sokha: {
@@ -10,8 +10,7 @@ const OWNERS: Record<string, Owner> = {
     facebook: "sokha.chan",
     avatarUrl: "https://i.pravatar.cc/160?img=47",
     memberSince: "2023-06-14",
-    listingsCount: 4,
-    responseRate: 96
+    listingsCount: 4
   },
   dara: {
     id: "dara",
@@ -21,8 +20,7 @@ const OWNERS: Record<string, Owner> = {
     wechat: "dara_pich",
     avatarUrl: "https://i.pravatar.cc/160?img=12",
     memberSince: "2022-11-03",
-    listingsCount: 7,
-    responseRate: 89
+    listingsCount: 7
   },
   sreypov: {
     id: "sreypov",
@@ -33,8 +31,7 @@ const OWNERS: Record<string, Owner> = {
     facebook: "sreypov.lay",
     avatarUrl: "https://i.pravatar.cc/160?img=32",
     memberSince: "2024-02-20",
-    listingsCount: 2,
-    responseRate: 100
+    listingsCount: 2
   }
 };
 
@@ -53,7 +50,7 @@ export const MOCK_ROOMS: Room[] = [
     type: "studio",
     address: "St. 110, Daun Penh",
     city: "Phnom Penh",
-    district: "Daun Penh",
+    district: "Doun Penh",
     lat: 11.5775,
     lng: 104.925,
     images: [
@@ -63,12 +60,9 @@ export const MOCK_ROOMS: Room[] = [
       "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200"
     ],
     bedrooms: 1,
-    bathrooms: 1,
     areaSqm: 28,
     floor: 3,
     amenities: ["Wi-Fi", "Air conditioning", "Parking", "Security", "Kitchen", "Elevator"],
-    isNew: true,
-    isFeatured: true,
     availableFrom: "2026-05-01",
     owner: OWNERS.sokha,
     createdAt: Date.now()
@@ -86,7 +80,7 @@ export const MOCK_ROOMS: Room[] = [
     type: "shared",
     address: "St. 294, BKK1",
     city: "Phnom Penh",
-    district: "Chamkarmon",
+    district: "Chamkar Mon",
     lat: 11.5444,
     lng: 104.9263,
     images: [
@@ -95,7 +89,6 @@ export const MOCK_ROOMS: Room[] = [
       "https://images.unsplash.com/photo-1540518614846-7eded433c457?w=1200"
     ],
     bedrooms: 1,
-    bathrooms: 1,
     areaSqm: 18,
     floor: 2,
     amenities: ["Wi-Fi", "Shared kitchen", "Laundry", "Security"],
@@ -118,7 +111,7 @@ export const MOCK_ROOMS: Room[] = [
     type: "1-bedroom",
     address: "St. 315, Toul Kork",
     city: "Phnom Penh",
-    district: "Toul Kork",
+    district: "Tuol Kouk",
     lat: 11.5793,
     lng: 104.8908,
     images: [
@@ -128,11 +121,9 @@ export const MOCK_ROOMS: Room[] = [
       "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1200"
     ],
     bedrooms: 1,
-    bathrooms: 1,
     areaSqm: 42,
     floor: 5,
     amenities: ["Wi-Fi", "Air conditioning", "Elevator", "Parking", "Pool", "Gym"],
-    isFeatured: true,
     availableFrom: "2026-06-01",
     owner: OWNERS.sokha,
     createdAt: Date.now()
@@ -155,7 +146,7 @@ export const MOCK_ROOMS: Room[] = [
     type: "2-bedroom",
     address: "Koh Pich, Diamond Island",
     city: "Phnom Penh",
-    district: "Chamkarmon",
+    district: "Chamkar Mon",
     lat: 11.553,
     lng: 104.9389,
     images: [
@@ -164,11 +155,9 @@ export const MOCK_ROOMS: Room[] = [
       "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1200"
     ],
     bedrooms: 2,
-    bathrooms: 2,
     areaSqm: 75,
     floor: 8,
     amenities: ["Wi-Fi", "Air conditioning", "Parking", "Pool", "Gym", "Security", "Elevator"],
-    isNew: true,
     availableFrom: "2026-05-15",
     owner: OWNERS.dara,
     createdAt: Date.now()
@@ -186,7 +175,7 @@ export const MOCK_ROOMS: Room[] = [
     type: "studio",
     address: "St. 450, Tuol Tumpung",
     city: "Phnom Penh",
-    district: "Chamkarmon",
+    district: "Chamkar Mon",
     lat: 11.5367,
     lng: 104.9196,
     images: [
@@ -194,7 +183,6 @@ export const MOCK_ROOMS: Room[] = [
       "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=1200"
     ],
     bedrooms: 1,
-    bathrooms: 1,
     areaSqm: 24,
     floor: 1,
     amenities: ["Wi-Fi", "Air conditioning", "Laundry"],
@@ -216,7 +204,7 @@ export const MOCK_ROOMS: Room[] = [
     type: "1-bedroom",
     address: "St. 63, Boeung Keng Kang",
     city: "Phnom Penh",
-    district: "Chamkarmon",
+    district: "Chamkar Mon",
     lat: 11.5542,
     lng: 104.9218,
     images: [
@@ -225,11 +213,9 @@ export const MOCK_ROOMS: Room[] = [
       "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=1200"
     ],
     bedrooms: 1,
-    bathrooms: 1,
     areaSqm: 48,
     floor: 12,
     amenities: ["Wi-Fi", "Air conditioning", "Elevator", "Balcony", "Security"],
-    isFeatured: true,
     availableFrom: "2026-06-10",
     owner: OWNERS.sreypov,
     createdAt: Date.now()
@@ -242,18 +228,4 @@ export function findRoomById(id: string): Room | undefined {
 
 export function similarRooms(room: Room, limit = 3): Room[] {
   return MOCK_ROOMS.filter((r) => r.id !== room.id && r.type === room.type).slice(0, limit);
-}
-
-export const CURRENT_USER: UserProfile = {
-  uid: "demo-user",
-  username: "Sokha Chan",
-  phoneNumber: "+855 12 345 678",
-  avatarUrl: "https://i.pravatar.cc/160?img=47",
-  memberSince: "2023-06-14",
-  listingsCount: 4,
-  savedCount: 9
-};
-
-export function myListings(): Room[] {
-  return MOCK_ROOMS.filter((r) => r.owner.id === "sokha");
 }

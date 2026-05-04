@@ -4,10 +4,7 @@ type IconName =
   | "home"
   | "search"
   | "map-pin"
-  | "heart"
-  | "star"
   | "bed"
-  | "bath"
   | "ruler"
   | "wifi"
   | "parking"
@@ -51,8 +48,6 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <circle cx="12" cy="10" r="2.5" />
     </>
   ),
-  heart: <path d="M12 21s-7-4.35-9.3-8.5C1.1 9.8 2.8 6 6.2 6c1.9 0 3.4 1 4.6 2.3l1.2 1.2 1.2-1.2C14.4 7 15.9 6 17.8 6c3.4 0 5.1 3.8 3.5 6.5C19 16.65 12 21 12 21Z" />,
-  star: <path d="M12 3.5 14.7 9l6.1.9-4.4 4.3 1 6-5.4-2.8L6.6 20.2l1-6L3.2 9.9 9.3 9 12 3.5Z" />,
   bed: (
     <>
       <path d="M3 20V9" />
@@ -61,16 +56,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M3 17h18" />
     </>
   ),
-  bath: (
-    <>
-      <path d="M4 12h16v4a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-4Z" />
-      <path d="M7 12V6a2 2 0 0 1 2-2h1" />
-      <path d="M11 6h1" />
-      <path d="M5 20l-1 2" />
-      <path d="M19 20l1 2" />
-    </>
-  ),
-  ruler: <path d="M15.8 2.2 21.8 8.2a1 1 0 0 1 0 1.4l-12 12a1 1 0 0 1-1.4 0l-6-6a1 1 0 0 1 0-1.4l12-12a1 1 0 0 1 1.4 0Zm-1.6 2.4L8 10.8l1.5 1.5M11 7.8l1.5 1.5M14 4.8l1.5 1.5M5 13.8l1.5 1.5M8 10.8l1.5 1.5" />,
+  ruler:<path d="M15.8 2.2 21.8 8.2a1 1 0 0 1 0 1.4l-12 12a1 1 0 0 1-1.4 0l-6-6a1 1 0 0 1 0-1.4l12-12a1 1 0 0 1 1.4 0Zm-1.6 2.4L8 10.8l1.5 1.5M11 7.8l1.5 1.5M14 4.8l1.5 1.5M5 13.8l1.5 1.5M8 10.8l1.5 1.5" />,
   wifi: (
     <>
       <path d="M2 9a15 15 0 0 1 20 0" />

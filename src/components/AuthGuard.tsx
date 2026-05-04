@@ -24,14 +24,16 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className="flex min-h-[60vh] items-center justify-center px-4 text-center">
-        <div className="flex flex-col items-center gap-3 text-ink-muted">
-          <span className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-          <p className="text-sm">
-            {status === "checking" ? "Checking your session…" : "Please sign in to continue"}
-          </p>
+      {status === "checking" ? (
+        <div className="flex min-h-[60vh] items-center justify-center px-4 text-center">
+          <div className="flex flex-col items-center gap-3 text-ink-muted">
+            <span className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+            <p className="text-sm">Checking your session…</p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="min-h-[60vh]" />
+      )}
       <AuthModal
         open={status === "unauthenticated"}
         dismissible

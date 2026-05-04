@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 // Lightweight client session used by the auth guard. Works whether or not
 // Firebase is configured — login/register pages call `setSession` on success
 // and `AuthGuard` subscribes to changes.
@@ -44,4 +46,13 @@ export function subscribeSession(cb: (session: Session | null) => void): () => v
     window.removeEventListener(EVENT, handler);
     window.removeEventListener("storage", handler);
   };
+}
+
+export function useSession(): Session | null {
+  const [session, setSession] = useState<Session | null>(null);
+  useEffect(() => {
+    setSession(getSession());
+    return subscribeSession(setSession);
+  }, []);
+  return session;
 }

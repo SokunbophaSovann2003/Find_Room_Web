@@ -10,10 +10,10 @@ const CONTACT = {
 
 export default function Footer() {
   const phoneDigits = CONTACT.phone.replace(/\D/g, "");
-  const telegramHandle = CONTACT.telegram.replace(/\D/g, "");
+  const telegramLink = `+${CONTACT.telegram.replace(/\D/g, "")}`;
 
   return (
-    <footer className="relative mt-20 shrink-0 overflow-hidden bg-gradient-to-br from-brand-50 via-white to-amber-50">
+    <footer className="relative mt-20 hidden shrink-0 overflow-hidden bg-gradient-to-br from-brand-50 via-white to-amber-50 sm:block">
       <div className="pointer-events-none absolute -left-20 top-0 h-48 w-48 rounded-full bg-brand/10 blur-3xl" />
       <div className="pointer-events-none absolute -right-16 bottom-0 h-56 w-56 rounded-full bg-amber-200/40 blur-3xl" />
 
@@ -45,7 +45,7 @@ export default function Footer() {
             <ContactRow
               icon="telegram"
               label="Telegram"
-              href={`https://t.me/${telegramHandle}`}
+              href={`https://t.me/${telegramLink}`}
             />
             <ContactRow
               icon="email"

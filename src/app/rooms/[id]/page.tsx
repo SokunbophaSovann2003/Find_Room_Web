@@ -1,13 +1,69 @@
+"use client";
+
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import ImageGallery from "@/components/ImageGallery";
 import RoomCard from "@/components/RoomCard";
 import Icon, { amenityIcon } from "@/components/Icon";
 import { findRoomById, similarRooms } from "@/lib/mock-data";
+import { getLocalRoomById } from "@/lib/local-rooms";
+import type { Room } from "@/lib/types";
+
+type RoomState = Room | "loading" | "missing";
 
 export default function RoomDetailPage({ params }: { params: { id: string } }) {
-  const room = findRoomById(params.id);
-  if (!room) notFound();
+  const router = useRouter();
+  const [room, setRoom] = useState<RoomState>(() => findRoomById(params.id) ?? "loading");
+  const [contactOpen, setContactOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
+
+  useEffect(() => {
+    const found = findRoomById(params.id) ?? getLocalRoomById(params.id);
+    setRoom(found ?? "missing");
+  }, [params.id]);
+
+  useEffect(() => {
+    if (!contactOpen && !locationOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setContactOpen(false);
+        setLocationOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [contactOpen, locationOpen]);
+
+  useEffect(() => {
+    if (!contactOpen && !locationOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [contactOpen, locationOpen]);
+
+  if (room === "loading") {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <span className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+      </div>
+    );
+  }
+  if (room === "missing") {
+    return (
+      <div className="mx-auto max-w-md px-4 py-20 text-center">
+        <h1 className="text-2xl font-extrabold tracking-tight">Room not found</h1>
+        <p className="mt-2 text-sm text-ink-muted">
+          The listing you’re looking for doesn’t exist or has been removed.
+        </p>
+        <Link href="/explore" className="btn-primary mt-6">
+          Back to Explore
+        </Link>
+      </div>
+    );
+  }
 
   const similar = similarRooms(room);
   const mapQuery =
@@ -16,9 +72,13 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
       : `${room.address}, ${room.city}`;
   const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
   const phoneDigits = room.owner.phoneNumber.replace(/\s/g, "");
-  const telegramHandle = room.owner.telegramPhone?.replace(/\s|\+/g, "");
+  const telegramLink = room.owner.telegramPhone
+    ? `+${room.owner.telegramPhone.replace(/\D/g, "")}`
+    : undefined;
 
-  const fullAddress = `${room.address}${room.district ? `, ${room.district}` : ""}, ${room.city}`;
+  const fullAddress = [room.address, room.area, room.district, room.city]
+    .filter(Boolean)
+    .join(", ");
 
   const locationCard = (
     <section>
@@ -64,7 +124,11 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
                 alt={room.owner.name}
                 className="h-full w-full object-cover"
               />
-            ) : null}
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-lg font-bold text-brand">
+                {room.owner.name.trim().charAt(0).toUpperCase() || "?"}
+              </span>
+            )}
           </div>
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-wide text-ink-soft">
@@ -81,12 +145,12 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               value={room.owner.phoneNumber}
               href={`tel:${phoneDigits}`}
             />
-            {room.owner.telegramPhone ? (
+            {telegramLink ? (
               <ContactRow
                 icon="telegram"
                 label="Telegram"
-                value={room.owner.telegramPhone}
-                href={`https://t.me/${telegramHandle}`}
+                value={room.owner.telegramPhone ?? telegramLink}
+                href={`https://t.me/${telegramLink}`}
               />
             ) : null}
         </ul>
@@ -97,15 +161,16 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   return (
     <div className="pb-24 sm:pb-0">
       <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6 sm:pt-8">
-        <nav className="mb-3 flex items-center gap-2 text-sm text-ink-muted">
-          <Link href="/explore" className="hover:text-brand">
-            Explore
-          </Link>
-          <span>›</span>
-          <span className="truncate text-ink">{room.title}</span>
-        </nav>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted transition hover:text-brand"
+        >
+          <Icon name="arrow-right" className="h-4 w-4 rotate-180" />
+          Back
+        </button>
 
-        <ImageGallery images={room.images} title={room.title} />
+        <ImageGallery images={room.images} title={room.title} typeLabel={room.type} />
 
         <div className="mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8">
           <div className="space-y-6">
@@ -116,11 +181,10 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
                 </h1>
                 <p className="mt-1 inline-flex items-center gap-1 text-sm text-ink-muted">
                   <Icon name="map-pin" className="h-4 w-4" />
-                  {room.address}
-                  {room.district ? `, ${room.district}` : ""}, {room.city}
+                  {fullAddress}
                 </p>
               </div>
-              <div className="shrink-0 whitespace-nowrap sm:pt-1">
+              <div className="hidden shrink-0 whitespace-nowrap sm:block sm:pt-1">
                 <span className="text-3xl font-extrabold text-brand sm:text-4xl">
                   ${room.price}
                 </span>
@@ -130,8 +194,6 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
 
             <ul className="flex flex-nowrap items-center justify-between gap-x-2 sm:justify-start sm:gap-x-5">
               <StatChip icon="bed" value={room.bedrooms} label="Bed" />
-              <span className="hidden h-3 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
-              <StatChip icon="bath" value={room.bathrooms} label="Bath" />
               {room.areaSqm ? (
                 <>
                   <span className="hidden h-3 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
@@ -153,20 +215,22 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               </p>
             </section>
 
-            <section>
-              <h2 className="mb-3 text-base font-bold">What this place offers</h2>
-              <ul className="flex flex-wrap gap-2">
-                {room.amenities.map((a) => (
-                  <li
-                    key={a}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm"
-                  >
-                    <Icon name={amenityIcon(a)} className="h-4 w-4 text-brand" />
-                    <span className="font-semibold text-ink">{a}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {room.amenities.length > 0 ? (
+              <section>
+                <h2 className="mb-3 text-base font-bold">What this place offers</h2>
+                <ul className="flex flex-wrap gap-2">
+                  {room.amenities.map((a) => (
+                    <li
+                      key={a}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm"
+                    >
+                      <Icon name={amenityIcon(a)} className="h-4 w-4 text-brand" />
+                      <span className="font-semibold text-ink">{a}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
 
             <section>
               <h2 className="mb-2 text-base font-bold">Fees & utilities</h2>
@@ -190,7 +254,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               </dl>
             </section>
 
-            <div className="space-y-8 lg:hidden">
+            <div className="hidden space-y-8 sm:block lg:hidden">
               {hostCard}
               {locationCard}
             </div>
@@ -205,7 +269,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
         {similar.length > 0 ? (
           <section className="mt-12">
             <h2 className="mb-4 text-lg font-bold">Similar rooms</h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {similar.map((r) => (
                 <RoomCard key={r.id} room={r} />
               ))}
@@ -215,40 +279,140 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-lg font-extrabold leading-tight">
-              ${room.price}
-              <span className="ml-0.5 text-xs font-medium text-ink-muted">/ mo</span>
-            </div>
-            {room.deposit != null ? (
-              <p className="text-[11px] text-ink-muted">
-                + ${room.deposit} deposit
-              </p>
-            ) : null}
+        <div className="flex items-center gap-2">
+          <div className="shrink-0 whitespace-nowrap">
+            <span className="text-xl font-extrabold leading-tight text-brand">${room.price}</span>
+            <span className="ml-0.5 text-xs font-medium text-ink-muted">/ month</span>
           </div>
-          <div className="flex gap-2">
-            {telegramHandle ? (
-              <a
-                href={`https://t.me/${telegramHandle}`}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-secondary h-11 justify-center px-4"
-              >
-                <Icon name="telegram" className="h-4 w-4" />
-                Telegram
-              </a>
-            ) : null}
-            <a
-              href={`tel:${phoneDigits}`}
-              className="btn-primary h-11 justify-center px-5"
-            >
-              <Icon name="phone" className="h-4 w-4" />
-              Call
-            </a>
-          </div>
+          <button
+            type="button"
+            onClick={() => setLocationOpen(true)}
+            className="btn-secondary h-11 flex-1 justify-center px-3"
+          >
+            <Icon name="map-pin" className="h-4 w-4" />
+            Location
+          </button>
+          <button
+            type="button"
+            onClick={() => setContactOpen(true)}
+            className="btn-primary h-11 flex-1 justify-center px-3"
+          >
+            <Icon name="phone" className="h-4 w-4" />
+            Contact
+          </button>
         </div>
       </div>
+
+      {contactOpen ? (
+        <div
+          className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Contact the host"
+        >
+          <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={() => setContactOpen(false)} aria-hidden />
+          <div className="relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:max-h-[80vh] sm:w-full sm:max-w-md sm:rounded-3xl">
+            <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
+              <span aria-hidden />
+              <h2 className="text-center text-base font-semibold text-ink">Contact the host</h2>
+              <button
+                type="button"
+                onClick={() => setContactOpen(false)}
+                aria-label="Close"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
+              >
+                <Icon name="x" className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-slate-200 ring-2 ring-brand/20">
+                  {room.owner.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={room.owner.avatarUrl}
+                      alt={room.owner.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-lg font-bold text-brand">
+                      {room.owner.name.trim().charAt(0).toUpperCase() || "?"}
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wide text-ink-soft">Listed by</p>
+                  <p className="truncate font-semibold text-ink">{room.owner.name}</p>
+                </div>
+              </div>
+              <ul className="mt-4 space-y-2">
+                <ContactRow
+                  icon="phone"
+                  label="Phone"
+                  value={room.owner.phoneNumber}
+                  href={`tel:${phoneDigits}`}
+                />
+                {telegramLink ? (
+                  <ContactRow
+                    icon="telegram"
+                    label="Telegram"
+                    value={room.owner.telegramPhone ?? telegramLink}
+                    href={`https://t.me/${telegramLink}`}
+                  />
+                ) : null}
+              </ul>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {locationOpen ? (
+        <div
+          className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Location"
+        >
+          <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={() => setLocationOpen(false)} aria-hidden />
+          <div className="relative flex h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:h-auto sm:max-h-[80vh] sm:w-full sm:max-w-md sm:rounded-3xl">
+            <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
+              <span aria-hidden />
+              <h2 className="text-center text-base font-semibold text-ink">Location</h2>
+              <button
+                type="button"
+                onClick={() => setLocationOpen(false)}
+                aria-label="Close"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
+              >
+                <Icon name="x" className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <div className="flex items-start gap-2 border-b border-slate-100 px-4 py-3">
+                <Icon name="map-pin" className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                <p className="text-sm font-medium leading-snug text-ink">{fullAddress}</p>
+              </div>
+              <div className="relative w-full flex-1 bg-slate-100 sm:aspect-[16/10] sm:flex-none">
+                <iframe
+                  title={`${room.title} — map`}
+                  src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=15&output=embed`}
+                  className="h-full w-full border-0"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+              <a
+                href={mapsLink}
+                target="_blank"
+                rel="noreferrer"
+                className="border-t border-slate-100 px-4 py-3 text-center text-sm font-semibold text-brand hover:bg-brand/5"
+              >
+                Open in Maps ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -258,7 +422,7 @@ function StatChip({
   value,
   label
 }: {
-  icon: "bed" | "bath" | "ruler" | "elevator";
+  icon: "bed" | "ruler" | "elevator";
   value: number | string;
   label: string;
 }) {

@@ -1,55 +1,147 @@
 "use client";
 
+import { useState } from "react";
 import Icon from "./Icon";
+import LocationPicker, { type LocationValue } from "./LocationPicker";
+import OptionPicker from "./OptionPicker";
+import { useExploreFilter, type SortOrder } from "./ExploreFilterContext";
+import { useDesktop } from "@/lib/use-desktop";
+import type { RoomType } from "@/lib/types";
+
+const ROOM_TYPE_OPTIONS: { value: RoomType | ""; label: string }[] = [
+  { value: "", label: "Any room type" },
+  { value: "studio", label: "Studio" },
+  { value: "1-bedroom", label: "1-bedroom" },
+  { value: "2-bedroom", label: "2-bedroom" },
+  { value: "shared", label: "Shared" },
+  { value: "apartment", label: "Apartment" }
+];
+
+const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
+  { value: "", label: "Sort by price" },
+  { value: "price-asc", label: "Price: low to high" },
+  { value: "price-desc", label: "Price: high to low" }
+];
+
+function formatLocation(loc: LocationValue): string {
+  const parts = [loc.province, loc.district, loc.area].filter(Boolean);
+  return parts.length ? parts.join(", ") : "";
+}
+
+function labelFor<T extends string>(
+  options: { value: T; label: string }[],
+  value: T
+): string {
+  return options.find((o) => o.value === value)?.label ?? "";
+}
 
 export default function SearchBar() {
+  const { filter, setFilter } = useExploreFilter();
+  const [pickerOpen, setPickerOpen] = useState<"location" | "type" | "sort" | null>(null);
+  const isDesktop = useDesktop();
+  const mode = isDesktop ? "dropdown" : "modal";
+
+  const locationLabel = formatLocation(filter.location);
+  const typeLabel = labelFor(ROOM_TYPE_OPTIONS, filter.type);
+  const sortLabel = labelFor(SORT_OPTIONS, filter.sort);
+
+  function toggle(key: "location" | "type" | "sort") {
+    setPickerOpen((cur) => (cur === key ? null : key));
+  }
+
   return (
     <form
       className="flex w-full flex-col gap-2 rounded-2xl bg-white p-2 shadow-card sm:flex-row sm:items-center sm:rounded-full"
       onSubmit={(e) => e.preventDefault()}
     >
-      <label className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2 sm:rounded-full sm:px-4">
-        <Icon name="map-pin" className="h-5 w-5 text-brand" />
-        <span className="sr-only">Location</span>
-        <input
-          type="text"
-          placeholder="Where to? Phnom Penh, Siem Reap…"
-          className="w-full bg-transparent text-sm outline-none placeholder:text-ink-soft"
+      <div className="relative min-w-0 flex-1">
+        <button
+          type="button"
+          onClick={() => toggle("location")}
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-slate-50 sm:rounded-full sm:px-4"
+        >
+          <Icon name="map-pin" className="h-5 w-5 shrink-0 text-brand" />
+          <span className={`flex-1 truncate ${locationLabel ? "text-ink" : "text-ink-soft"}`}>
+            {locationLabel || "Where to? Province, district, area…"}
+          </span>
+          {locationLabel ? (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="Clear location"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFilter({ ...filter, location: {} });
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setFilter({ ...filter, location: {} });
+                }
+              }}
+              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-slate-200 hover:text-ink"
+            >
+              <Icon name="x" className="h-3.5 w-3.5" />
+            </span>
+          ) : null}
+        </button>
+        <LocationPicker
+          open={pickerOpen === "location"}
+          onClose={() => setPickerOpen(null)}
+          mode={mode}
+          value={filter.location}
+          onChange={(next) => setFilter({ ...filter, location: next })}
         />
-      </label>
+      </div>
 
       <div className="hidden h-8 w-px bg-slate-200 sm:block" />
 
-      <label className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2 sm:rounded-full sm:px-4">
-        <Icon name="home" className="h-5 w-5 text-brand" />
-        <span className="sr-only">Room type</span>
-        <select
-          defaultValue=""
-          className="w-full cursor-pointer bg-transparent text-sm outline-none"
+      <div className="relative min-w-0 flex-1">
+        <button
+          type="button"
+          onClick={() => toggle("type")}
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-slate-50 sm:rounded-full sm:px-4"
         >
-          <option value="">Any room type</option>
-          <option value="studio">Studio</option>
-          <option value="1-bedroom">1-bedroom</option>
-          <option value="2-bedroom">2-bedroom</option>
-          <option value="shared">Shared</option>
-          <option value="apartment">Apartment</option>
-        </select>
-      </label>
+          <Icon name="home" className="h-5 w-5 shrink-0 text-brand" />
+          <span className={`flex-1 truncate capitalize ${filter.type ? "text-ink" : "text-ink-soft"}`}>
+            {typeLabel}
+          </span>
+        </button>
+        <OptionPicker<RoomType | "">
+          open={pickerOpen === "type"}
+          onClose={() => setPickerOpen(null)}
+          mode={mode}
+          title="Room type"
+          options={ROOM_TYPE_OPTIONS}
+          value={filter.type}
+          onChange={(next) => setFilter({ ...filter, type: next })}
+        />
+      </div>
 
       <div className="hidden h-8 w-px bg-slate-200 sm:block" />
 
-      <label className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2 sm:rounded-full sm:px-4">
-        <span aria-hidden className="flex h-5 w-5 items-center justify-center text-base font-bold text-brand">$</span>
-        <span className="sr-only">Sort by price</span>
-        <select
-          defaultValue=""
-          className="w-full cursor-pointer bg-transparent text-sm outline-none"
+      <div className="relative min-w-0 flex-1">
+        <button
+          type="button"
+          onClick={() => toggle("sort")}
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-slate-50 sm:rounded-full sm:px-4"
         >
-          <option value="">Sort by price</option>
-          <option value="price-asc">Price: low to high</option>
-          <option value="price-desc">Price: high to low</option>
-        </select>
-      </label>
+          <span aria-hidden className="flex h-5 w-5 shrink-0 items-center justify-center text-base font-bold text-brand">$</span>
+          <span className={`flex-1 truncate ${filter.sort ? "text-ink" : "text-ink-soft"}`}>
+            {sortLabel}
+          </span>
+        </button>
+        <OptionPicker<SortOrder>
+          open={pickerOpen === "sort"}
+          onClose={() => setPickerOpen(null)}
+          mode={mode}
+          title="Sort by price"
+          options={SORT_OPTIONS}
+          value={filter.sort}
+          onChange={(next) => setFilter({ ...filter, sort: next })}
+        />
+      </div>
 
       <button type="submit" className="btn-primary sm:px-6">
         <Icon name="search" className="h-4 w-4" />

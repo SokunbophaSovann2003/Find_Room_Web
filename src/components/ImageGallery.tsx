@@ -3,7 +3,15 @@
 import { useState } from "react";
 import Icon from "./Icon";
 
-export default function ImageGallery({ images, title }: { images: string[]; title: string }) {
+export default function ImageGallery({
+  images,
+  title,
+  typeLabel
+}: {
+  images: string[];
+  title: string;
+  typeLabel?: string;
+}) {
   const [active, setActive] = useState(0);
   const hero = images[active] ?? images[0];
   const thumbs = images.slice(0, 5);
@@ -14,6 +22,11 @@ export default function ImageGallery({ images, title }: { images: string[]; titl
         {hero ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={hero} alt={title} className="h-full w-full object-cover" />
+        ) : null}
+        {typeLabel ? (
+          <span className="absolute left-4 top-4 rounded-full bg-brand px-3 py-1 text-xs font-semibold capitalize text-white shadow">
+            {typeLabel}
+          </span>
         ) : null}
         <button
           type="button"

@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Icon, { amenityIcon } from "@/components/Icon";
+import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
+import { useSession } from "@/lib/session";
+import { addLocalRoom } from "@/lib/local-rooms";
+import { downscalePhoto } from "@/lib/image";
+import type { Room, RoomType } from "@/lib/types";
 
 const AMENITIES = [
   "Wi-Fi",
@@ -28,18 +34,23 @@ const FEE_TYPES = [
   { value: "other", label: "Other", unit: "" }
 ];
 
+const ROOM_TYPE_OPTIONS: { value: RoomType; label: string }[] = [
+  { value: "studio", label: "Studio" },
+  { value: "1-bedroom", label: "1-bedroom" },
+  { value: "2-bedroom", label: "2-bedroom" },
+  { value: "shared", label: "Shared" },
+  { value: "apartment", label: "Apartment" }
+];
+
+function formatLocation(loc: LocationValue): string {
+  return [loc.province, loc.district, loc.area].filter(Boolean).join(", ");
+}
+
 interface FeeRow {
   id: number;
   type: string;
   price: string;
 }
-
-let nextFeeId = 0;
-const newFeeRow = (type = "rent"): FeeRow => ({
-  id: ++nextFeeId,
-  type,
-  price: ""
-});
 
 interface PhotoItem {
   id: number;
@@ -47,17 +58,35 @@ interface PhotoItem {
   url: string;
 }
 
-let nextPhotoId = 0;
+const newId = (() => {
+  let n = 0;
+  return () => ++n;
+})();
 
 export default function ListRoomPage() {
+  const router = useRouter();
+  const session = useSession();
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [type, setType] = useState<RoomType>("studio");
+  const [bedrooms, setBedrooms] = useState(1);
+  const [floor, setFloor] = useState(1);
+  const [areaSqm, setAreaSqm] = useState<string>("");
+  const [address, setAddress] = useState("");
+  const [location, setLocation] = useState<LocationValue>({});
+  const [locationOpen, setLocationOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [fees, setFees] = useState<FeeRow[]>([newFeeRow("rent")]);
+  const [fees, setFees] = useState<FeeRow[]>([{ id: newId(), type: "rent", price: "" }]);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const errorRef = useRef<HTMLParagraphElement | null>(null);
 
   function addPhotos(files: FileList | null) {
     if (!files || files.length === 0) return;
     const items: PhotoItem[] = Array.from(files).map((file) => ({
-      id: ++nextPhotoId,
+      id: newId(),
       file,
       url: URL.createObjectURL(file)
     }));
@@ -89,7 +118,87 @@ export default function ListRoomPage() {
   function addFee() {
     const used = new Set(fees.map((f) => f.type));
     const next = FEE_TYPES.find((t) => !used.has(t.value)) ?? FEE_TYPES[FEE_TYPES.length - 1];
-    setFees((prev) => [...prev, newFeeRow(next.value)]);
+    setFees((prev) => [...prev, { id: newId(), type: next.value, price: "" }]);
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (submitting) return;
+    setError(null);
+
+    if (!session) {
+      setError("You need to be signed in to publish a listing.");
+      return;
+    }
+    if (!title.trim()) return failWith("Add a title for your listing.");
+    if (!description.trim()) return failWith("Add a short description.");
+    if (!address.trim()) return failWith("Add the room address.");
+    if (!location.province) return failWith("Pick a province for your listing.");
+
+    const rentFee = fees.find((f) => f.type === "rent");
+    const rentValue = Number(rentFee?.price);
+    if (!rentFee || !Number.isFinite(rentValue) || rentValue <= 0) {
+      return failWith("Set a monthly rent amount.");
+    }
+
+    setSubmitting(true);
+    try {
+      const images = await Promise.all(photos.slice(0, 3).map((p) => downscalePhoto(p.file)));
+
+      const num = (val: string) => {
+        const n = Number(val);
+        return Number.isFinite(n) && n > 0 ? n : undefined;
+      };
+      const feeBy = (key: string) => fees.find((f) => f.type === key);
+
+      const room: Room = {
+        id: `local-${Date.now()}`,
+        title: title.trim(),
+        description: description.trim(),
+        price: rentValue,
+        currency: "USD",
+        deposit: num(feeBy("deposit")?.price ?? ""),
+        electricityPrice: num(feeBy("electricity")?.price ?? ""),
+        waterPrice: num(feeBy("water")?.price ?? ""),
+        wifiPrice: num(feeBy("wifi")?.price ?? ""),
+        otherFees: fees
+          .filter((f) => !["rent", "deposit", "electricity", "water", "wifi"].includes(f.type) && f.price.trim())
+          .map((f) => ({
+            label: FEE_TYPES.find((t) => t.value === f.type)?.label ?? f.type,
+            amount: `$${f.price}${FEE_TYPES.find((t) => t.value === f.type)?.unit ?? ""}`.trim()
+          })),
+        type,
+        address: address.trim(),
+        city: location.province,
+        district: location.district,
+        area: location.area,
+        bedrooms,
+        areaSqm: num(areaSqm),
+        floor,
+        amenities: Array.from(selected),
+        images,
+        owner: {
+          id: session.uid,
+          name: session.username ?? "FindRoom user",
+          phoneNumber: session.phoneNumber ?? "",
+          telegramPhone: session.phoneNumber,
+          memberSince: new Date().toISOString().slice(0, 10),
+          listingsCount: 1
+        },
+        createdAt: Date.now()
+      };
+
+      addLocalRoom(room);
+      router.replace("/profile");
+    } catch (err) {
+      setSubmitting(false);
+      failWith(err instanceof Error ? err.message : "Could not save the listing.");
+    }
+  }
+
+  function failWith(msg: string) {
+    setError(msg);
+    setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
   }
 
   return (
@@ -112,7 +221,7 @@ export default function ListRoomPage() {
           </p>
         </header>
 
-        <form className="space-y-5">
+        <form id="list-room-form" className="space-y-5" onSubmit={handleSubmit}>
           <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="space-y-3 p-4 sm:p-5">
               <FieldHeading>Listing</FieldHeading>
@@ -121,6 +230,8 @@ export default function ListRoomPage() {
                   id="title"
                   className="input"
                   placeholder="Title — e.g. Cozy studio near Riverside"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
               <textarea
@@ -128,41 +239,75 @@ export default function ListRoomPage() {
                 rows={3}
                 className="input"
                 placeholder="Short description — neighbourhood, vibe, anything special…"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4 sm:p-5">
               <Field label="Type">
-                <select className="input">
-                  <option>Studio</option>
-                  <option>1-bedroom</option>
-                  <option>2-bedroom</option>
-                  <option>Shared</option>
-                  <option>Apartment</option>
+                <select
+                  className="input"
+                  value={type}
+                  onChange={(e) => setType(e.target.value as RoomType)}
+                >
+                  {ROOM_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </select>
               </Field>
               <Field label="Beds">
-                <input type="number" min={0} defaultValue={1} className="input" />
+                <input
+                  type="number"
+                  min={0}
+                  value={bedrooms}
+                  onChange={(e) => setBedrooms(Math.max(0, Number(e.target.value) || 0))}
+                  className="input"
+                />
               </Field>
               <Field label="Floor">
-                <input type="number" min={0} defaultValue={1} className="input" />
+                <input
+                  type="number"
+                  min={0}
+                  value={floor}
+                  onChange={(e) => setFloor(Math.max(0, Number(e.target.value) || 0))}
+                  className="input"
+                />
               </Field>
               <Field label="Area (m²)">
-                <input type="number" min={0} placeholder="28" className="input" />
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="28"
+                  value={areaSqm}
+                  onChange={(e) => setAreaSqm(e.target.value)}
+                  className="input"
+                />
               </Field>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3 sm:p-5">
-              <Field label="Address" className="sm:col-span-2">
-                <input className="input" placeholder="St. 110, Daun Penh" />
+            <div className="grid grid-cols-1 gap-3 p-4 sm:p-5">
+              <Field label="Province / district / area">
+                <button
+                  type="button"
+                  onClick={() => setLocationOpen(true)}
+                  className="input flex items-center justify-between text-left"
+                >
+                  <span className={`min-w-0 flex-1 truncate ${location.province ? "text-ink" : "text-ink-soft"}`}>
+                    {formatLocation(location) || "Pick province, then district / area…"}
+                  </span>
+                  <Icon name="chevron-down" className="ml-2 h-4 w-4 shrink-0 text-ink-soft" />
+                </button>
               </Field>
-              <Field label="City">
-                <select className="input">
-                  <option>Phnom Penh</option>
-                  <option>Siem Reap</option>
-                  <option>Battambang</option>
-                  <option>Sihanoukville</option>
-                </select>
+              <Field label="Street address">
+                <input
+                  className="input"
+                  placeholder="St. 110"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                />
               </Field>
             </div>
           </div>
@@ -220,7 +365,7 @@ export default function ListRoomPage() {
               ))}
             </ul>
             <p className="mt-2 text-xs text-ink-soft">
-              At least 3 clear photos · PNG or JPG up to 8 MB
+              First 3 photos are saved with the listing · PNG or JPG
             </p>
           </section>
 
@@ -316,32 +461,42 @@ export default function ListRoomPage() {
             </div>
           </section>
 
+          {error ? (
+            <p
+              ref={errorRef}
+              className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
+              {error}
+            </p>
+          ) : null}
+
           <div className="hidden items-center justify-end gap-2 pt-2 sm:flex">
-            <button type="button" className="btn-secondary">
-              Save draft
-            </button>
-            <button type="submit" className="btn-primary">
-              Publish listing
-              <Icon name="arrow-right" className="h-4 w-4" />
+            <button type="submit" disabled={submitting} className="btn-primary">
+              {submitting ? "Publishing…" : "Publish listing"}
+              {submitting ? null : <Icon name="arrow-right" className="h-4 w-4" />}
             </button>
           </div>
         </form>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:hidden">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="btn-secondary h-11 flex-1 justify-center"
-          >
-            Save draft
-          </button>
-          <button type="submit" className="btn-primary h-11 flex-1 justify-center">
-            Publish
-            <Icon name="arrow-right" className="h-4 w-4" />
-          </button>
-        </div>
+        <button
+          type="submit"
+          form="list-room-form"
+          disabled={submitting}
+          className="btn-primary h-11 w-full justify-center"
+        >
+          {submitting ? "Publishing…" : "Publish"}
+          {submitting ? null : <Icon name="arrow-right" className="h-4 w-4" />}
+        </button>
       </div>
+
+      <LocationPicker
+        open={locationOpen}
+        onClose={() => setLocationOpen(false)}
+        value={location}
+        onChange={(next) => setLocation(next)}
+      />
     </div>
   );
 }
@@ -378,4 +533,3 @@ function Field({
     </label>
   );
 }
-

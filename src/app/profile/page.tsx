@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import RoomCard from "@/components/RoomCard";
 import Icon from "@/components/Icon";
-import { CURRENT_USER, myListings } from "@/lib/mock-data";
 import { signOut } from "@/lib/auth";
+import { useSession } from "@/lib/session";
+import { useLocalRooms } from "@/lib/local-rooms";
+import { downscalePhoto } from "@/lib/image";
 
 const OVERRIDES_KEY = "findroom.profile-overrides";
 
@@ -33,7 +35,8 @@ function saveOverrides(o: ProfileOverrides) {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const listings = myListings();
+  const session = useSession();
+  const allLocalRooms = useLocalRooms();
   const [overrides, setOverrides] = useState<ProfileOverrides>({});
   const [editing, setEditing] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -42,17 +45,21 @@ export default function ProfilePage() {
     setOverrides(loadOverrides());
   }, []);
 
-  const user = {
-    ...CURRENT_USER,
-    username: overrides.username ?? CURRENT_USER.username,
-    phoneNumber: overrides.phoneNumber ?? CURRENT_USER.phoneNumber,
-    avatarUrl: overrides.avatarUrl ?? CURRENT_USER.avatarUrl
-  };
-
-  const memberSinceLabel = new Date(user.memberSince).toLocaleDateString(
-    undefined,
-    { month: "long", year: "numeric" }
+  const listings = useMemo(
+    () => (session ? allLocalRooms.filter((r) => r.owner.id === session.uid) : []),
+    [allLocalRooms, session]
   );
+
+  if (!session) return null;
+
+  const username = overrides.username ?? session.username ?? "FindRoom user";
+  const phoneNumber = overrides.phoneNumber ?? session.phoneNumber ?? "";
+  const avatarUrl = overrides.avatarUrl;
+  const memberSinceLabel = new Date().toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric"
+  });
+  const initial = username.trim().charAt(0).toUpperCase() || "?";
 
   async function handleLogout() {
     if (signingOut) return;
@@ -70,24 +77,28 @@ export default function ProfilePage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full bg-slate-200 ring-4 ring-brand/10 sm:h-24 sm:w-24">
-              {user.avatarUrl ? (
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-2xl font-bold text-brand ring-4 ring-brand/10 sm:h-24 sm:w-24 sm:text-3xl">
+              {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={user.avatarUrl}
-                  alt={user.username}
+                  src={avatarUrl}
+                  alt={username}
                   className="h-full w-full object-cover"
                 />
-              ) : null}
+              ) : (
+                <span>{initial}</span>
+              )}
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-                {user.username}
+                {username}
               </h1>
-              <p className="mt-1.5 flex items-center gap-1.5 text-sm text-ink-muted">
-                <Icon name="phone" className="h-4 w-4 text-brand" />
-                {user.phoneNumber}
-              </p>
+              {phoneNumber ? (
+                <p className="mt-1.5 flex items-center gap-1.5 text-sm text-ink-muted">
+                  <Icon name="phone" className="h-4 w-4 text-brand" />
+                  {phoneNumber}
+                </p>
+              ) : null}
               <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-ink-muted">
                 <Icon name="calendar" className="h-3.5 w-3.5 text-brand" />
                 Joined {memberSinceLabel}
@@ -193,9 +204,9 @@ export default function ProfilePage() {
       {editing ? (
         <EditProfileModal
           initial={{
-            username: user.username,
-            phoneNumber: user.phoneNumber,
-            avatarUrl: user.avatarUrl ?? ""
+            username,
+            phoneNumber,
+            avatarUrl: avatarUrl ?? ""
           }}
           onCancel={() => setEditing(false)}
           onSave={(next) => {
@@ -226,6 +237,29 @@ function EditProfileModal({
   const [username, setUsername] = useState(initial.username);
   const [phoneNumber, setPhoneNumber] = useState(initial.phoneNumber);
   const [avatarUrl, setAvatarUrl] = useState(initial.avatarUrl);
+  const [uploading, setUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Please choose an image file.");
+      return;
+    }
+    setUploading(true);
+    setPhotoError(null);
+    try {
+      const dataUrl = await downscalePhoto(file, 320, 0.85);
+      setAvatarUrl(dataUrl);
+    } catch {
+      setPhotoError("Could not load that image.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -239,7 +273,7 @@ function EditProfileModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/40 px-4"
       onClick={onCancel}
     >
       <form
@@ -260,6 +294,51 @@ function EditProfileModal({
         </div>
 
         <div className="space-y-4">
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex h-24 w-24 overflow-hidden rounded-full bg-slate-100 ring-4 ring-brand/10">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-2xl font-bold text-brand">
+                  {(username.trim() || "?").charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="btn-secondary px-3 py-1.5 text-xs"
+              >
+                {uploading
+                  ? "Loading…"
+                  : avatarUrl
+                  ? "Change photo"
+                  : "Upload photo"}
+              </button>
+              {avatarUrl ? (
+                <button
+                  type="button"
+                  onClick={() => setAvatarUrl("")}
+                  className="btn-ghost px-3 py-1.5 text-xs"
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+            {photoError ? (
+              <p className="text-xs text-red-700">{photoError}</p>
+            ) : null}
+          </div>
           <div>
             <label className="label" htmlFor="profile-username">
               Name
@@ -282,18 +361,6 @@ function EditProfileModal({
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               required
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="profile-avatar">
-              Avatar URL <span className="text-ink-soft">(optional)</span>
-            </label>
-            <input
-              id="profile-avatar"
-              className="input"
-              placeholder="https://…"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
             />
           </div>
         </div>

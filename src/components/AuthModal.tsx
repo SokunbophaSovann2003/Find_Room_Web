@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import Icon from "./Icon";
 import { loginWithPhone, registerWithPhone } from "@/lib/auth";
@@ -48,7 +47,7 @@ export default function AuthModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center px-0 sm:items-center sm:px-4">
+    <div className="fixed inset-0 z-[1100] flex items-end justify-center px-0 sm:items-center sm:px-4">
       <div
         className="absolute inset-0 bg-ink/50 backdrop-blur-sm"
         onClick={dismissible ? onClose : undefined}
@@ -103,10 +102,15 @@ function LoginForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 8 || digits.length > 9) {
+      setError("Enter a valid Cambodian phone number (8-9 digits after +855).");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      await loginWithPhone(`+855${phone}`, password);
+      await loginWithPhone(`+855${digits}`, password);
       onSuccess?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in");
@@ -139,12 +143,7 @@ function LoginForm({
         </div>
 
         <div>
-          <div className="flex items-center justify-between">
-            <label className="label">Password</label>
-            <Link href="#" className="text-xs font-medium text-brand hover:text-brand-dark">
-              Forgot?
-            </Link>
-          </div>
+          <label className="label">Password</label>
           <input
             type="password"
             placeholder="••••••••"
@@ -194,10 +193,23 @@ function RegisterForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!username.trim()) {
+      setError("Enter your name.");
+      return;
+    }
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 8 || digits.length > 9) {
+      setError("Enter a valid Cambodian phone number (8-9 digits after +855).");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      await registerWithPhone({ username, phoneNumber: `+855${phone}`, password });
+      await registerWithPhone({ username: username.trim(), phoneNumber: `+855${digits}`, password });
       onSuccess?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create account");
@@ -253,19 +265,6 @@ function RegisterForm({
           />
         </div>
 
-        <label className="flex cursor-pointer items-start gap-2 text-xs text-ink-muted">
-          <input
-            type="checkbox"
-            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
-            required
-          />
-          <span>
-            I agree to the{" "}
-            <Link href="#" className="font-medium text-brand hover:text-brand-dark">Terms</Link>{" "}
-            and{" "}
-            <Link href="#" className="font-medium text-brand hover:text-brand-dark">Privacy Policy</Link>.
-          </span>
-        </label>
 
         {error ? (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
