@@ -86,11 +86,17 @@ function MyLocationControl() {
   );
 }
 
+type PositionedRoom = Room & { lat: number; lng: number };
+
+function isPositioned(r: Room): r is PositionedRoom {
+  return r.lat != null && r.lng != null;
+}
+
 export default function ExploreMap({ rooms, activeId, onSelect, onBoundsChange, focus }: ExploreMapProps) {
-  const positioned = rooms.filter((r) => r.lat != null && r.lng != null);
+  const positioned: PositionedRoom[] = rooms.filter(isPositioned);
   const initialCenter: [number, number] = focus?.center
     ?? (positioned.length > 0
-      ? [positioned[0].lat!, positioned[0].lng!]
+      ? [positioned[0].lat, positioned[0].lng]
       : [11.5564, 104.9282]);
   const initialZoom = focus?.zoom ?? 13;
 
@@ -111,7 +117,7 @@ export default function ExploreMap({ rooms, activeId, onSelect, onBoundsChange, 
       {positioned.map((r) => (
         <Marker
           key={r.id}
-          position={[r.lat!, r.lng!]}
+          position={[r.lat, r.lng]}
           icon={priceIcon(r.price, r.id === activeId)}
           eventHandlers={{ click: () => onSelect?.(r.id) }}
         />

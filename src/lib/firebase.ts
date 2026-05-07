@@ -14,6 +14,19 @@ const firebaseConfig = {
 
 export const isFirebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
+if (!isFirebaseConfigured && typeof window !== "undefined") {
+  // Demo-mode auth accepts any credentials. In production this is a
+  // security hole; warn loudly so missing env vars are obvious.
+  const message =
+    "[findroom] Firebase env vars are missing — running in demo mode. " +
+    "Set NEXT_PUBLIC_FIREBASE_* in .env.local before deploying.";
+  if (process.env.NODE_ENV === "production") {
+    console.error(message);
+  } else {
+    console.warn(message);
+  }
+}
+
 export const firebaseApp: FirebaseApp | null = isFirebaseConfigured
   ? getApps().length
     ? getApp()

@@ -1,4 +1,10 @@
-export type RoomType = "studio" | "1-bedroom" | "2-bedroom" | "shared" | "apartment";
+export type PropertyType =
+  | "room"
+  | "house"
+  | "apartment"
+  | "condo"
+  | "flat"
+  | "villa";
 
 export interface Owner {
   id: string;
@@ -24,7 +30,7 @@ export interface Room {
   electricityPrice?: number;
   wifiPrice?: number;
   otherFees?: { label: string; amount: string }[];
-  type: RoomType;
+  type: PropertyType;
   address: string;
   city: string;
   district?: string;
@@ -37,6 +43,7 @@ export interface Room {
   floor?: number;
   amenities: string[];
   availableFrom?: string; // ISO date
+  isOccupied?: boolean;
   owner: Owner;
   createdAt: number;
 }

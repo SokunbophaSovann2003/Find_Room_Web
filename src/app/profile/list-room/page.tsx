@@ -8,7 +8,7 @@ import LocationPicker, { type LocationValue } from "@/components/LocationPicker"
 import { useSession } from "@/lib/session";
 import { addLocalRoom } from "@/lib/local-rooms";
 import { downscalePhoto } from "@/lib/image";
-import type { Room, RoomType } from "@/lib/types";
+import type { Room, PropertyType } from "@/lib/types";
 
 const AMENITIES = [
   "Wi-Fi",
@@ -34,12 +34,13 @@ const FEE_TYPES = [
   { value: "other", label: "Other", unit: "" }
 ];
 
-const ROOM_TYPE_OPTIONS: { value: RoomType; label: string }[] = [
-  { value: "studio", label: "Studio" },
-  { value: "1-bedroom", label: "1-bedroom" },
-  { value: "2-bedroom", label: "2-bedroom" },
-  { value: "shared", label: "Shared" },
-  { value: "apartment", label: "Apartment" }
+const PROPERTY_TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
+  { value: "room", label: "Room" },
+  { value: "house", label: "House" },
+  { value: "apartment", label: "Apartment" },
+  { value: "condo", label: "Condo" },
+  { value: "flat", label: "Flat" },
+  { value: "villa", label: "Villa" }
 ];
 
 function formatLocation(loc: LocationValue): string {
@@ -63,19 +64,33 @@ const newId = (() => {
   return () => ++n;
 })();
 
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+const MAX_PHOTOS = 5;
+
+function parseCoord(val: string, range: number): number | undefined {
+  if (!val.trim()) return undefined;
+  const n = Number(val);
+  if (!Number.isFinite(n) || n < -range || n > range) return undefined;
+  return n;
+}
+
 export default function ListRoomPage() {
   const router = useRouter();
   const session = useSession();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [type, setType] = useState<RoomType>("studio");
+  const [type, setType] = useState<PropertyType>("apartment");
   const [bedrooms, setBedrooms] = useState(1);
   const [floor, setFloor] = useState(1);
   const [areaSqm, setAreaSqm] = useState<string>("");
   const [address, setAddress] = useState("");
   const [location, setLocation] = useState<LocationValue>({});
   const [locationOpen, setLocationOpen] = useState(false);
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [telegram, setTelegram] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [fees, setFees] = useState<FeeRow[]>([{ id: newId(), type: "rent", price: "" }]);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -83,14 +98,52 @@ export default function ListRoomPage() {
   const [submitting, setSubmitting] = useState(false);
   const errorRef = useRef<HTMLParagraphElement | null>(null);
 
+  function useMyLocation() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setError("Your browser doesn't support location access.");
+      return;
+    }
+    setGeoBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLat(pos.coords.latitude.toFixed(6));
+        setLng(pos.coords.longitude.toFixed(6));
+        setGeoBusy(false);
+        setError(null);
+      },
+      () => {
+        setGeoBusy(false);
+        setError("Couldn't get your location. Enter coordinates manually.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
   function addPhotos(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const items: PhotoItem[] = Array.from(files).map((file) => ({
+    const accepted: File[] = [];
+    let oversized = 0;
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_PHOTO_BYTES) {
+        oversized += 1;
+        continue;
+      }
+      accepted.push(file);
+    }
+    if (oversized > 0) {
+      setError(
+        `${oversized} photo${oversized === 1 ? " is" : "s are"} larger than 10 MB and ${oversized === 1 ? "was" : "were"} skipped.`
+      );
+    } else {
+      setError(null);
+    }
+    if (accepted.length === 0) return;
+    const items: PhotoItem[] = accepted.map((file) => ({
       id: newId(),
       file,
       url: URL.createObjectURL(file)
     }));
-    setPhotos((prev) => [...prev, ...items].slice(0, 10));
+    setPhotos((prev) => [...prev, ...items].slice(0, MAX_PHOTOS));
   }
   function removePhoto(id: number) {
     setPhotos((prev) => {
@@ -143,13 +196,16 @@ export default function ListRoomPage() {
 
     setSubmitting(true);
     try {
-      const images = await Promise.all(photos.slice(0, 3).map((p) => downscalePhoto(p.file)));
+      const images = await Promise.all(
+        photos.slice(0, MAX_PHOTOS).map((p) => downscalePhoto(p.file))
+      );
 
       const num = (val: string) => {
         const n = Number(val);
         return Number.isFinite(n) && n > 0 ? n : undefined;
       };
       const feeBy = (key: string) => fees.find((f) => f.type === key);
+      const trimmedTelegram = telegram.trim();
 
       const room: Room = {
         id: `local-${Date.now()}`,
@@ -172,6 +228,8 @@ export default function ListRoomPage() {
         city: location.province,
         district: location.district,
         area: location.area,
+        lat: parseCoord(lat, 90),
+        lng: parseCoord(lng, 180),
         bedrooms,
         areaSqm: num(areaSqm),
         floor,
@@ -181,7 +239,7 @@ export default function ListRoomPage() {
           id: session.uid,
           name: session.username ?? "FindRoom user",
           phoneNumber: session.phoneNumber ?? "",
-          telegramPhone: session.phoneNumber,
+          telegramPhone: trimmedTelegram || undefined,
           memberSince: new Date().toISOString().slice(0, 10),
           listingsCount: 1
         },
@@ -249,9 +307,9 @@ export default function ListRoomPage() {
                 <select
                   className="input"
                   value={type}
-                  onChange={(e) => setType(e.target.value as RoomType)}
+                  onChange={(e) => setType(e.target.value as PropertyType)}
                 >
-                  {ROOM_TYPE_OPTIONS.map((o) => (
+                  {PROPERTY_TYPE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
@@ -309,18 +367,66 @@ export default function ListRoomPage() {
                   onChange={(e) => setAddress(e.target.value)}
                 />
               </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Latitude">
+                  <input
+                    className="input"
+                    placeholder="11.5564"
+                    value={lat}
+                    onChange={(e) => setLat(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </Field>
+                <Field label="Longitude">
+                  <input
+                    className="input"
+                    placeholder="104.9282"
+                    value={lng}
+                    onChange={(e) => setLng(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </Field>
+              </div>
+              <button
+                type="button"
+                onClick={useMyLocation}
+                disabled={geoBusy}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-sm font-semibold text-ink-muted transition hover:border-brand hover:bg-brand/5 hover:text-brand disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                <Icon name="map-pin" className="h-4 w-4" />
+                {geoBusy ? "Locating…" : "Use my current location"}
+              </button>
+              <p className="text-xs text-ink-soft">
+                Coordinates pin the room on the map. Optional — leave blank to fall back to the address.
+              </p>
             </div>
+          </div>
+
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <FieldHeading>Contact</FieldHeading>
+            <Field label="Telegram phone (optional)">
+              <input
+                className="input"
+                placeholder={session?.phoneNumber ?? "+855 12 345 678"}
+                value={telegram}
+                onChange={(e) => setTelegram(e.target.value)}
+                inputMode="tel"
+              />
+            </Field>
+            <p className="text-xs text-ink-soft">
+              Renters tap this to message you on Telegram. Leave blank to skip.
+            </p>
           </div>
 
           <section>
             <FieldHeading className="mb-2">
               Photos
               {photos.length > 0 ? (
-                <span className="ml-1.5 text-ink-muted">({photos.length}/10)</span>
+                <span className="ml-1.5 text-ink-muted">({photos.length}/{MAX_PHOTOS})</span>
               ) : null}
             </FieldHeading>
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-              {photos.length < 10 ? (
+              {photos.length < MAX_PHOTOS ? (
                 <li>
                   <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 bg-white text-ink-muted transition hover:border-brand hover:bg-brand/5 hover:text-brand">
                     <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand">
@@ -365,7 +471,7 @@ export default function ListRoomPage() {
               ))}
             </ul>
             <p className="mt-2 text-xs text-ink-soft">
-              First 3 photos are saved with the listing · PNG or JPG
+              Up to {MAX_PHOTOS} photos · PNG or JPG · max 10 MB each
             </p>
           </section>
 

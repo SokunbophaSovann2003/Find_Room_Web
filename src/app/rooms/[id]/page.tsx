@@ -8,19 +8,29 @@ import RoomCard from "@/components/RoomCard";
 import Icon, { amenityIcon } from "@/components/Icon";
 import { findRoomById, similarRooms } from "@/lib/mock-data";
 import { getLocalRoomById } from "@/lib/local-rooms";
+import { useSession } from "@/lib/session";
 import type { Room } from "@/lib/types";
 
 type RoomState = Room | "loading" | "missing";
 
 export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const session = useSession();
   const [room, setRoom] = useState<RoomState>(() => findRoomById(params.id) ?? "loading");
+  const [trackedId, setTrackedId] = useState(params.id);
   const [contactOpen, setContactOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
 
+  // Reset state synchronously when the route param changes so we never
+  // render the previous room under a new id.
+  if (trackedId !== params.id) {
+    setTrackedId(params.id);
+    setRoom(findRoomById(params.id) ?? "loading");
+  }
+
   useEffect(() => {
-    const found = findRoomById(params.id) ?? getLocalRoomById(params.id);
-    setRoom(found ?? "missing");
+    if (findRoomById(params.id)) return;
+    setRoom(getLocalRoomById(params.id) ?? "missing");
   }, [params.id]);
 
   useEffect(() => {
@@ -65,7 +75,8 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const similar = similarRooms(room);
+  const isOwner = session?.uid === room.owner.id;
+  const similar = isOwner ? [] : similarRooms(room);
   const mapQuery =
     room.lat != null && room.lng != null
       ? `${room.lat},${room.lng}`
@@ -192,19 +203,13 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               </div>
             </header>
 
-            <ul className="flex flex-nowrap items-center justify-between gap-x-2 sm:justify-start sm:gap-x-5">
+            <ul className="grid grid-cols-3 items-center gap-x-2 sm:gap-x-5">
               <StatChip icon="bed" value={room.bedrooms} label="Bed" />
               {room.areaSqm ? (
-                <>
-                  <span className="hidden h-3 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
-                  <StatChip icon="ruler" value={room.areaSqm} label="m²" />
-                </>
+                <StatChip icon="ruler" value={room.areaSqm} label="m²" />
               ) : null}
               {room.floor != null ? (
-                <>
-                  <span className="hidden h-3 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
-                  <StatChip icon="elevator" value={room.floor} label="Floor" />
-                </>
+                <StatChip icon="elevator" value={room.floor} label="Floor" />
               ) : null}
             </ul>
 
@@ -303,116 +308,129 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {contactOpen ? (
-        <div
-          className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Contact the host"
-        >
-          <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={() => setContactOpen(false)} aria-hidden />
-          <div className="relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:max-h-[80vh] sm:w-full sm:max-w-md sm:rounded-3xl">
-            <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
-              <span aria-hidden />
-              <h2 className="text-center text-base font-semibold text-ink">Contact the host</h2>
-              <button
-                type="button"
-                onClick={() => setContactOpen(false)}
-                aria-label="Close"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
-              >
-                <Icon name="x" className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="overflow-y-auto p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-slate-200 ring-2 ring-brand/20">
-                  {room.owner.avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={room.owner.avatarUrl}
-                      alt={room.owner.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="flex h-full w-full items-center justify-center text-lg font-bold text-brand">
-                      {room.owner.name.trim().charAt(0).toUpperCase() || "?"}
-                    </span>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-ink-soft">Listed by</p>
-                  <p className="truncate font-semibold text-ink">{room.owner.name}</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2">
-                <ContactRow
-                  icon="phone"
-                  label="Phone"
-                  value={room.owner.phoneNumber}
-                  href={`tel:${phoneDigits}`}
+      <SheetModal
+        open={contactOpen}
+        title="Contact the host"
+        onClose={() => setContactOpen(false)}
+      >
+        <div className="overflow-y-auto p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-slate-200 ring-2 ring-brand/20">
+              {room.owner.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={room.owner.avatarUrl}
+                  alt={room.owner.name}
+                  className="h-full w-full object-cover"
                 />
-                {telegramLink ? (
-                  <ContactRow
-                    icon="telegram"
-                    label="Telegram"
-                    value={room.owner.telegramPhone ?? telegramLink}
-                    href={`https://t.me/${telegramLink}`}
-                  />
-                ) : null}
-              </ul>
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-lg font-bold text-brand">
+                  {room.owner.name.trim().charAt(0).toUpperCase() || "?"}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-wide text-ink-soft">Listed by</p>
+              <p className="truncate font-semibold text-ink">{room.owner.name}</p>
             </div>
           </div>
+          <ul className="mt-4 space-y-2">
+            <ContactRow
+              icon="phone"
+              label="Phone"
+              value={room.owner.phoneNumber}
+              href={`tel:${phoneDigits}`}
+            />
+            {telegramLink ? (
+              <ContactRow
+                icon="telegram"
+                label="Telegram"
+                value={room.owner.telegramPhone ?? telegramLink}
+                href={`https://t.me/${telegramLink}`}
+              />
+            ) : null}
+          </ul>
         </div>
-      ) : null}
+      </SheetModal>
 
-      {locationOpen ? (
-        <div
-          className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Location"
-        >
-          <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={() => setLocationOpen(false)} aria-hidden />
-          <div className="relative flex h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:h-auto sm:max-h-[80vh] sm:w-full sm:max-w-md sm:rounded-3xl">
-            <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
-              <span aria-hidden />
-              <h2 className="text-center text-base font-semibold text-ink">Location</h2>
-              <button
-                type="button"
-                onClick={() => setLocationOpen(false)}
-                aria-label="Close"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
-              >
-                <Icon name="x" className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <div className="flex items-start gap-2 border-b border-slate-100 px-4 py-3">
-                <Icon name="map-pin" className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-                <p className="text-sm font-medium leading-snug text-ink">{fullAddress}</p>
-              </div>
-              <div className="relative w-full flex-1 bg-slate-100 sm:aspect-[16/10] sm:flex-none">
-                <iframe
-                  title={`${room.title} — map`}
-                  src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=15&output=embed`}
-                  className="h-full w-full border-0"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
-              </div>
-              <a
-                href={mapsLink}
-                target="_blank"
-                rel="noreferrer"
-                className="border-t border-slate-100 px-4 py-3 text-center text-sm font-semibold text-brand hover:bg-brand/5"
-              >
-                Open in Maps ↗
-              </a>
-            </div>
-          </div>
+      <SheetModal
+        open={locationOpen}
+        title="Location"
+        onClose={() => setLocationOpen(false)}
+        bodyClassName="flex flex-1 flex-col overflow-hidden"
+        panelClassName="h-[85vh] sm:h-auto"
+      >
+        <div className="flex items-start gap-2 border-b border-slate-100 px-4 py-3">
+          <Icon name="map-pin" className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+          <p className="text-sm font-medium leading-snug text-ink">{fullAddress}</p>
         </div>
-      ) : null}
+        <div className="relative w-full flex-1 bg-slate-100 sm:aspect-[16/10] sm:flex-none">
+          <iframe
+            title={`${room.title} — map`}
+            src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=15&output=embed`}
+            className="h-full w-full border-0"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </div>
+        <a
+          href={mapsLink}
+          target="_blank"
+          rel="noreferrer"
+          className="border-t border-slate-100 px-4 py-3 text-center text-sm font-semibold text-brand hover:bg-brand/5"
+        >
+          Open in Maps ↗
+        </a>
+      </SheetModal>
+    </div>
+  );
+}
+
+function SheetModal({
+  open,
+  title,
+  onClose,
+  children,
+  panelClassName = "",
+  bodyClassName = ""
+}: {
+  open: boolean;
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  panelClassName?: string;
+  bodyClassName?: string;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
+      <div
+        className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden
+      />
+      <div
+        className={`relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:max-h-[80vh] sm:w-full sm:max-w-md sm:rounded-3xl ${panelClassName}`}
+      >
+        <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
+          <span aria-hidden />
+          <h2 className="text-center text-base font-semibold text-ink">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
+          >
+            <Icon name="x" className="h-5 w-5" />
+          </button>
+        </div>
+        {bodyClassName ? <div className={bodyClassName}>{children}</div> : children}
+      </div>
     </div>
   );
 }

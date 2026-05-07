@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import RoomCard from "@/components/RoomCard";
-import Icon from "@/components/Icon";
+import Icon, { propertyIcon } from "@/components/Icon";
+import ListingActionMenu from "@/components/ListingActionMenu";
 import { signOut } from "@/lib/auth";
 import { useSession } from "@/lib/session";
 import { useLocalRooms } from "@/lib/local-rooms";
@@ -156,12 +157,12 @@ export default function ProfilePage() {
           <>
             <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card sm:hidden">
               {listings.map((room) => (
-                <li key={room.id}>
+                <li key={room.id} className="relative">
                   <Link
                     href={`/rooms/${room.id}`}
-                    className="flex items-center gap-3 p-3 transition hover:bg-slate-50"
+                    className="flex items-center gap-3 p-3 pr-12 transition hover:bg-slate-50"
                   >
-                    <div className="h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                    <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
                       {room.images[0] ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -169,11 +170,24 @@ export default function ProfilePage() {
                           alt={room.title}
                           className="h-full w-full object-cover"
                         />
-                      ) : null}
+                      ) : (
+                        <Icon
+                          name={propertyIcon(room.type)}
+                          className="h-7 w-7 text-slate-300"
+                          strokeWidth={1.4}
+                        />
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-ink">
-                        {room.title}
+                      <p className="flex items-center gap-1.5">
+                        <span className="truncate text-sm font-semibold text-ink">
+                          {room.title}
+                        </span>
+                        {room.isOccupied ? (
+                          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                            Occupied
+                          </span>
+                        ) : null}
                       </p>
                       <p className="truncate text-xs text-ink-muted">
                         {room.district ? `${room.district}, ` : ""}
@@ -186,15 +200,27 @@ export default function ProfilePage() {
                         </span>
                       </p>
                     </div>
-                    <Icon name="arrow-right" className="h-4 w-4 shrink-0 text-ink-soft" />
                   </Link>
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <ListingActionMenu room={room} />
+                  </div>
                 </li>
               ))}
             </ul>
 
             <div className="hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3">
               {listings.map((room) => (
-                <RoomCard key={room.id} room={room} />
+                <div key={room.id} className="relative">
+                  <RoomCard room={room} />
+                  {room.isOccupied ? (
+                    <span className="pointer-events-none absolute left-3 top-12 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow">
+                      Occupied
+                    </span>
+                  ) : null}
+                  <div className="absolute right-2 top-2">
+                    <ListingActionMenu room={room} />
+                  </div>
+                </div>
               ))}
             </div>
           </>

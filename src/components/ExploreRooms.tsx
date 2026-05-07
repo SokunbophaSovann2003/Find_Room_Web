@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import RoomCard from "./RoomCard";
 import Icon from "./Icon";
+import ErrorBoundary from "./ErrorBoundary";
 import { useLocalRooms } from "@/lib/local-rooms";
 import { applyFilter, useExploreFilter } from "./ExploreFilterContext";
 import { getLocationFocus } from "@/lib/locations";
@@ -65,7 +66,16 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
 
       {view === "map" ? (
         <div className="mb-5 h-[320px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 lg:h-[480px]">
-          <ExploreMap rooms={allRooms} onBoundsChange={setBounds} focus={focus} />
+          <ErrorBoundary
+            fallback={
+              <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-sm text-ink-muted">
+                <Icon name="map-pin" className="h-6 w-6 text-brand" />
+                <p>Map failed to load. Switch to list view to keep browsing.</p>
+              </div>
+            }
+          >
+            <ExploreMap rooms={allRooms} onBoundsChange={setBounds} focus={focus} />
+          </ErrorBoundary>
         </div>
       ) : null}
 
@@ -80,7 +90,7 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
           <p className="max-w-sm text-sm text-ink-muted">
             {view === "map"
               ? "Pan or zoom out to find more rooms."
-              : "Try widening the location or clearing the room type."}
+              : "Try widening the location or clearing the property type."}
           </p>
         </div>
       ) : (

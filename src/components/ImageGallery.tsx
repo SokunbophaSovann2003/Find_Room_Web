@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Icon from "./Icon";
+import Icon, { propertyIcon } from "./Icon";
 
 export default function ImageGallery({
   images,
@@ -22,7 +22,15 @@ export default function ImageGallery({
         {hero ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={hero} alt={title} className="h-full w-full object-cover" />
-        ) : null}
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Icon
+              name={propertyIcon(typeLabel ?? "")}
+              className="h-32 w-32 text-slate-300 lg:h-40 lg:w-40"
+              strokeWidth={1.4}
+            />
+          </div>
+        )}
         {typeLabel ? (
           <span className="absolute left-4 top-4 rounded-full bg-brand px-3 py-1 text-xs font-semibold capitalize text-white shadow">
             {typeLabel}

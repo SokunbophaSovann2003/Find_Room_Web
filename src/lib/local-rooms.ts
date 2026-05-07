@@ -23,6 +23,20 @@ export function addLocalRoom(room: Room) {
   window.dispatchEvent(new Event(EVENT));
 }
 
+export function updateLocalRoom(id: string, patch: Partial<Room>) {
+  if (typeof window === "undefined") return;
+  const rooms = getLocalRooms().map((r) => (r.id === id ? { ...r, ...patch } : r));
+  window.localStorage.setItem(KEY, JSON.stringify(rooms));
+  window.dispatchEvent(new Event(EVENT));
+}
+
+export function deleteLocalRoom(id: string) {
+  if (typeof window === "undefined") return;
+  const rooms = getLocalRooms().filter((r) => r.id !== id);
+  window.localStorage.setItem(KEY, JSON.stringify(rooms));
+  window.dispatchEvent(new Event(EVENT));
+}
+
 export function getLocalRoomById(id: string): Room | undefined {
   return getLocalRooms().find((r) => r.id === id);
 }

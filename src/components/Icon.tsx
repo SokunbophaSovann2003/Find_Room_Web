@@ -2,6 +2,7 @@ import type { SVGProps } from "react";
 
 type IconName =
   | "home"
+  | "building"
   | "search"
   | "map-pin"
   | "bed"
@@ -20,6 +21,9 @@ type IconName =
   | "message"
   | "user"
   | "menu"
+  | "more-vertical"
+  | "copy"
+  | "trash"
   | "x"
   | "arrow-right"
   | "check"
@@ -36,6 +40,13 @@ type IconName =
 
 const PATHS: Record<IconName, React.ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V10.5Z" />,
+  building: (
+    <>
+      <rect x="5" y="3" width="14" height="18" rx="1.5" />
+      <path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2" />
+      <path d="M10.5 21v-3h3v3" />
+    </>
+  ),
   search: (
     <>
       <circle cx="11" cy="11" r="7" />
@@ -127,6 +138,27 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   menu: <path d="M3 6h18M3 12h18M3 18h18" />,
+  "more-vertical": (
+    <>
+      <circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4 7h16" />
+      <path d="M9 7V4h6v3" />
+      <path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" />
+      <path d="M10 11v7M14 11v7" />
+    </>
+  ),
   x: <path d="M6 6l12 12M6 18L18 6" />,
   "arrow-right": <path d="M5 12h14M13 6l6 6-6 6" />,
   check: <path d="m5 12 5 5L20 7" />,
@@ -194,6 +226,22 @@ export default function Icon({
       {PATHS[name]}
     </svg>
   );
+}
+
+export function propertyIcon(type: string): IconName {
+  switch (type) {
+    case "room":
+      return "bed";
+    case "house":
+    case "villa":
+      return "home";
+    case "apartment":
+    case "condo":
+    case "flat":
+      return "building";
+    default:
+      return "home";
+  }
 }
 
 export function amenityIcon(amenity: string): IconName {

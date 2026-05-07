@@ -6,15 +6,16 @@ import LocationPicker, { type LocationValue } from "./LocationPicker";
 import OptionPicker from "./OptionPicker";
 import { useExploreFilter, type SortOrder } from "./ExploreFilterContext";
 import { useDesktop } from "@/lib/use-desktop";
-import type { RoomType } from "@/lib/types";
+import type { PropertyType } from "@/lib/types";
 
-const ROOM_TYPE_OPTIONS: { value: RoomType | ""; label: string }[] = [
-  { value: "", label: "Any room type" },
-  { value: "studio", label: "Studio" },
-  { value: "1-bedroom", label: "1-bedroom" },
-  { value: "2-bedroom", label: "2-bedroom" },
-  { value: "shared", label: "Shared" },
-  { value: "apartment", label: "Apartment" }
+const PROPERTY_TYPE_OPTIONS: { value: PropertyType | ""; label: string }[] = [
+  { value: "", label: "Any property type" },
+  { value: "room", label: "Room" },
+  { value: "house", label: "House" },
+  { value: "apartment", label: "Apartment" },
+  { value: "condo", label: "Condo" },
+  { value: "flat", label: "Flat" },
+  { value: "villa", label: "Villa" }
 ];
 
 const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
@@ -42,7 +43,7 @@ export default function SearchBar() {
   const mode = isDesktop ? "dropdown" : "modal";
 
   const locationLabel = formatLocation(filter.location);
-  const typeLabel = labelFor(ROOM_TYPE_OPTIONS, filter.type);
+  const typeLabel = labelFor(PROPERTY_TYPE_OPTIONS, filter.type);
   const sortLabel = labelFor(SORT_OPTIONS, filter.sort);
 
   function toggle(key: "location" | "type" | "sort") {
@@ -64,28 +65,18 @@ export default function SearchBar() {
           <span className={`flex-1 truncate ${locationLabel ? "text-ink" : "text-ink-soft"}`}>
             {locationLabel || "Where to? Province, district, area…"}
           </span>
-          {locationLabel ? (
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label="Clear location"
-              onClick={(e) => {
-                e.stopPropagation();
-                setFilter({ ...filter, location: {} });
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setFilter({ ...filter, location: {} });
-                }
-              }}
-              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-slate-200 hover:text-ink"
-            >
-              <Icon name="x" className="h-3.5 w-3.5" />
-            </span>
-          ) : null}
+          {locationLabel ? <span className="h-6 w-6 shrink-0" aria-hidden /> : null}
         </button>
+        {locationLabel ? (
+          <button
+            type="button"
+            aria-label="Clear location"
+            onClick={() => setFilter({ ...filter, location: {} })}
+            className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-slate-200 hover:text-ink sm:right-4"
+          >
+            <Icon name="x" className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
         <LocationPicker
           open={pickerOpen === "location"}
           onClose={() => setPickerOpen(null)}
@@ -108,12 +99,12 @@ export default function SearchBar() {
             {typeLabel}
           </span>
         </button>
-        <OptionPicker<RoomType | "">
+        <OptionPicker<PropertyType | "">
           open={pickerOpen === "type"}
           onClose={() => setPickerOpen(null)}
           mode={mode}
-          title="Room type"
-          options={ROOM_TYPE_OPTIONS}
+          title="Property type"
+          options={PROPERTY_TYPE_OPTIONS}
           value={filter.type}
           onChange={(next) => setFilter({ ...filter, type: next })}
         />

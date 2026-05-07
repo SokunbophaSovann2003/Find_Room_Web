@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Icon from "./Icon";
+import Icon, { propertyIcon } from "./Icon";
 import type { Room } from "@/lib/types";
 
 export default function RoomCard({ room }: { room: Room }) {
@@ -16,7 +16,15 @@ export default function RoomCard({ room }: { room: Room }) {
             alt={room.title}
             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           />
-        ) : null}
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Icon
+              name={propertyIcon(room.type)}
+              className="h-14 w-14 text-slate-300"
+              strokeWidth={1.4}
+            />
+          </div>
+        )}
 
         <div className="absolute left-3 top-3 flex gap-1.5">
           <span className="rounded-full bg-brand px-2.5 py-1 text-[11px] font-semibold capitalize text-white shadow">

@@ -2,13 +2,13 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import type { LocationValue } from "./LocationPicker";
-import type { Room, RoomType } from "@/lib/types";
+import type { Room, PropertyType } from "@/lib/types";
 
 export type SortOrder = "" | "price-asc" | "price-desc";
 
 export interface ExploreFilter {
   location: LocationValue;
-  type: RoomType | "";
+  type: PropertyType | "";
   sort: SortOrder;
 }
 
@@ -29,7 +29,7 @@ export function useExploreFilter() {
 }
 
 export function applyFilter(rooms: Room[], filter: ExploreFilter): Room[] {
-  let out = rooms;
+  let out = rooms.filter((r) => !r.isOccupied);
   if (filter.location.province) {
     out = out.filter((r) => r.city === filter.location.province);
   }
