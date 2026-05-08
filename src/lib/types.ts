@@ -9,8 +9,10 @@ export type PropertyType =
 export interface Owner {
   id: string;
   name: string;
-  phoneNumber: string;
-  telegramPhone?: string;
+  // A host can publish multiple ways to be reached. First entry is the
+  // primary contact (used for the bottom-bar "Contact" CTA fallback).
+  phoneNumbers: string[];
+  telegramPhones?: string[];
   email?: string;
   wechat?: string;
   facebook?: string;

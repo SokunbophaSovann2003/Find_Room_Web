@@ -28,6 +28,7 @@ type IconName =
   | "arrow-right"
   | "check"
   | "plus"
+  | "pencil"
   | "camera"
   | "chevron-down"
   | "calendar"
@@ -163,6 +164,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   "arrow-right": <path d="M5 12h14M13 6l6 6-6 6" />,
   check: <path d="m5 12 5 5L20 7" />,
   plus: <path d="M12 5v14M5 12h14" />,
+  pencil: (
+    <>
+      <path d="M14.5 4.5l5 5L8 21H3v-5l11.5-11.5Z" />
+      <path d="m13 6 5 5" />
+    </>
+  ),
   camera: (
     <>
       <path d="M4 8h3l2-3h6l2 3h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" />

@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Icon, { amenityIcon } from "@/components/Icon";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import { useSession } from "@/lib/session";
 import { addLocalRoom } from "@/lib/local-rooms";
 import { downscalePhoto } from "@/lib/image";
+import { loadOverrides } from "@/lib/profile-overrides";
 import type { Room, PropertyType } from "@/lib/types";
 
 const AMENITIES = [
@@ -90,7 +91,20 @@ export default function ListRoomPage() {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [geoBusy, setGeoBusy] = useState(false);
-  const [telegram, setTelegram] = useState("");
+  const [profileOverrides, setProfileOverrides] = useState<{
+    contactPhones?: string[];
+    telegramPhones?: string[];
+    username?: string;
+  }>({});
+
+  useEffect(() => {
+    const saved = loadOverrides();
+    setProfileOverrides({
+      contactPhones: saved.contactPhones,
+      telegramPhones: saved.telegramPhones,
+      username: saved.username
+    });
+  }, []);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [fees, setFees] = useState<FeeRow[]>([{ id: newId(), type: "rent", price: "" }]);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -205,7 +219,8 @@ export default function ListRoomPage() {
         return Number.isFinite(n) && n > 0 ? n : undefined;
       };
       const feeBy = (key: string) => fees.find((f) => f.type === key);
-      const trimmedTelegram = telegram.trim();
+      const ownerPhones = profileOverrides.contactPhones ?? [];
+      const ownerTelegrams = profileOverrides.telegramPhones ?? [];
 
       const room: Room = {
         id: `local-${Date.now()}`,
@@ -237,9 +252,9 @@ export default function ListRoomPage() {
         images,
         owner: {
           id: session.uid,
-          name: session.username ?? "FindRoom user",
-          phoneNumber: session.phoneNumber ?? "",
-          telegramPhone: trimmedTelegram || undefined,
+          name: profileOverrides.username ?? session.username ?? "FindRoom user",
+          phoneNumbers: ownerPhones,
+          telegramPhones: ownerTelegrams.length ? ownerTelegrams : undefined,
           memberSince: new Date().toISOString().slice(0, 10),
           listingsCount: 1
         },
@@ -402,21 +417,10 @@ export default function ListRoomPage() {
             </div>
           </div>
 
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-            <FieldHeading>Contact</FieldHeading>
-            <Field label="Telegram phone (optional)">
-              <input
-                className="input"
-                placeholder={session?.phoneNumber ?? "+855 12 345 678"}
-                value={telegram}
-                onChange={(e) => setTelegram(e.target.value)}
-                inputMode="tel"
-              />
-            </Field>
-            <p className="text-xs text-ink-soft">
-              Renters tap this to message you on Telegram. Leave blank to skip.
-            </p>
-          </div>
+          <ContactSummary
+            phones={profileOverrides.contactPhones ?? []}
+            telegrams={profileOverrides.telegramPhones ?? []}
+          />
 
           <section>
             <FieldHeading className="mb-2">
@@ -637,5 +641,50 @@ function Field({
       </span>
       {children}
     </label>
+  );
+}
+
+function ContactSummary({
+  phones,
+  telegrams
+}: {
+  phones: string[];
+  telegrams: string[];
+}) {
+  const isEmpty = phones.length === 0 && telegrams.length === 0;
+  return (
+    <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <FieldHeading>Contact</FieldHeading>
+      {isEmpty ? (
+        <p className="text-sm text-ink-muted">
+          No contact channels yet — renters won&rsquo;t be able to reach you.
+        </p>
+      ) : (
+        <ul className="space-y-1.5 text-sm">
+          {phones.map((p) => (
+            <li key={`p-${p}`} className="flex items-center gap-2">
+              <Icon name="phone" className="h-4 w-4 shrink-0 text-brand" />
+              <span className="font-semibold text-ink">{p}</span>
+            </li>
+          ))}
+          {telegrams.map((t) => (
+            <li key={`t-${t}`} className="flex items-center gap-2">
+              <Icon name="telegram" className="h-4 w-4 shrink-0 text-brand" />
+              <span className="font-semibold text-ink">{t}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-xs text-ink-soft">
+        Listings inherit the contact channels from your{" "}
+        <Link
+          href="/profile"
+          className="font-semibold text-brand hover:text-brand-dark"
+        >
+          profile
+        </Link>
+        . Add or update them there.
+      </p>
+    </div>
   );
 }

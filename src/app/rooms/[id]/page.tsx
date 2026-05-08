@@ -82,10 +82,8 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
       ? `${room.lat},${room.lng}`
       : `${room.address}, ${room.city}`;
   const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
-  const phoneDigits = room.owner.phoneNumber.replace(/\s/g, "");
-  const telegramLink = room.owner.telegramPhone
-    ? `+${room.owner.telegramPhone.replace(/\D/g, "")}`
-    : undefined;
+  const phoneNumbers = room.owner.phoneNumbers ?? [];
+  const telegramPhones = room.owner.telegramPhones ?? [];
 
   const fullAddress = [room.address, room.area, room.district, room.city]
     .filter(Boolean)
@@ -150,20 +148,27 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
         </div>
 
         <ul className="mt-4 space-y-2">
+          {phoneNumbers.map((p) => (
             <ContactRow
+              key={`tel-${p}`}
               icon="phone"
               label="Phone"
-              value={room.owner.phoneNumber}
-              href={`tel:${phoneDigits}`}
+              value={p}
+              href={`tel:${p.replace(/\s/g, "")}`}
             />
-            {telegramLink ? (
+          ))}
+          {telegramPhones.map((t) => {
+            const handle = `+${t.replace(/\D/g, "")}`;
+            return (
               <ContactRow
+                key={`tg-${t}`}
                 icon="telegram"
                 label="Telegram"
-                value={room.owner.telegramPhone ?? telegramLink}
-                href={`https://t.me/${telegramLink}`}
+                value={t}
+                href={`https://t.me/${handle}`}
               />
-            ) : null}
+            );
+          })}
         </ul>
       </div>
     </section>
@@ -335,20 +340,27 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             </div>
           </div>
           <ul className="mt-4 space-y-2">
-            <ContactRow
-              icon="phone"
-              label="Phone"
-              value={room.owner.phoneNumber}
-              href={`tel:${phoneDigits}`}
-            />
-            {telegramLink ? (
+            {phoneNumbers.map((p) => (
               <ContactRow
-                icon="telegram"
-                label="Telegram"
-                value={room.owner.telegramPhone ?? telegramLink}
-                href={`https://t.me/${telegramLink}`}
+                key={`tel-${p}`}
+                icon="phone"
+                label="Phone"
+                value={p}
+                href={`tel:${p.replace(/\s/g, "")}`}
               />
-            ) : null}
+            ))}
+            {telegramPhones.map((t) => {
+              const handle = `+${t.replace(/\D/g, "")}`;
+              return (
+                <ContactRow
+                  key={`tg-${t}`}
+                  icon="telegram"
+                  label="Telegram"
+                  value={t}
+                  href={`https://t.me/${handle}`}
+                />
+              );
+            })}
           </ul>
         </div>
       </SheetModal>

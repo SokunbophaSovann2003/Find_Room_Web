@@ -4,8 +4,8 @@ const OWNERS: Record<string, Owner> = {
   sokha: {
     id: "sokha",
     name: "Sokha Chan",
-    phoneNumber: "+855 12 345 678",
-    telegramPhone: "+855 12 345 678",
+    phoneNumbers: ["+855 12 345 678", "+855 70 123 456"],
+    telegramPhones: ["+855 12 345 678"],
     email: "sokha.chan@example.com",
     facebook: "sokha.chan",
     avatarUrl: "https://i.pravatar.cc/160?img=47",
@@ -15,8 +15,8 @@ const OWNERS: Record<string, Owner> = {
   dara: {
     id: "dara",
     name: "Dara Pich",
-    phoneNumber: "+855 17 888 112",
-    telegramPhone: "+855 17 888 112",
+    phoneNumbers: ["+855 17 888 112"],
+    telegramPhones: ["+855 17 888 112"],
     wechat: "dara_pich",
     avatarUrl: "https://i.pravatar.cc/160?img=12",
     memberSince: "2022-11-03",
@@ -25,8 +25,8 @@ const OWNERS: Record<string, Owner> = {
   sreypov: {
     id: "sreypov",
     name: "Sreypov Lay",
-    phoneNumber: "+855 96 221 009",
-    telegramPhone: "+855 96 221 009",
+    phoneNumbers: ["+855 96 221 009"],
+    telegramPhones: ["+855 96 221 009"],
     email: "sreypov.lay@example.com",
     facebook: "sreypov.lay",
     avatarUrl: "https://i.pravatar.cc/160?img=32",
