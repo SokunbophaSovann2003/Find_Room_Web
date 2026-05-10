@@ -26,6 +26,7 @@ type IconName =
   | "trash"
   | "x"
   | "arrow-right"
+  | "log-out"
   | "check"
   | "plus"
   | "pencil"
@@ -162,6 +163,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   x: <path d="M6 6l12 12M6 18L18 6" />,
   "arrow-right": <path d="M5 12h14M13 6l6 6-6 6" />,
+  "log-out": (
+    <>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5M21 12H9" />
+    </>
+  ),
   check: <path d="m5 12 5 5L20 7" />,
   plus: <path d="M12 5v14M5 12h14" />,
   pencil: (

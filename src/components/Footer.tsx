@@ -83,10 +83,13 @@ function ContactRow({
   label: string;
   href: string;
 }) {
+  // Plain <a> rather than Next.js <Link> — these targets are protocol/external
+  // URLs (tel:, mailto:, https:) and Link's client-side router can't handle
+  // them, which would surface as a 404 in dev.
   const external = href.startsWith("http");
   return (
     <li>
-      <Link
+      <a
         href={href}
         target={external ? "_blank" : undefined}
         rel={external ? "noreferrer" : undefined}
@@ -96,7 +99,7 @@ function ContactRow({
           <Icon name={icon} className="h-3.5 w-3.5" />
         </span>
         {label}
-      </Link>
+      </a>
     </li>
   );
 }

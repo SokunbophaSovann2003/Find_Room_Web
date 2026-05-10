@@ -179,8 +179,21 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
       <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6 sm:pt-8">
         <button
           type="button"
-          onClick={() => router.back()}
-          className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted transition hover:text-brand"
+          onClick={() => {
+            // router.back() is a no-op when the user opened this page from a
+            // direct link (no history). Fall back to /explore so the button
+            // always does something visible.
+            if (typeof window !== "undefined" && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push("/explore");
+            }
+          }}
+          // h-9 gives a 36px touch target (a bit closer to Apple's 44px guideline
+          // than the original ~20px text-only target). touch-action: manipulation
+          // eliminates the 300ms tap delay that older mobile Safari versions add.
+          style={{ touchAction: "manipulation" }}
+          className="mb-3 -ml-2 inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-sm font-medium text-ink-muted transition hover:bg-slate-100 hover:text-brand active:scale-[0.98]"
         >
           <Icon name="arrow-right" className="h-4 w-4 rotate-180" />
           Back
@@ -288,7 +301,19 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
         ) : null}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:hidden">
+      {/*
+        Mobile-only sticky action bar.
+        - Solid bg + no backdrop-blur: backdrop-filter on `position: fixed`
+          elements has historically caused event-handling glitches on iOS
+          Safari where taps on the bar's children silently fail.
+        - pb adds safe-area-inset for iPhone home indicator so the buttons
+          don't sit under the device chrome.
+        - touch-action: manipulation removes the 300ms tap delay.
+      */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-4 py-3 sm:hidden"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)", touchAction: "manipulation" }}
+      >
         <div className="flex items-center gap-2">
           <div className="shrink-0 whitespace-nowrap">
             <span className="text-xl font-extrabold leading-tight text-brand">${room.price}</span>
@@ -422,7 +447,7 @@ function SheetModal({
       aria-label={title}
     >
       <div
-        className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-ink/50"
         onClick={onClose}
         aria-hidden
       />

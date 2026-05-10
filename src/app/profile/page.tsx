@@ -21,7 +21,7 @@ export default function ProfilePage() {
   const session = useSession();
   const allLocalRooms = useLocalRooms();
   const [overrides, setOverrides] = useState<ProfileOverrides>({});
-  const [editing, setEditing] = useState<"profile" | "contact" | null>(null);
+  const [editing, setEditing] = useState<"profile" | null>(null);
   const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
@@ -36,18 +36,10 @@ export default function ProfilePage() {
   if (!session) return null;
 
   const username = overrides.username ?? session.username ?? "FindRoom user";
-  // Login phone is the auth identity — comes from session and is not part
-  // of the public contact info.
+  // Login phone is the auth identity — used to sign in. Contact info for
+  // listings is now per-room, set during the create-room flow.
   const loginPhone = session.phoneNumber ?? "";
-  // Public contact channels are fully independent. Whatever is saved is
-  // shown; the empty array means "no contacts" (no auto-fallback).
-  const contactPhones = overrides.contactPhones ?? [];
-  const telegramPhones = overrides.telegramPhones ?? [];
   const avatarUrl = overrides.avatarUrl;
-  const memberSinceLabel = new Date().toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric"
-  });
   const initial = username.trim().charAt(0).toUpperCase() || "?";
 
   async function handleLogout() {
@@ -71,9 +63,34 @@ export default function ProfilePage() {
             signingOut={signingOut}
           />
         </div>
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+
+        {/* Mobile: centered vertical layout */}
+        <div className="flex flex-col items-center gap-3 text-center sm:hidden">
+          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-brand/15 text-3xl font-bold text-brand ring-4 ring-brand/10">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt={username}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span>{initial}</span>
+            )}
+          </div>
+          <h1 className="text-xl font-extrabold tracking-tight">{username}</h1>
+          {loginPhone ? (
+            <p className="inline-flex items-center gap-1.5 text-sm text-ink-muted">
+              <Icon name="phone" className="h-4 w-4 text-brand" />
+              {loginPhone}
+            </p>
+          ) : null}
+        </div>
+
+        {/* Desktop: horizontal layout */}
+        <div className="hidden sm:flex sm:items-center sm:justify-between sm:gap-5">
           <div className="flex items-center gap-4">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-2xl font-bold text-brand ring-4 ring-brand/10 sm:h-24 sm:w-24 sm:text-3xl">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-3xl font-bold text-brand ring-4 ring-brand/10">
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -86,7 +103,7 @@ export default function ProfilePage() {
               )}
             </div>
             <div className="min-w-0">
-              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <h1 className="text-3xl font-extrabold tracking-tight">
                 {username}
               </h1>
               {loginPhone ? (
@@ -95,89 +112,28 @@ export default function ProfilePage() {
                   {loginPhone}
                 </p>
               ) : null}
-              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-ink-muted">
-                <Icon name="calendar" className="h-3.5 w-3.5 text-brand" />
-                Joined {memberSinceLabel}
-              </span>
             </div>
           </div>
-          <div className="hidden gap-2 sm:flex sm:shrink-0">
+          <div className="flex shrink-0 gap-2">
             <button
               type="button"
               onClick={() => setEditing("profile")}
               className="btn-secondary"
             >
+              <Icon name="pencil" className="h-4 w-4" />
               Edit profile
             </button>
             <button
               type="button"
               onClick={handleLogout}
               disabled={signingOut}
-              className="btn-ghost"
+              className="btn-danger"
             >
+              <Icon name="log-out" className="h-4 w-4" />
               {signingOut ? "Logging out…" : "Log out"}
             </button>
           </div>
         </div>
-      </section>
-
-      <section className="mt-6">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-base font-bold sm:text-lg">Contact info</h2>
-          <button
-            type="button"
-            onClick={() => setEditing("contact")}
-            className="btn-primary"
-          >
-            <Icon name="pencil" className="h-4 w-4" />
-            Edit
-          </button>
-        </div>
-        <p className="mb-3 text-xs text-ink-soft">
-          This is how renters reach you on your listings — separate from your
-          login phone.
-        </p>
-        <ul className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
-          {contactPhones.length > 0 ? (
-            contactPhones.map((p) => (
-              <ContactInfoRow
-                key={`tel-${p}`}
-                icon="phone"
-                label="Phone"
-                value={p}
-                href={`tel:${p.replace(/\s/g, "")}`}
-              />
-            ))
-          ) : (
-            <ContactInfoRow
-              icon="phone"
-              label="Phone"
-              value="Not set"
-              muted
-            />
-          )}
-          {telegramPhones.length > 0 ? (
-            telegramPhones.map((t) => {
-              const handle = `+${t.replace(/\D/g, "")}`;
-              return (
-                <ContactInfoRow
-                  key={`tg-${t}`}
-                  icon="telegram"
-                  label="Telegram"
-                  value={t}
-                  href={`https://t.me/${handle}`}
-                />
-              );
-            })
-          ) : (
-            <ContactInfoRow
-              icon="telegram"
-              label="Telegram"
-              value="Not set"
-              muted
-            />
-          )}
-        </ul>
       </section>
 
       <section className="mt-8">
@@ -308,78 +264,7 @@ export default function ProfilePage() {
         />
       ) : null}
 
-      {editing === "contact" ? (
-        <EditContactModal
-          initial={{
-            contactPhones: overrides.contactPhones ?? [],
-            telegramPhones: overrides.telegramPhones ?? []
-          }}
-          onCancel={() => setEditing(null)}
-          onSave={(next) => {
-            // Preserve empty arrays — they mean "explicitly cleared", not
-            // "never set". Only `undefined` triggers the first-time seed.
-            const merged: ProfileOverrides = {
-              ...overrides,
-              contactPhones: next.contactPhones,
-              telegramPhones: next.telegramPhones
-            };
-            saveOverrides(merged);
-            setOverrides(merged);
-            setEditing(null);
-          }}
-        />
-      ) : null}
     </div>
-  );
-}
-
-function ContactInfoRow({
-  icon,
-  label,
-  value,
-  href,
-  muted = false
-}: {
-  icon: React.ComponentProps<typeof Icon>["name"];
-  label: string;
-  value: string;
-  href?: string;
-  muted?: boolean;
-}) {
-  const inner = (
-    <>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
-        <Icon name={icon} className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] uppercase tracking-wide text-ink-soft">{label}</p>
-        <p
-          className={`truncate text-sm font-semibold ${
-            muted ? "text-ink-muted" : "text-ink"
-          }`}
-        >
-          {value}
-        </p>
-      </div>
-    </>
-  );
-  return (
-    <li>
-      {href ? (
-        <a
-          href={href}
-          target={href.startsWith("http") ? "_blank" : undefined}
-          rel={href.startsWith("http") ? "noreferrer" : undefined}
-          className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 transition hover:border-brand hover:bg-brand/5"
-        >
-          {inner}
-        </a>
-      ) : (
-        <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 px-3 py-2">
-          {inner}
-        </div>
-      )}
-    </li>
   );
 }
 
@@ -565,161 +450,6 @@ function EditProfileModal({
   );
 }
 
-function EditContactModal({
-  initial,
-  onCancel,
-  onSave
-}: {
-  initial: { contactPhones: string[]; telegramPhones: string[] };
-  onCancel: () => void;
-  onSave: (next: { contactPhones: string[]; telegramPhones: string[] }) => void;
-}) {
-  const [phones, setPhones] = useState<string[]>(
-    initial.contactPhones.length ? initial.contactPhones : [""]
-  );
-  const [telegrams, setTelegrams] = useState<string[]>(
-    initial.telegramPhones.length ? initial.telegramPhones : [""]
-  );
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    onSave({
-      contactPhones: phones.map((p) => p.trim()).filter(Boolean),
-      telegramPhones: telegrams.map((t) => t.trim()).filter(Boolean)
-    });
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/40 px-4"
-      onClick={onCancel}
-    >
-      <form
-        onSubmit={handleSubmit}
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-cardHover"
-      >
-        <div className="flex items-center justify-between px-5 pb-3 pt-5 sm:px-6 sm:pt-6">
-          <h3 className="text-lg font-bold">Edit contact info</h3>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-full p-1 text-ink-muted hover:bg-slate-100 hover:text-ink"
-            aria-label="Close"
-          >
-            <Icon name="x" className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 pb-4 sm:px-6">
-          <p className="mb-4 text-xs text-ink-soft">
-            Renters see these on your listings. They&rsquo;re independent of
-            your login phone — clear them to publish nothing.
-          </p>
-
-          <ContactListEditor
-            label="Phone numbers"
-            iconName="phone"
-            placeholder="+855 12 345 678"
-            values={phones}
-            onChange={setPhones}
-            addLabel="Add phone"
-          />
-
-          <div className="mt-5">
-            <ContactListEditor
-              label="Telegram phones"
-              iconName="telegram"
-              placeholder="+855 12 345 678"
-              values={telegrams}
-              onChange={setTelegrams}
-              addLabel="Add Telegram"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3 sm:px-6">
-          <button type="button" onClick={onCancel} className="btn-ghost">
-            Cancel
-          </button>
-          <button type="submit" className="btn-primary">
-            Save
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-function ContactListEditor({
-  label,
-  iconName,
-  placeholder,
-  values,
-  onChange,
-  addLabel,
-  emptyHint
-}: {
-  label: string;
-  iconName: React.ComponentProps<typeof Icon>["name"];
-  placeholder: string;
-  values: string[];
-  onChange: (next: string[]) => void;
-  addLabel: string;
-  emptyHint?: string;
-}) {
-  function update(i: number, val: string) {
-    onChange(values.map((v, idx) => (idx === i ? val : v)));
-  }
-  function remove(i: number) {
-    const next = values.filter((_, idx) => idx !== i);
-    onChange(next.length ? next : [""]);
-  }
-  function add() {
-    onChange([...values, ""]);
-  }
-  return (
-    <div>
-      <span className="label flex items-center gap-1.5">
-        <Icon name={iconName} className="h-4 w-4 text-brand" />
-        {label}
-      </span>
-      <ul className="space-y-2">
-        {values.map((v, i) => (
-          <li key={i} className="flex items-center gap-2">
-            <input
-              className="input flex-1"
-              value={v}
-              onChange={(e) => update(i, e.target.value)}
-              placeholder={placeholder}
-              inputMode="tel"
-            />
-            <button
-              type="button"
-              onClick={() => remove(i)}
-              aria-label={`Remove ${label.toLowerCase()} ${i + 1}`}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-ink-soft transition hover:bg-slate-100 hover:text-ink"
-            >
-              <Icon name="x" className="h-4 w-4" />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        onClick={add}
-        className="mt-2 inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-semibold text-ink-muted transition hover:border-brand hover:bg-brand/5 hover:text-brand"
-      >
-        <Icon name="plus" className="h-3.5 w-3.5" />
-        {addLabel}
-      </button>
-      {emptyHint ? (
-        <p className="mt-1 text-[11px] text-ink-soft">{emptyHint}</p>
-      ) : null}
-    </div>
-  );
-}
-
 function ProfileActionsMenu({
   onEdit,
   onLogout,
@@ -776,7 +506,7 @@ function ProfileActionsMenu({
             }}
             className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium text-ink transition hover:bg-slate-50"
           >
-            <Icon name="user" className="h-4 w-4 shrink-0" />
+            <Icon name="pencil" className="h-4 w-4 shrink-0" />
             Edit profile
           </button>
           <button
@@ -789,7 +519,7 @@ function ProfileActionsMenu({
             disabled={signingOut}
             className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
           >
-            <Icon name="arrow-right" className="h-4 w-4 shrink-0" />
+            <Icon name="log-out" className="h-4 w-4 shrink-0" />
             {signingOut ? "Logging out…" : "Log out"}
           </button>
         </div>

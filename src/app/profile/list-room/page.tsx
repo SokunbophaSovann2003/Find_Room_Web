@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Icon, { amenityIcon } from "@/components/Icon";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
+import ContactListEditor from "@/components/ContactListEditor";
 import { useSession } from "@/lib/session";
 import { addLocalRoom } from "@/lib/local-rooms";
 import { downscalePhoto } from "@/lib/image";
@@ -91,20 +92,25 @@ export default function ListRoomPage() {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [geoBusy, setGeoBusy] = useState(false);
-  const [profileOverrides, setProfileOverrides] = useState<{
-    contactPhones?: string[];
-    telegramPhones?: string[];
-    username?: string;
-  }>({});
+  const [savedUsername, setSavedUsername] = useState<string | undefined>();
+  // Per-listing contacts. Seeded with the user's login phone the first time
+  // the form renders so a brand-new user has a sensible default; the user can
+  // edit, add, or clear them freely before publishing.
+  const [contactPhones, setContactPhones] = useState<string[]>([""]);
+  const [telegramPhones, setTelegramPhones] = useState<string[]>([""]);
 
   useEffect(() => {
     const saved = loadOverrides();
-    setProfileOverrides({
-      contactPhones: saved.contactPhones,
-      telegramPhones: saved.telegramPhones,
-      username: saved.username
-    });
+    setSavedUsername(saved.username);
   }, []);
+
+  useEffect(() => {
+    if (session?.phoneNumber) {
+      setContactPhones((prev) =>
+        prev.length === 1 && prev[0] === "" ? [session.phoneNumber!] : prev
+      );
+    }
+  }, [session?.phoneNumber]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [fees, setFees] = useState<FeeRow[]>([{ id: newId(), type: "rent", price: "" }]);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -219,8 +225,8 @@ export default function ListRoomPage() {
         return Number.isFinite(n) && n > 0 ? n : undefined;
       };
       const feeBy = (key: string) => fees.find((f) => f.type === key);
-      const ownerPhones = profileOverrides.contactPhones ?? [];
-      const ownerTelegrams = profileOverrides.telegramPhones ?? [];
+      const ownerPhones = contactPhones.map((p) => p.trim()).filter(Boolean);
+      const ownerTelegrams = telegramPhones.map((t) => t.trim()).filter(Boolean);
 
       const room: Room = {
         id: `local-${Date.now()}`,
@@ -252,7 +258,7 @@ export default function ListRoomPage() {
         images,
         owner: {
           id: session.uid,
-          name: profileOverrides.username ?? session.username ?? "FindRoom user",
+          name: savedUsername ?? session.username ?? "FindRoom user",
           phoneNumbers: ownerPhones,
           telegramPhones: ownerTelegrams.length ? ownerTelegrams : undefined,
           memberSince: new Date().toISOString().slice(0, 10),
@@ -417,10 +423,31 @@ export default function ListRoomPage() {
             </div>
           </div>
 
-          <ContactSummary
-            phones={profileOverrides.contactPhones ?? []}
-            telegrams={profileOverrides.telegramPhones ?? []}
-          />
+          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div>
+              <FieldHeading>Contact</FieldHeading>
+              <p className="mt-1 text-xs text-ink-soft">
+                How renters reach you about this listing. Each room can have
+                its own numbers.
+              </p>
+            </div>
+            <ContactListEditor
+              label="Phone numbers"
+              iconName="phone"
+              placeholder="+855 12 345 678"
+              values={contactPhones}
+              onChange={setContactPhones}
+              addLabel="Add phone"
+            />
+            <ContactListEditor
+              label="Telegram phones"
+              iconName="telegram"
+              placeholder="+855 12 345 678"
+              values={telegramPhones}
+              onChange={setTelegramPhones}
+              addLabel="Add Telegram"
+            />
+          </section>
 
           <section>
             <FieldHeading className="mb-2">
@@ -644,47 +671,3 @@ function Field({
   );
 }
 
-function ContactSummary({
-  phones,
-  telegrams
-}: {
-  phones: string[];
-  telegrams: string[];
-}) {
-  const isEmpty = phones.length === 0 && telegrams.length === 0;
-  return (
-    <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <FieldHeading>Contact</FieldHeading>
-      {isEmpty ? (
-        <p className="text-sm text-ink-muted">
-          No contact channels yet — renters won&rsquo;t be able to reach you.
-        </p>
-      ) : (
-        <ul className="space-y-1.5 text-sm">
-          {phones.map((p) => (
-            <li key={`p-${p}`} className="flex items-center gap-2">
-              <Icon name="phone" className="h-4 w-4 shrink-0 text-brand" />
-              <span className="font-semibold text-ink">{p}</span>
-            </li>
-          ))}
-          {telegrams.map((t) => (
-            <li key={`t-${t}`} className="flex items-center gap-2">
-              <Icon name="telegram" className="h-4 w-4 shrink-0 text-brand" />
-              <span className="font-semibold text-ink">{t}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <p className="text-xs text-ink-soft">
-        Listings inherit the contact channels from your{" "}
-        <Link
-          href="/profile"
-          className="font-semibold text-brand hover:text-brand-dark"
-        >
-          profile
-        </Link>
-        . Add or update them there.
-      </p>
-    </div>
-  );
-}

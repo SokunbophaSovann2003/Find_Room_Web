@@ -4,11 +4,6 @@ const KEY = "findroom.profile-overrides";
 
 export interface ProfileOverrides {
   username?: string;
-  // Public contact channels shown on listings — separate from the login
-  // phone (which lives on the session and is the auth identity). Arrays
-  // because a host can publish more than one number / Telegram contact.
-  contactPhones?: string[];
-  telegramPhones?: string[];
   avatarUrl?: string;
 }
 

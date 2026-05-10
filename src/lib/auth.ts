@@ -7,16 +7,6 @@ import {
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "./firebase";
 import { clearSession, getSession, setSession } from "./session";
-import { loadOverrides, saveOverrides } from "./profile-overrides";
-
-// New accounts get their registration phone copied into Contact info once,
-// so a fresh user has a sensible default. The user can edit or clear it
-// later — the empty array is durable and won't be re-seeded.
-function seedContactPhoneOnce(phoneNumber: string) {
-  const existing = loadOverrides();
-  if (existing.contactPhones !== undefined) return;
-  saveOverrides({ ...existing, contactPhones: [phoneNumber] });
-}
 
 // Firebase Auth has no phone + password flow, so we bridge phone numbers
 // to email+password by packing the phone as the local part of an email.
@@ -37,7 +27,6 @@ export async function registerWithPhone(params: {
     // Demo mode: no backend configured, sign the user in locally.
     const uid = `demo-${phoneNumber.replace(/\D/g, "")}`;
     setSession({ uid, username, phoneNumber });
-    seedContactPhoneOnce(phoneNumber);
     return { uid };
   }
 
@@ -49,7 +38,6 @@ export async function registerWithPhone(params: {
     createdAt: Date.now()
   });
   setSession({ uid: cred.user.uid, username, phoneNumber });
-  seedContactPhoneOnce(phoneNumber);
   return cred.user;
 }
 
