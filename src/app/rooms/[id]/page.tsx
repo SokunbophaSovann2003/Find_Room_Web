@@ -80,7 +80,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const mapQuery =
     room.lat != null && room.lng != null
       ? `${room.lat},${room.lng}`
-      : `${room.address}, ${room.city}`;
+      : [room.address, room.area, room.district, room.city].filter(Boolean).join(", ");
   const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
   const phoneNumbers = room.owner.phoneNumbers ?? [];
   const telegramPhones = room.owner.telegramPhones ?? [];

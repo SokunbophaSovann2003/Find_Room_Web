@@ -3,9 +3,15 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import Icon, { amenityIcon } from "@/components/Icon";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
+import type { PinPosition } from "@/components/LocationPinMap";
 import ContactListEditor from "@/components/ContactListEditor";
+
+const LocationPinMapModal = dynamic(() => import("@/components/LocationPinMap"), {
+  ssr: false
+});
 import { useSession } from "@/lib/session";
 import { addLocalRoom } from "@/lib/local-rooms";
 import { downscalePhoto } from "@/lib/image";
@@ -69,13 +75,6 @@ const newId = (() => {
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const MAX_PHOTOS = 5;
 
-function parseCoord(val: string, range: number): number | undefined {
-  if (!val.trim()) return undefined;
-  const n = Number(val);
-  if (!Number.isFinite(n) || n < -range || n > range) return undefined;
-  return n;
-}
-
 export default function ListRoomPage() {
   const router = useRouter();
   const session = useSession();
@@ -86,12 +85,10 @@ export default function ListRoomPage() {
   const [bedrooms, setBedrooms] = useState(1);
   const [floor, setFloor] = useState(1);
   const [areaSqm, setAreaSqm] = useState<string>("");
-  const [address, setAddress] = useState("");
   const [location, setLocation] = useState<LocationValue>({});
   const [locationOpen, setLocationOpen] = useState(false);
-  const [lat, setLat] = useState("");
-  const [lng, setLng] = useState("");
-  const [geoBusy, setGeoBusy] = useState(false);
+  const [pin, setPin] = useState<PinPosition | null>(null);
+  const [pinOpen, setPinOpen] = useState(false);
   const [savedUsername, setSavedUsername] = useState<string | undefined>();
   // Per-listing contacts. Seeded with the user's login phone the first time
   // the form renders so a brand-new user has a sensible default; the user can
@@ -117,27 +114,6 @@ export default function ListRoomPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const errorRef = useRef<HTMLParagraphElement | null>(null);
-
-  function useMyLocation() {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setError("Your browser doesn't support location access.");
-      return;
-    }
-    setGeoBusy(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLat(pos.coords.latitude.toFixed(6));
-        setLng(pos.coords.longitude.toFixed(6));
-        setGeoBusy(false);
-        setError(null);
-      },
-      () => {
-        setGeoBusy(false);
-        setError("Couldn't get your location. Enter coordinates manually.");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }
 
   function addPhotos(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -205,7 +181,6 @@ export default function ListRoomPage() {
     }
     if (!title.trim()) return failWith("Add a title for your listing.");
     if (!description.trim()) return failWith("Add a short description.");
-    if (!address.trim()) return failWith("Add the room address.");
     if (!location.province) return failWith("Pick a province for your listing.");
 
     const rentFee = fees.find((f) => f.type === "rent");
@@ -245,12 +220,11 @@ export default function ListRoomPage() {
             amount: `$${f.price}${FEE_TYPES.find((t) => t.value === f.type)?.unit ?? ""}`.trim()
           })),
         type,
-        address: address.trim(),
         city: location.province,
         district: location.district,
         area: location.area,
-        lat: parseCoord(lat, 90),
-        lng: parseCoord(lng, 180),
+        lat: pin?.lat,
+        lng: pin?.lng,
         bedrooms,
         areaSqm: num(areaSqm),
         floor,
@@ -282,8 +256,8 @@ export default function ListRoomPage() {
 
   return (
     <div className="pb-24 sm:pb-0">
-      <div className="mx-auto max-w-3xl px-4 pt-4 sm:px-6 sm:pt-8">
-        <nav className="mb-3 flex items-center gap-2 text-sm text-ink-muted">
+      <div className="mx-auto max-w-3xl px-4 pt-3 sm:px-6 sm:pt-6">
+        <nav className="mb-2 flex items-center gap-2 text-sm text-ink-muted">
           <Link href="/profile" className="hover:text-brand">
             Profile
           </Link>
@@ -291,39 +265,38 @@ export default function ListRoomPage() {
           <span className="text-ink">List a room</span>
         </nav>
 
-        <header className="mb-6">
+        <header className="mb-3">
           <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">
             List your room
           </h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Just a few details — you can edit anything after publishing.
-          </p>
         </header>
 
-        <form id="list-room-form" className="space-y-5" onSubmit={handleSubmit}>
+        <form id="list-room-form" className="space-y-3" onSubmit={handleSubmit}>
           <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="space-y-3 p-4 sm:p-5">
+            <div className="space-y-2.5 p-3 sm:p-4">
               <FieldHeading>Listing</FieldHeading>
-              <div>
+              <Field label="Title">
                 <input
                   id="title"
                   className="input"
-                  placeholder="Title — e.g. Cozy studio near Riverside"
+                  placeholder="e.g. Cozy studio near Riverside"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
-              </div>
-              <textarea
-                id="description"
-                rows={3}
-                className="input"
-                placeholder="Short description — neighbourhood, vibe, anything special…"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
+              </Field>
+              <Field label="Description">
+                <textarea
+                  id="description"
+                  rows={2}
+                  className="input"
+                  placeholder="Neighbourhood, vibe, anything special…"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </Field>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4 sm:p-5">
+            <div className="grid grid-cols-2 gap-2.5 p-3 sm:grid-cols-4 sm:p-4">
               <Field label="Type">
                 <select
                   className="input"
@@ -367,7 +340,7 @@ export default function ListRoomPage() {
               </Field>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 p-4 sm:p-5">
+            <div className="grid grid-cols-1 gap-2.5 p-3 sm:p-4">
               <Field label="Province / district / area">
                 <button
                   type="button"
@@ -380,74 +353,22 @@ export default function ListRoomPage() {
                   <Icon name="chevron-down" className="ml-2 h-4 w-4 shrink-0 text-ink-soft" />
                 </button>
               </Field>
-              <Field label="Street address">
-                <input
-                  className="input"
-                  placeholder="St. 110"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
+              <Field label="Pin on map">
+                <button
+                  type="button"
+                  onClick={() => setPinOpen(true)}
+                  className="input flex items-center justify-between text-left"
+                >
+                  <span className={`min-w-0 flex-1 truncate ${pin ? "text-ink" : "text-ink-soft"}`}>
+                    {pin
+                      ? `Pinned at ${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}`
+                      : "Tap to drop a pin or use your current location…"}
+                  </span>
+                  <Icon name="map-pin" className="ml-2 h-4 w-4 shrink-0 text-ink-soft" />
+                </button>
               </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Latitude">
-                  <input
-                    className="input"
-                    placeholder="11.5564"
-                    value={lat}
-                    onChange={(e) => setLat(e.target.value)}
-                    inputMode="decimal"
-                  />
-                </Field>
-                <Field label="Longitude">
-                  <input
-                    className="input"
-                    placeholder="104.9282"
-                    value={lng}
-                    onChange={(e) => setLng(e.target.value)}
-                    inputMode="decimal"
-                  />
-                </Field>
-              </div>
-              <button
-                type="button"
-                onClick={useMyLocation}
-                disabled={geoBusy}
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-sm font-semibold text-ink-muted transition hover:border-brand hover:bg-brand/5 hover:text-brand disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-              >
-                <Icon name="map-pin" className="h-4 w-4" />
-                {geoBusy ? "Locating…" : "Use my current location"}
-              </button>
-              <p className="text-xs text-ink-soft">
-                Coordinates pin the room on the map. Optional — leave blank to fall back to the address.
-              </p>
             </div>
           </div>
-
-          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-            <div>
-              <FieldHeading>Contact</FieldHeading>
-              <p className="mt-1 text-xs text-ink-soft">
-                How renters reach you about this listing. Each room can have
-                its own numbers.
-              </p>
-            </div>
-            <ContactListEditor
-              label="Phone numbers"
-              iconName="phone"
-              placeholder="+855 12 345 678"
-              values={contactPhones}
-              onChange={setContactPhones}
-              addLabel="Add phone"
-            />
-            <ContactListEditor
-              label="Telegram phones"
-              iconName="telegram"
-              placeholder="+855 12 345 678"
-              values={telegramPhones}
-              onChange={setTelegramPhones}
-              addLabel="Add Telegram"
-            />
-          </section>
 
           <section>
             <FieldHeading className="mb-2">
@@ -535,20 +456,27 @@ export default function ListRoomPage() {
           </section>
 
           <section>
-            <FieldHeading className="mb-2">Pricing</FieldHeading>
+            <FieldHeading className="mb-1.5">Pricing</FieldHeading>
             <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+              <div className="flex items-end gap-2">
+                <span className="block flex-1 text-xs font-medium text-ink-muted sm:max-w-[180px]">
+                  Fee type
+                </span>
+                <span className="block flex-1 text-xs font-medium text-ink-muted">
+                  Amount
+                </span>
+                <span className="h-10 w-10 shrink-0" aria-hidden />
+              </div>
               {fees.map((fee) => {
                 const meta = FEE_TYPES.find((t) => t.value === fee.type) ?? FEE_TYPES[0];
                 const canRemove = fees.length > 1;
                 return (
-                  <div
-                    key={fee.id}
-                    className="flex items-center gap-2"
-                  >
+                  <div key={fee.id} className="flex items-center gap-2">
                     <select
                       value={fee.type}
                       onChange={(e) => updateFee(fee.id, { type: e.target.value })}
                       className="input h-10 flex-1 sm:max-w-[180px]"
+                      aria-label="Fee type"
                     >
                       {FEE_TYPES.map((t) => (
                         <option key={t.value} value={t.value}>
@@ -567,6 +495,7 @@ export default function ListRoomPage() {
                         value={fee.price}
                         onChange={(e) => updateFee(fee.id, { price: e.target.value })}
                         placeholder="0"
+                        aria-label="Amount"
                         className="w-full bg-transparent px-1 text-sm outline-none"
                       />
                       {meta.unit ? (
@@ -596,6 +525,26 @@ export default function ListRoomPage() {
                 Add fee
               </button>
             </div>
+          </section>
+
+          <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+            <FieldHeading>Contact</FieldHeading>
+            <ContactListEditor
+              label="Phone numbers"
+              iconName="phone"
+              placeholder="+855 12 345 678"
+              values={contactPhones}
+              onChange={setContactPhones}
+              addLabel="Add phone"
+            />
+            <ContactListEditor
+              label="Telegram phones"
+              iconName="telegram"
+              placeholder="+855 12 345 678"
+              values={telegramPhones}
+              onChange={setTelegramPhones}
+              addLabel="Add Telegram"
+            />
           </section>
 
           {error ? (
@@ -633,6 +582,13 @@ export default function ListRoomPage() {
         onClose={() => setLocationOpen(false)}
         value={location}
         onChange={(next) => setLocation(next)}
+      />
+
+      <LocationPinMapModal
+        open={pinOpen}
+        onClose={() => setPinOpen(false)}
+        value={pin}
+        onChange={setPin}
       />
     </div>
   );

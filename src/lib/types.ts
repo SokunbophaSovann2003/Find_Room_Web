@@ -33,7 +33,7 @@ export interface Room {
   wifiPrice?: number;
   otherFees?: { label: string; amount: string }[];
   type: PropertyType;
-  address: string;
+  address?: string;
   city: string;
   district?: string;
   area?: string;
