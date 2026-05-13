@@ -20,6 +20,10 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const [trackedId, setTrackedId] = useState(params.id);
   const [contactOpen, setContactOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+  // Defer the Google Maps embed until the user explicitly asks for it. The
+  // embed pulls www.google.com which is blocked by the dev preview tool, and
+  // the iframe is heavy on initial load anyway.
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   // Reset state synchronously when the route param changes so we never
   // render the previous room under a new id.
@@ -108,13 +112,25 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           <p className="text-xs font-medium leading-snug text-ink">{fullAddress}</p>
         </div>
         <div className="relative aspect-[16/9] w-full bg-slate-100 lg:aspect-[4/3]">
-          <iframe
-            title={`${room.title} — map`}
-            src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=15&output=embed`}
-            className="h-full w-full border-0"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
+          {mapLoaded ? (
+            <iframe
+              title={`${room.title} — map`}
+              src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=15&output=embed`}
+              className="h-full w-full border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMapLoaded(true)}
+              className="flex h-full w-full flex-col items-center justify-center gap-2 text-ink-muted transition hover:bg-slate-200/60"
+            >
+              <Icon name="map-pin" className="h-8 w-8 text-brand" />
+              <span className="text-sm font-semibold text-ink">Show map</span>
+              <span className="text-[11px] text-ink-soft">Loads Google Maps</span>
+            </button>
+          )}
         </div>
       </div>
     </section>
@@ -221,7 +237,13 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               </div>
             </header>
 
-            <ul className="grid grid-cols-3 items-center gap-x-2 sm:gap-x-5">
+            {/*
+              flex (natural width) instead of grid-cols-3 (stretches to fill).
+              The chips cluster to the left with a consistent gap regardless
+              of viewport width — fixes the huge empty gutters on desktop
+              where the parent column is ~730px wide.
+            */}
+            <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8">
               <StatChip icon="bed" value={room.bedrooms} label="Bed" />
               {room.areaSqm ? (
                 <StatChip icon="ruler" value={room.areaSqm} label="m²" />
@@ -402,13 +424,25 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           <p className="text-sm font-medium leading-snug text-ink">{fullAddress}</p>
         </div>
         <div className="relative w-full flex-1 bg-slate-100 sm:aspect-[16/10] sm:flex-none">
-          <iframe
-            title={`${room.title} — map`}
-            src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=15&output=embed`}
-            className="h-full w-full border-0"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
+          {mapLoaded ? (
+            <iframe
+              title={`${room.title} — map`}
+              src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=15&output=embed`}
+              className="h-full w-full border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMapLoaded(true)}
+              className="flex h-full w-full flex-col items-center justify-center gap-2 text-ink-muted transition hover:bg-slate-200/60"
+            >
+              <Icon name="map-pin" className="h-10 w-10 text-brand" />
+              <span className="text-sm font-semibold text-ink">Show map</span>
+              <span className="text-[11px] text-ink-soft">Loads Google Maps</span>
+            </button>
+          )}
         </div>
         <a
           href={mapsLink}
