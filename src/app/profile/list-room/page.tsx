@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Icon, { amenityIcon } from "@/components/Icon";
@@ -11,6 +12,11 @@ import { addLocalRoom } from "@/lib/local-rooms";
 import { downscalePhoto } from "@/lib/image";
 import { loadOverrides } from "@/lib/profile-overrides";
 import type { Room, PropertyType } from "@/lib/types";
+import type { PinValue } from "@/components/MapPinPicker";
+
+const MapPinPicker = dynamic(() => import("@/components/MapPinPicker"), {
+  ssr: false
+});
 
 const AMENITIES = [
   "Wi-Fi",
@@ -69,13 +75,6 @@ const newId = (() => {
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const MAX_PHOTOS = 5;
 
-function parseCoord(val: string, range: number): number | undefined {
-  if (!val.trim()) return undefined;
-  const n = Number(val);
-  if (!Number.isFinite(n) || n < -range || n > range) return undefined;
-  return n;
-}
-
 export default function ListRoomPage() {
   const router = useRouter();
   const session = useSession();
@@ -86,12 +85,31 @@ export default function ListRoomPage() {
   const [bedrooms, setBedrooms] = useState(1);
   const [floor, setFloor] = useState(1);
   const [areaSqm, setAreaSqm] = useState<string>("");
-  const [address, setAddress] = useState("");
   const [location, setLocation] = useState<LocationValue>({});
   const [locationOpen, setLocationOpen] = useState(false);
-  const [lat, setLat] = useState("");
-  const [lng, setLng] = useState("");
-  const [geoBusy, setGeoBusy] = useState(false);
+  const [pin, setPin] = useState<PinValue | null>(null);
+  const [pinOpen, setPinOpen] = useState(false);
+  const pinFetchRef = useRef(0);
+
+  async function handlePinChange(next: PinValue | null) {
+    setPin(next);
+    if (!next) return;
+    const reqId = ++pinFetchRef.current;
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${next.lat}&lon=${next.lng}&format=json&zoom=18&accept-language=en`,
+        { headers: { accept: "application/json" } }
+      );
+      if (!r.ok) return;
+      const j = (await r.json()) as { display_name?: string };
+      if (pinFetchRef.current !== reqId) return;
+      const display = j.display_name ?? "";
+      const name = display.split(",").slice(0, 3).map((s) => s.trim()).filter(Boolean).join(", ");
+      if (name) setPin({ ...next, name });
+    } catch {
+      // Network/JSON errors fall back to coordinates — non-fatal.
+    }
+  }
   const [savedUsername, setSavedUsername] = useState<string | undefined>();
   // Per-listing contacts. Seeded with the user's login phone the first time
   // the form renders so a brand-new user has a sensible default; the user can
@@ -117,27 +135,6 @@ export default function ListRoomPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const errorRef = useRef<HTMLParagraphElement | null>(null);
-
-  function useMyLocation() {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setError("Your browser doesn't support location access.");
-      return;
-    }
-    setGeoBusy(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLat(pos.coords.latitude.toFixed(6));
-        setLng(pos.coords.longitude.toFixed(6));
-        setGeoBusy(false);
-        setError(null);
-      },
-      () => {
-        setGeoBusy(false);
-        setError("Couldn't get your location. Enter coordinates manually.");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }
 
   function addPhotos(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -205,7 +202,6 @@ export default function ListRoomPage() {
     }
     if (!title.trim()) return failWith("Add a title for your listing.");
     if (!description.trim()) return failWith("Add a short description.");
-    if (!address.trim()) return failWith("Add the room address.");
     if (!location.province) return failWith("Pick a province for your listing.");
 
     const rentFee = fees.find((f) => f.type === "rent");
@@ -245,12 +241,12 @@ export default function ListRoomPage() {
             amount: `$${f.price}${FEE_TYPES.find((t) => t.value === f.type)?.unit ?? ""}`.trim()
           })),
         type,
-        address: address.trim(),
+        address: pin?.name ?? "",
         city: location.province,
         district: location.district,
         area: location.area,
-        lat: parseCoord(lat, 90),
-        lng: parseCoord(lng, 180),
+        lat: pin?.lat,
+        lng: pin?.lng,
         bedrooms,
         areaSqm: num(areaSqm),
         floor,
@@ -301,154 +297,6 @@ export default function ListRoomPage() {
         </header>
 
         <form id="list-room-form" className="space-y-5" onSubmit={handleSubmit}>
-          <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="space-y-3 p-4 sm:p-5">
-              <FieldHeading>Listing</FieldHeading>
-              <div>
-                <input
-                  id="title"
-                  className="input"
-                  placeholder="Title — e.g. Cozy studio near Riverside"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
-              <textarea
-                id="description"
-                rows={3}
-                className="input"
-                placeholder="Short description — neighbourhood, vibe, anything special…"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4 sm:p-5">
-              <Field label="Type">
-                <select
-                  className="input"
-                  value={type}
-                  onChange={(e) => setType(e.target.value as PropertyType)}
-                >
-                  {PROPERTY_TYPE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Beds">
-                <input
-                  type="number"
-                  min={0}
-                  value={bedrooms}
-                  onChange={(e) => setBedrooms(Math.max(0, Number(e.target.value) || 0))}
-                  className="input"
-                />
-              </Field>
-              <Field label="Floor">
-                <input
-                  type="number"
-                  min={0}
-                  value={floor}
-                  onChange={(e) => setFloor(Math.max(0, Number(e.target.value) || 0))}
-                  className="input"
-                />
-              </Field>
-              <Field label="Area (m²)">
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="28"
-                  value={areaSqm}
-                  onChange={(e) => setAreaSqm(e.target.value)}
-                  className="input"
-                />
-              </Field>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 p-4 sm:p-5">
-              <Field label="Province / district / area">
-                <button
-                  type="button"
-                  onClick={() => setLocationOpen(true)}
-                  className="input flex items-center justify-between text-left"
-                >
-                  <span className={`min-w-0 flex-1 truncate ${location.province ? "text-ink" : "text-ink-soft"}`}>
-                    {formatLocation(location) || "Pick province, then district / area…"}
-                  </span>
-                  <Icon name="chevron-down" className="ml-2 h-4 w-4 shrink-0 text-ink-soft" />
-                </button>
-              </Field>
-              <Field label="Street address">
-                <input
-                  className="input"
-                  placeholder="St. 110"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Latitude">
-                  <input
-                    className="input"
-                    placeholder="11.5564"
-                    value={lat}
-                    onChange={(e) => setLat(e.target.value)}
-                    inputMode="decimal"
-                  />
-                </Field>
-                <Field label="Longitude">
-                  <input
-                    className="input"
-                    placeholder="104.9282"
-                    value={lng}
-                    onChange={(e) => setLng(e.target.value)}
-                    inputMode="decimal"
-                  />
-                </Field>
-              </div>
-              <button
-                type="button"
-                onClick={useMyLocation}
-                disabled={geoBusy}
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-sm font-semibold text-ink-muted transition hover:border-brand hover:bg-brand/5 hover:text-brand disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-              >
-                <Icon name="map-pin" className="h-4 w-4" />
-                {geoBusy ? "Locating…" : "Use my current location"}
-              </button>
-              <p className="text-xs text-ink-soft">
-                Coordinates pin the room on the map. Optional — leave blank to fall back to the address.
-              </p>
-            </div>
-          </div>
-
-          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-            <div>
-              <FieldHeading>Contact</FieldHeading>
-              <p className="mt-1 text-xs text-ink-soft">
-                How renters reach you about this listing. Each room can have
-                its own numbers.
-              </p>
-            </div>
-            <ContactListEditor
-              label="Phone numbers"
-              iconName="phone"
-              placeholder="+855 12 345 678"
-              values={contactPhones}
-              onChange={setContactPhones}
-              addLabel="Add phone"
-            />
-            <ContactListEditor
-              label="Telegram phones"
-              iconName="telegram"
-              placeholder="+855 12 345 678"
-              values={telegramPhones}
-              onChange={setTelegramPhones}
-              addLabel="Add Telegram"
-            />
-          </section>
-
           <section>
             <FieldHeading className="mb-2">
               Photos
@@ -506,32 +354,15 @@ export default function ListRoomPage() {
             </p>
           </section>
 
-          <section>
-            <FieldHeading className="mb-2">Amenities</FieldHeading>
-            <ul className="flex flex-wrap gap-2">
-              {AMENITIES.map((a) => {
-                const active = selected.has(a);
-                return (
-                  <li key={a}>
-                    <button
-                      type="button"
-                      onClick={() => toggle(a)}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition ${
-                        active
-                          ? "border-brand bg-brand text-white"
-                          : "border-slate-200 bg-white text-ink hover:border-slate-300"
-                      }`}
-                    >
-                      <Icon
-                        name={amenityIcon(a)}
-                        className={`h-3.5 w-3.5 ${active ? "text-white" : "text-brand"}`}
-                      />
-                      <span className="font-semibold">{a}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+          <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <FieldHeading>Title</FieldHeading>
+            <input
+              id="title"
+              className="input"
+              placeholder="Title — e.g. Cozy studio near Riverside"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </section>
 
           <section>
@@ -598,6 +429,164 @@ export default function ListRoomPage() {
             </div>
           </section>
 
+          <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <FieldHeading>Description</FieldHeading>
+            <textarea
+              id="description"
+              rows={3}
+              className="input"
+              placeholder="Short description — neighbourhood, vibe, anything special…"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </section>
+
+          <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <FieldHeading>Property details</FieldHeading>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Field label="Type">
+                <select
+                  className="input"
+                  value={type}
+                  onChange={(e) => setType(e.target.value as PropertyType)}
+                >
+                  {PROPERTY_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Beds">
+                <input
+                  type="number"
+                  min={0}
+                  value={bedrooms}
+                  onChange={(e) => setBedrooms(Math.max(0, Number(e.target.value) || 0))}
+                  className="input"
+                />
+              </Field>
+              <Field label="Floor">
+                <input
+                  type="number"
+                  min={0}
+                  value={floor}
+                  onChange={(e) => setFloor(Math.max(0, Number(e.target.value) || 0))}
+                  className="input"
+                />
+              </Field>
+              <Field label="Area (m²)">
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="28"
+                  value={areaSqm}
+                  onChange={(e) => setAreaSqm(e.target.value)}
+                  className="input"
+                />
+              </Field>
+            </div>
+          </section>
+
+          <section>
+            <FieldHeading className="mb-2">Amenities</FieldHeading>
+            <ul className="flex flex-wrap gap-2">
+              {AMENITIES.map((a) => {
+                const active = selected.has(a);
+                return (
+                  <li key={a}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(a)}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition ${
+                        active
+                          ? "border-brand bg-brand text-white"
+                          : "border-slate-200 bg-white text-ink hover:border-slate-300"
+                      }`}
+                    >
+                      <Icon
+                        name={amenityIcon(a)}
+                        className={`h-3.5 w-3.5 ${active ? "text-white" : "text-brand"}`}
+                      />
+                      <span className="font-semibold">{a}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <FieldHeading>Location</FieldHeading>
+            <Field label="Province / district / area">
+              <button
+                type="button"
+                onClick={() => setLocationOpen(true)}
+                className="input flex items-center justify-between text-left"
+              >
+                <span className={`min-w-0 flex-1 truncate ${location.province ? "text-ink" : "text-ink-soft"}`}>
+                  {formatLocation(location) || "Pick province, then district / area…"}
+                </span>
+                <Icon name="chevron-down" className="ml-2 h-4 w-4 shrink-0 text-ink-soft" />
+              </button>
+            </Field>
+            <Field label="Pin on map">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPinOpen(true)}
+                  className="input flex flex-1 items-center justify-between text-left"
+                >
+                  <span className={`min-w-0 flex-1 truncate ${pin ? "text-ink" : "text-ink-soft"}`}>
+                    {pin
+                      ? pin.name ?? "Pinned — finding place name…"
+                      : "Open map to drop a pin or use my location…"}
+                  </span>
+                  <Icon name="map-pin" className="ml-2 h-4 w-4 shrink-0 text-ink-soft" />
+                </button>
+                {pin ? (
+                  <button
+                    type="button"
+                    onClick={() => handlePinChange(null)}
+                    aria-label="Clear pin"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-ink-soft transition hover:bg-slate-100 hover:text-ink"
+                  >
+                    <Icon name="x" className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
+            </Field>
+            <p className="text-xs text-ink-soft">
+              The map pin shows renters exactly where your place is. Optional.
+            </p>
+          </section>
+
+          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div>
+              <FieldHeading>Contact</FieldHeading>
+              <p className="mt-1 text-xs text-ink-soft">
+                How renters reach you about this listing. Each room can have
+                its own numbers.
+              </p>
+            </div>
+            <ContactListEditor
+              label="Phone numbers"
+              iconName="phone"
+              placeholder="+855 12 345 678"
+              values={contactPhones}
+              onChange={setContactPhones}
+              addLabel="Add phone"
+            />
+            <ContactListEditor
+              label="Telegram phones"
+              iconName="telegram"
+              placeholder="+855 12 345 678"
+              values={telegramPhones}
+              onChange={setTelegramPhones}
+              addLabel="Add Telegram"
+            />
+          </section>
+
           {error ? (
             <p
               ref={errorRef}
@@ -633,6 +622,13 @@ export default function ListRoomPage() {
         onClose={() => setLocationOpen(false)}
         value={location}
         onChange={(next) => setLocation(next)}
+      />
+
+      <MapPinPicker
+        open={pinOpen}
+        onClose={() => setPinOpen(false)}
+        value={pin}
+        onChange={handlePinChange}
       />
     </div>
   );
