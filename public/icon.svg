@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Brand-green rounded square background. The home icon sits inside the
+       central 50% of the canvas — well within the 80% safe zone Android
+       requires for adaptive (maskable) icons, so this single SVG works for
+       both "any" and "maskable" purposes in the manifest. -->
+  <rect width="512" height="512" rx="96" fill="#059669"/>
+  <svg x="128" y="128" width="256" height="256" viewBox="0 0 24 24"
+       fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V10.5Z"/>
+  </svg>
+</svg>

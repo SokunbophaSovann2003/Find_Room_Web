@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "./Icon";
 import {
-  addLocalRoom,
   deleteLocalRoom,
   updateLocalRoom
 } from "@/lib/local-rooms";
@@ -55,15 +54,9 @@ export default function ListingActionMenu({
   function handleCopy(e: React.MouseEvent) {
     stop(e);
     setOpen(false);
-    const copy: Room = {
-      ...room,
-      id: `local-${Date.now()}`,
-      title: `Copy of ${room.title}`,
-      isOccupied: false,
-      createdAt: Date.now()
-    };
-    addLocalRoom(copy);
-    router.push(`/rooms/${copy.id}`);
+    router.push(
+      `/profile/list-room?type=${room.type}&copyFrom=${encodeURIComponent(room.id)}`
+    );
   }
 
   function handleToggleOccupied(e: React.MouseEvent) {

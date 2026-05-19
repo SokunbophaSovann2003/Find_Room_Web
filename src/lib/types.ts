@@ -6,6 +6,8 @@ export type PropertyType =
   | "flat"
   | "villa";
 
+export type PricePeriod = "daily" | "weekly" | "monthly" | "yearly";
+
 export interface Owner {
   id: string;
   name: string;
@@ -26,6 +28,7 @@ export interface Room {
   title: string;
   description: string;
   price: number;
+  pricePeriod?: PricePeriod;
   currency: "USD" | "KHR";
   deposit?: number;
   waterPrice?: number;

@@ -88,6 +88,21 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
   const phoneNumbers = room.owner.phoneNumbers ?? [];
   const telegramPhones = room.owner.telegramPhones ?? [];
+  const periodSuffixMap: Record<NonNullable<Room["pricePeriod"]>, string> = {
+    daily: "/ day",
+    weekly: "/ week",
+    monthly: "/ month",
+    yearly: "/ year"
+  };
+  const periodLabelMap: Record<NonNullable<Room["pricePeriod"]>, string> = {
+    daily: "Daily rent",
+    weekly: "Weekly rent",
+    monthly: "Monthly rent",
+    yearly: "Yearly rent"
+  };
+  const pricePeriod = room.pricePeriod ?? "monthly";
+  const priceSuffix = periodSuffixMap[pricePeriod];
+  const rentLabel = periodLabelMap[pricePeriod];
 
   const fullAddress = [room.address, room.area, room.district, room.city]
     .filter(Boolean)
@@ -233,7 +248,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
                 <span className="text-3xl font-extrabold text-brand sm:text-4xl">
                   ${room.price}
                 </span>
-                <span className="ml-1 text-sm text-ink-muted">/ month</span>
+                <span className="ml-1 text-sm text-ink-muted">{priceSuffix}</span>
               </div>
             </header>
 
@@ -280,7 +295,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             <section>
               <h2 className="mb-2 text-base font-bold">Fees & utilities</h2>
               <dl className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <FeeRow label="Monthly rent" value={`$${room.price} / month`} />
+                <FeeRow label={rentLabel} value={`$${room.price} ${priceSuffix}`} />
                 {room.deposit != null ? (
                   <FeeRow label="Deposit (before move-in)" value={`$${room.deposit}`} />
                 ) : null}
@@ -339,7 +354,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
         <div className="flex items-center gap-2">
           <div className="shrink-0 whitespace-nowrap">
             <span className="text-xl font-extrabold leading-tight text-brand">${room.price}</span>
-            <span className="ml-0.5 text-xs font-medium text-ink-muted">/ month</span>
+            <span className="ml-0.5 text-xs font-medium text-ink-muted">{priceSuffix}</span>
           </div>
           <button
             type="button"

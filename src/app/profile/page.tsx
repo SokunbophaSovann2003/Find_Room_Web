@@ -8,13 +8,23 @@ import Icon, { propertyIcon } from "@/components/Icon";
 import ListingActionMenu from "@/components/ListingActionMenu";
 import { signOut, updateLoginPhone } from "@/lib/auth";
 import { useSession } from "@/lib/session";
-import { useLocalRooms } from "@/lib/local-rooms";
+import { seedSampleListings, useLocalRooms } from "@/lib/local-rooms";
 import { downscalePhoto } from "@/lib/image";
 import {
   loadOverrides,
   saveOverrides,
   type ProfileOverrides
 } from "@/lib/profile-overrides";
+import type { PropertyType } from "@/lib/types";
+
+const PROPERTY_TYPE_CHOICES: { value: PropertyType; label: string; hint: string }[] = [
+  { value: "room", label: "Room", hint: "A single room within a property" },
+  { value: "apartment", label: "Apartment", hint: "Self-contained unit in a building" },
+  { value: "condo", label: "Condo", hint: "Privately-owned unit in a managed complex" },
+  { value: "flat", label: "Flat", hint: "Small one-floor home" },
+  { value: "house", label: "House", hint: "Standalone home" },
+  { value: "villa", label: "Villa", hint: "Larger standalone home" }
+];
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -23,10 +33,15 @@ export default function ProfilePage() {
   const [overrides, setOverrides] = useState<ProfileOverrides>({});
   const [editing, setEditing] = useState<"profile" | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [pickTypeOpen, setPickTypeOpen] = useState(false);
 
   useEffect(() => {
     setOverrides(loadOverrides());
   }, []);
+
+  useEffect(() => {
+    if (session) seedSampleListings(session);
+  }, [session]);
 
   const listings = useMemo(
     () => (session ? allLocalRooms.filter((r) => r.owner.id === session.uid) : []),
@@ -144,10 +159,14 @@ export default function ProfilePage() {
               {listings.length}
             </span>
           </h2>
-          <Link href="/profile/list-room" className="btn-primary">
+          <button
+            type="button"
+            onClick={() => setPickTypeOpen(true)}
+            className="btn-primary"
+          >
             <Icon name="plus" className="h-4 w-4" />
             List a room
-          </Link>
+          </button>
         </div>
 
         {listings.length === 0 ? (
@@ -159,9 +178,13 @@ export default function ProfilePage() {
             <p className="max-w-sm text-sm text-ink-muted">
               Publish your first room to start receiving messages from renters.
             </p>
-            <Link href="/profile/list-room" className="btn-primary mt-2">
+            <button
+              type="button"
+              onClick={() => setPickTypeOpen(true)}
+              className="btn-primary mt-2"
+            >
               Create your first listing
-            </Link>
+            </button>
           </div>
         ) : (
           <>
@@ -206,12 +229,12 @@ export default function ProfilePage() {
                       <p className="mt-0.5 text-sm font-bold text-brand">
                         ${room.price}
                         <span className="ml-0.5 text-[11px] font-medium text-ink-muted">
-                          / mo
+                          / month
                         </span>
                       </p>
                     </div>
                   </Link>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                  <div className="absolute inset-y-0 right-2 flex items-center">
                     <ListingActionMenu room={room} />
                   </div>
                 </li>
@@ -264,6 +287,92 @@ export default function ProfilePage() {
         />
       ) : null}
 
+      <PropertyTypePicker
+        open={pickTypeOpen}
+        onClose={() => setPickTypeOpen(false)}
+        onPick={(t) => {
+          setPickTypeOpen(false);
+          router.push(`/profile/list-room?type=${t}`);
+        }}
+      />
+    </div>
+  );
+}
+
+function PropertyTypePicker({
+  open,
+  onClose,
+  onPick
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (type: PropertyType) => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Pick a property type"
+    >
+      <div className="absolute inset-0 bg-ink/50" onClick={onClose} aria-hidden />
+      <div className="relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:max-h-[80vh] sm:max-w-md sm:rounded-3xl">
+        <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
+          <span aria-hidden />
+          <h3 className="text-center text-base font-semibold text-ink">
+            What are you listing?
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
+          >
+            <Icon name="x" className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="overflow-y-auto p-4 sm:p-5">
+          <ul className="grid grid-cols-2 gap-3">
+            {PROPERTY_TYPE_CHOICES.map((p) => (
+              <li key={p.value}>
+                <button
+                  type="button"
+                  onClick={() => onPick(p.value)}
+                  className="flex h-full w-full flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-brand hover:bg-brand/5"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                    <Icon name={propertyIcon(p.value)} className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-bold text-ink">{p.label}</span>
+                  <span className="text-xs leading-snug text-ink-muted">
+                    {p.hint}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
