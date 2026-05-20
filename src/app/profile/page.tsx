@@ -36,8 +36,9 @@ export default function ProfilePage() {
   const [pickTypeOpen, setPickTypeOpen] = useState(false);
 
   useEffect(() => {
-    setOverrides(loadOverrides());
-  }, []);
+    if (!session) return;
+    setOverrides(loadOverrides(session.uid));
+  }, [session]);
 
   useEffect(() => {
     if (session) seedSampleListings(session);
@@ -280,7 +281,7 @@ export default function ProfilePage() {
               username: next.username,
               avatarUrl: next.avatarUrl || undefined
             };
-            saveOverrides(merged);
+            saveOverrides(session.uid, merged);
             setOverrides(merged);
             setEditing(null);
           }}

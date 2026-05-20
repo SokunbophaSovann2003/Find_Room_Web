@@ -1,5 +1,6 @@
 import SearchBar from "@/components/SearchBar";
 import ExploreRooms from "@/components/ExploreRooms";
+import ExploreHero from "@/components/ExploreHero";
 import { ExploreFilterProvider } from "@/components/ExploreFilterContext";
 import { MOCK_ROOMS } from "@/lib/mock-data";
 
@@ -15,14 +16,7 @@ export default function ExplorePage() {
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-          <div className="mx-auto max-w-3xl text-center">
-            <h1 className="text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
-              Find your perfect room <span className="text-brand">in Cambodia</span>
-            </h1>
-            <p className="mt-4 hidden text-lg text-ink-muted sm:block">
-              Verified rooms from friendly landlords. Search by neighbourhood, price, and move-in date — book a viewing in minutes.
-            </p>
-          </div>
+          <ExploreHero />
 
           <div className="mx-auto mt-8 max-w-4xl">
             <SearchBar />

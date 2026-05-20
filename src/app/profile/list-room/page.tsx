@@ -141,9 +141,10 @@ export default function ListRoomPage() {
   const [telegramPhones, setTelegramPhones] = useState<string[]>([""]);
 
   useEffect(() => {
-    const saved = loadOverrides();
+    if (!session?.uid) return;
+    const saved = loadOverrides(session.uid);
     setSavedUsername(saved.username);
-  }, []);
+  }, [session?.uid]);
 
   useEffect(() => {
     if (session?.phoneNumber) {
@@ -787,6 +788,7 @@ export default function ListRoomPage() {
         onClose={() => setLocationOpen(false)}
         value={location}
         onChange={(next) => setLocation(next)}
+        intent="select"
       />
 
       <MapPinPicker

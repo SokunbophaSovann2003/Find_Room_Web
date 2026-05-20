@@ -6,22 +6,23 @@ import LocationPicker, { type LocationValue } from "./LocationPicker";
 import OptionPicker from "./OptionPicker";
 import { useExploreFilter, type SortOrder } from "./ExploreFilterContext";
 import { useDesktop } from "@/lib/use-desktop";
+import { useT } from "@/lib/language";
 import type { PropertyType } from "@/lib/types";
 
-const PROPERTY_TYPE_OPTIONS: { value: PropertyType | ""; label: string }[] = [
-  { value: "", label: "Any property type" },
-  { value: "room", label: "Room" },
-  { value: "house", label: "House" },
-  { value: "apartment", label: "Apartment" },
-  { value: "condo", label: "Condo" },
-  { value: "flat", label: "Flat" },
-  { value: "villa", label: "Villa" }
+const PROPERTY_TYPE_KEYS: { value: PropertyType | ""; key: string }[] = [
+  { value: "", key: "search.type.any" },
+  { value: "room", key: "type.room" },
+  { value: "house", key: "type.house" },
+  { value: "apartment", key: "type.apartment" },
+  { value: "condo", key: "type.condo" },
+  { value: "flat", key: "type.flat" },
+  { value: "villa", key: "type.villa" }
 ];
 
-const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
-  { value: "", label: "Sort by price" },
-  { value: "price-asc", label: "Price: low to high" },
-  { value: "price-desc", label: "Price: high to low" }
+const SORT_KEYS: { value: SortOrder; key: string }[] = [
+  { value: "", key: "search.sort.default" },
+  { value: "price-asc", key: "search.sort.asc" },
+  { value: "price-desc", key: "search.sort.desc" }
 ];
 
 function formatLocation(loc: LocationValue): string {
@@ -29,22 +30,19 @@ function formatLocation(loc: LocationValue): string {
   return parts.length ? parts.join(", ") : "";
 }
 
-function labelFor<T extends string>(
-  options: { value: T; label: string }[],
-  value: T
-): string {
-  return options.find((o) => o.value === value)?.label ?? "";
-}
-
 export default function SearchBar() {
+  const t = useT();
   const { filter, setFilter } = useExploreFilter();
   const [pickerOpen, setPickerOpen] = useState<"location" | "type" | "sort" | null>(null);
   const isDesktop = useDesktop();
   const mode = isDesktop ? "dropdown" : "modal";
 
+  const propertyTypeOptions = PROPERTY_TYPE_KEYS.map((o) => ({ value: o.value, label: t(o.key) }));
+  const sortOptions = SORT_KEYS.map((o) => ({ value: o.value, label: t(o.key) }));
+
   const locationLabel = formatLocation(filter.location);
-  const typeLabel = labelFor(PROPERTY_TYPE_OPTIONS, filter.type);
-  const sortLabel = labelFor(SORT_OPTIONS, filter.sort);
+  const typeLabel = propertyTypeOptions.find((o) => o.value === filter.type)?.label ?? "";
+  const sortLabel = sortOptions.find((o) => o.value === filter.sort)?.label ?? "";
 
   function toggle(key: "location" | "type" | "sort") {
     setPickerOpen((cur) => (cur === key ? null : key));
@@ -52,27 +50,27 @@ export default function SearchBar() {
 
   return (
     <form
-      className="flex w-full flex-col gap-2 rounded-2xl bg-white p-2 shadow-card sm:flex-row sm:items-center sm:rounded-full"
+      className="flex w-full flex-col gap-2 rounded-2xl bg-white p-2 shadow-card lg:flex-row lg:items-center lg:rounded-full"
       onSubmit={(e) => e.preventDefault()}
     >
       <div className="relative min-w-0 flex-1">
         <button
           type="button"
           onClick={() => toggle("location")}
-          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-slate-50 sm:rounded-full sm:px-4"
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-slate-50 lg:rounded-full lg:px-4"
         >
           <Icon name="map-pin" className="h-5 w-5 shrink-0 text-brand" />
           <span className={`flex-1 truncate ${locationLabel ? "text-ink" : "text-ink-soft"}`}>
-            {locationLabel || "Where to? Province, district, area…"}
+            {locationLabel || t("search.location.placeholder")}
           </span>
           {locationLabel ? <span className="h-6 w-6 shrink-0" aria-hidden /> : null}
         </button>
         {locationLabel ? (
           <button
             type="button"
-            aria-label="Clear location"
+            aria-label={t("search.clearLocation")}
             onClick={() => setFilter({ ...filter, location: {} })}
-            className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-slate-200 hover:text-ink sm:right-4"
+            className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-slate-200 hover:text-ink lg:right-4"
           >
             <Icon name="x" className="h-3.5 w-3.5" />
           </button>
@@ -86,13 +84,13 @@ export default function SearchBar() {
         />
       </div>
 
-      <div className="hidden h-8 w-px bg-slate-200 sm:block" />
+      <div className="hidden h-8 w-px bg-slate-200 lg:block" />
 
       <div className="relative min-w-0 flex-1">
         <button
           type="button"
           onClick={() => toggle("type")}
-          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-slate-50 sm:rounded-full sm:px-4"
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-slate-50 lg:rounded-full lg:px-4"
         >
           <Icon name="home" className="h-5 w-5 shrink-0 text-brand" />
           <span className={`flex-1 truncate capitalize ${filter.type ? "text-ink" : "text-ink-soft"}`}>
@@ -103,20 +101,20 @@ export default function SearchBar() {
           open={pickerOpen === "type"}
           onClose={() => setPickerOpen(null)}
           mode={mode}
-          title="Property type"
-          options={PROPERTY_TYPE_OPTIONS}
+          title={t("search.type.title")}
+          options={propertyTypeOptions}
           value={filter.type}
           onChange={(next) => setFilter({ ...filter, type: next })}
         />
       </div>
 
-      <div className="hidden h-8 w-px bg-slate-200 sm:block" />
+      <div className="hidden h-8 w-px bg-slate-200 lg:block" />
 
       <div className="relative min-w-0 flex-1">
         <button
           type="button"
           onClick={() => toggle("sort")}
-          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-slate-50 sm:rounded-full sm:px-4"
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-slate-50 lg:rounded-full lg:px-4"
         >
           <span aria-hidden className="flex h-5 w-5 shrink-0 items-center justify-center text-base font-bold text-brand">$</span>
           <span className={`flex-1 truncate ${filter.sort ? "text-ink" : "text-ink-soft"}`}>
@@ -127,16 +125,16 @@ export default function SearchBar() {
           open={pickerOpen === "sort"}
           onClose={() => setPickerOpen(null)}
           mode={mode}
-          title="Sort by price"
-          options={SORT_OPTIONS}
+          title={t("search.sort.default")}
+          options={sortOptions}
           value={filter.sort}
           onChange={(next) => setFilter({ ...filter, sort: next })}
         />
       </div>
 
-      <button type="submit" className="btn-primary sm:px-6">
+      <button type="submit" className="btn-primary lg:px-6">
         <Icon name="search" className="h-4 w-4" />
-        Search
+        {t("search.submit")}
       </button>
     </form>
   );

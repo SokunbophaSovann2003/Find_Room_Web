@@ -6,6 +6,7 @@ import RoomCard from "./RoomCard";
 import Icon from "./Icon";
 import ErrorBoundary from "./ErrorBoundary";
 import { useLocalRooms } from "@/lib/local-rooms";
+import { useT } from "@/lib/language";
 import { applyFilter, useExploreFilter } from "./ExploreFilterContext";
 import { getLocationFocus } from "@/lib/locations";
 import type { Bounds } from "./ExploreMap";
@@ -30,6 +31,7 @@ function inBounds(room: Room, bounds: Bounds | null): boolean {
 }
 
 export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
+  const t = useT();
   const [view, setView] = useState<View>("list");
   const localRooms = useLocalRooms();
   const { filter } = useExploreFilter();
@@ -50,17 +52,27 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
     <>
       <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Explore all rooms</h2>
+          <h2 className="text-2xl font-bold">{t("explore.heading")}</h2>
           <p className="text-sm text-ink-muted">
             {view === "map"
-              ? `${visibleRooms.length} ${visibleRooms.length === 1 ? "room" : "rooms"} in this area`
-              : `${allRooms.length} ${allRooms.length === 1 ? "room" : "rooms"} available right now`}
+              ? t(
+                  visibleRooms.length === 1
+                    ? "explore.counter.inArea.one"
+                    : "explore.counter.inArea.many",
+                  { n: visibleRooms.length }
+                )
+              : t(
+                  allRooms.length === 1
+                    ? "explore.counter.available.one"
+                    : "explore.counter.available.many",
+                  { n: allRooms.length }
+                )}
           </p>
         </div>
 
         <div role="tablist" className="flex gap-1 self-start rounded-full border border-slate-200 bg-white p-1">
-          <ViewTab active={view === "list"} onClick={() => setView("list")} icon="menu" label="List" />
-          <ViewTab active={view === "map"} onClick={() => setView("map")} icon="map-pin" label="Map" />
+          <ViewTab active={view === "list"} onClick={() => setView("list")} icon="menu" label={t("explore.tab.list")} />
+          <ViewTab active={view === "map"} onClick={() => setView("map")} icon="map-pin" label={t("explore.tab.map")} />
         </div>
       </div>
 

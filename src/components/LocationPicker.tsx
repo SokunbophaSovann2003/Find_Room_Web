@@ -21,14 +21,24 @@ export default function LocationPicker({
   onClose,
   value,
   onChange,
-  mode = "modal"
+  mode = "modal",
+  intent = "browse"
 }: {
   open: boolean;
   onClose: () => void;
   value: LocationValue;
   onChange: (next: LocationValue) => void;
   mode?: "modal" | "dropdown";
+  // "browse" → the picker is filtering an existing list (Explore page).
+  // "select" → the picker is collecting a value (e.g. listing creation).
+  // The copy on the "all in X" rows changes to match.
+  intent?: "browse" | "select";
 }) {
+  const allLabel = intent === "select" ? "Clear" : "Show all rooms";
+  const provinceLabel = (province: string) =>
+    intent === "select" ? `Use ${province}` : `Show all rooms in ${province}`;
+  const districtLabel = (district: string) =>
+    intent === "select" ? `Use ${district}` : `Show all rooms in ${district}`;
   const [view, setView] = useState<View>("province");
   const [draft, setDraft] = useState<{ province?: string; district?: string }>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -172,7 +182,7 @@ export default function LocationPicker({
       {view === "province" ? (
         <>
           {(value.province || value.district || value.area) ? (
-            <RowAction onClick={clearAll} label="Show all rooms" />
+            <RowAction onClick={clearAll} label={allLabel} />
           ) : null}
           {PROVINCES.map((p) => (
             <Row key={p} onClick={() => pickProvince(p)} label={p} hasMore={districtsOf(p).length > 0} />
@@ -182,7 +192,7 @@ export default function LocationPicker({
 
       {view === "district" && draft.province ? (
         <>
-          <RowAction onClick={pickAllInProvince} label={`Show all rooms in ${draft.province}`} />
+          <RowAction onClick={pickAllInProvince} label={provinceLabel(draft.province)} />
           {districtsOf(draft.province).map((d) => (
             <Row
               key={d}
@@ -196,10 +206,7 @@ export default function LocationPicker({
 
       {view === "area" && draft.province && draft.district ? (
         <>
-          <RowAction
-            onClick={pickAllInDistrict}
-            label={`Show all rooms in ${draft.district}`}
-          />
+          <RowAction onClick={pickAllInDistrict} label={districtLabel(draft.district)} />
           {areasOf(draft.province, draft.district).map((a) => (
             <Row key={a} onClick={() => pickArea(a)} label={a} />
           ))}

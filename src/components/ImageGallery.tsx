@@ -18,19 +18,22 @@ export default function ImageGallery({
   const thumbs = images.slice(0, 5);
 
   // Lock body scroll while the fullscreen viewer is open and close on Esc.
+  // Arrow keys page through images.
   useEffect(() => {
     if (!viewerOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setViewerOpen(false);
+      else if (e.key === "ArrowRight") setActive((i) => (i + 1) % images.length);
+      else if (e.key === "ArrowLeft") setActive((i) => (i - 1 + images.length) % images.length);
     }
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
     };
-  }, [viewerOpen]);
+  }, [viewerOpen, images.length]);
 
   return (
     <div className="space-y-3">
@@ -87,11 +90,11 @@ export default function ImageGallery({
           role="dialog"
           aria-modal="true"
           aria-label={`${title} — all photos`}
-          className="fixed inset-0 z-[1100] flex flex-col bg-ink/95"
+          className="fixed inset-0 z-[1100] flex flex-col bg-ink"
         >
           <div className="flex items-center justify-between px-4 py-3 text-white">
             <span className="text-sm font-semibold">
-              {images.length} {images.length === 1 ? "photo" : "photos"}
+              {active + 1} / {images.length}
             </span>
             <button
               type="button"
@@ -102,23 +105,57 @@ export default function ImageGallery({
               <Icon name="x" className="h-5 w-5" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto px-3 pb-6 sm:px-6">
-            <ul className="mx-auto grid max-w-3xl gap-3 sm:grid-cols-2">
+
+          <div className="relative flex flex-1 items-center justify-center px-3 sm:px-6">
+            {images[active] ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={images[active]}
+                alt={`${title} ${active + 1}`}
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : null}
+
+            {images.length > 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setActive((i) => (i - 1 + images.length) % images.length)}
+                  aria-label="Previous photo"
+                  className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:left-6 sm:h-12 sm:w-12"
+                >
+                  <Icon name="chevron-left" className="h-6 w-6" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActive((i) => (i + 1) % images.length)}
+                  aria-label="Next photo"
+                  className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:right-6 sm:h-12 sm:w-12"
+                >
+                  <Icon name="chevron-right" className="h-6 w-6" />
+                </button>
+              </>
+            ) : null}
+          </div>
+
+          {images.length > 1 ? (
+            <div className="flex justify-center gap-2 overflow-x-auto px-3 pb-5 pt-2 sm:px-6">
               {images.map((src, i) => (
-                <li
+                <button
                   key={src + i}
-                  className="overflow-hidden rounded-xl bg-slate-900"
+                  type="button"
+                  onClick={() => setActive(i)}
+                  aria-label={`Show photo ${i + 1}`}
+                  className={`relative h-14 w-20 shrink-0 overflow-hidden rounded-lg ring-2 transition ${
+                    i === active ? "ring-white" : "ring-transparent opacity-60 hover:opacity-100"
+                  }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={src}
-                    alt={`${title} ${i + 1}`}
-                    className="h-full w-full object-contain"
-                  />
-                </li>
+                  <img src={src} alt="" className="h-full w-full object-cover" />
+                </button>
               ))}
-            </ul>
-          </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

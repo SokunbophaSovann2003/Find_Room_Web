@@ -27,13 +27,14 @@ export default function Navbar() {
       setOverrideUsername(undefined);
       return;
     }
+    const uid = session.uid;
     const sync = () => {
-      const o = loadOverrides();
+      const o = loadOverrides(uid);
       setAvatarUrl(o.avatarUrl || undefined);
       setOverrideUsername(o.username || undefined);
     };
     sync();
-    return subscribeOverrides(sync);
+    return subscribeOverrides(uid, sync);
   }, [session]);
   const displayName = overrideUsername ?? session?.username ?? session?.phoneNumber ?? "";
   const initial = displayName.trim().replace(/^\+/, "").charAt(0).toUpperCase();
