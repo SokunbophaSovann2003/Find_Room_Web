@@ -120,7 +120,8 @@ export const MOCK_ROOMS: Room[] = [
     type: "room",
     address: "St. 294, BKK1",
     city: "Phnom Penh",
-    district: "Chamkar Mon",
+    district: "Boeng Keng Kang",
+    area: "Boeng Keng Kang Muoy",
     lat: 11.5444,
     lng: 104.9263,
     images: [
