@@ -6,6 +6,9 @@ import { useState } from "react";
 import Icon from "./Icon";
 import AuthModal from "./AuthModal";
 import { useSession } from "@/lib/session";
+import { useKeyboardOpen } from "@/lib/use-keyboard-open";
+import { isAdmin } from "@/lib/admin";
+import { useViewMode } from "@/lib/view-mode";
 
 const LIST_ROOM_PATH = "/profile/list-room";
 
@@ -15,6 +18,7 @@ function shouldHide(pathname: string | null): boolean {
   if (!pathname) return false;
   if (pathname === LIST_ROOM_PATH) return true; // Publish bar
   if (pathname.startsWith("/rooms/")) return true; // Contact bar
+  if (pathname.startsWith("/user/admin")) return true; // Admin owns its own nav
   return false;
 }
 
@@ -26,8 +30,13 @@ export default function BottomNav() {
   // When an unauthenticated user taps the FAB or Profile, remember where to
   // send them after sign-in so the action they tried isn't lost.
   const [authNext, setAuthNext] = useState<string | null>(null);
+  const keyboardOpen = useKeyboardOpen();
+  const viewMode = useViewMode();
 
   if (shouldHide(pathname)) return null;
+  // Don't stack with the admin floating nav when the signed-in admin is in
+  // "Admin" view mode — the AdminFloatingNav owns the bottom slot there.
+  if (viewMode === "admin" && isAdmin(session)) return null;
 
   const onHome = pathname === "/" || pathname?.startsWith("/explore");
   const onProfile = pathname === "/profile";
@@ -59,7 +68,9 @@ export default function BottomNav() {
         aria-label="Primary"
         // z-[1050] keeps the bar above Leaflet's pane/control z-indexes
         // (which top out at 1000) but below the app's modals at z-[1100].
-        className="fixed inset-x-0 bottom-0 z-[1050] border-t border-slate-200 bg-white/95 backdrop-blur sm:hidden"
+        className={`fixed inset-x-0 bottom-0 z-[1050] border-t border-slate-200 bg-white/95 backdrop-blur sm:hidden ${
+          keyboardOpen ? "hidden" : ""
+        }`}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto grid max-w-md grid-cols-3 items-start px-4 pb-2 pt-2.5">

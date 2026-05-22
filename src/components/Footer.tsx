@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Icon from "./Icon";
 
 const CONTACT = {
@@ -9,8 +12,12 @@ const CONTACT = {
 };
 
 export default function Footer() {
+  const pathname = usePathname();
   const phoneDigits = CONTACT.phone.replace(/\D/g, "");
   const telegramLink = `+${CONTACT.telegram.replace(/\D/g, "")}`;
+
+  // Admin shell owns its own surface — drop the marketing footer.
+  if (pathname?.startsWith("/user/admin")) return null;
 
   return (
     <footer className="relative mt-20 hidden shrink-0 overflow-hidden bg-gradient-to-br from-brand-50 via-white to-amber-50 sm:block">

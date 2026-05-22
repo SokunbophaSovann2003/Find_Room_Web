@@ -15,6 +15,7 @@ import {
   saveOverrides,
   type ProfileOverrides
 } from "@/lib/profile-overrides";
+import { getAdminSettings } from "@/lib/admin";
 import type { PropertyType } from "@/lib/types";
 
 const PROPERTY_TYPE_CHOICES: { value: PropertyType; label: string; hint: string }[] = [
@@ -329,6 +330,10 @@ function PropertyTypePicker({
 
   if (!open) return null;
 
+  // Hide property types the admin has disabled in Settings → Listing taxonomy.
+  const active = new Set(getAdminSettings().activePropertyTypes);
+  const choices = PROPERTY_TYPE_CHOICES.filter((p) => active.has(p.value));
+
   return (
     <div
       className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
@@ -354,7 +359,7 @@ function PropertyTypePicker({
         </div>
         <div className="overflow-y-auto p-4 sm:p-5">
           <ul className="grid grid-cols-2 gap-3">
-            {PROPERTY_TYPE_CHOICES.map((p) => (
+            {choices.map((p) => (
               <li key={p.value}>
                 <button
                   type="button"

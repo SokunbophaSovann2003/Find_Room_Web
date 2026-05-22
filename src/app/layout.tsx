@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
+import AdminFloatingNav from "@/components/admin/AdminFloatingNav";
 import Footer from "@/components/Footer";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="flex-1">
           {children}
           <BottomNav />
+          <AdminFloatingNav />
         </main>
         <Footer />
       </body>

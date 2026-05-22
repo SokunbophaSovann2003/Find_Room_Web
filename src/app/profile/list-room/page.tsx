@@ -11,6 +11,7 @@ import { addLocalRoom, getLocalRoomById } from "@/lib/local-rooms";
 import { findRoomById } from "@/lib/mock-data";
 import { downscalePhoto } from "@/lib/image";
 import { loadOverrides } from "@/lib/profile-overrides";
+import { DEFAULT_AMENITIES, getAdminSettings } from "@/lib/admin";
 import type { Room, PropertyType, PricePeriod } from "@/lib/types";
 
 const PRICE_PERIODS: { value: PricePeriod; label: string; suffix: string }[] = [
@@ -27,19 +28,6 @@ import type { PinValue } from "@/components/MapPinPicker";
 const MapPinPicker = dynamic(() => import("@/components/MapPinPicker"), {
   ssr: false
 });
-
-const AMENITIES = [
-  "Wi-Fi",
-  "Air conditioning",
-  "Parking",
-  "Security",
-  "Kitchen",
-  "Elevator",
-  "Pool",
-  "Gym",
-  "Laundry",
-  "Balcony"
-];
 
 const FEE_TYPES = [
   { value: "rent", label: "Monthly rent", unit: "/ month" },
@@ -91,10 +79,15 @@ export default function ListRoomPage() {
   const router = useRouter();
   const session = useSession();
   const searchParams = useSearchParams();
+  // Read admin-configured defaults once per mount — settings changes
+  // mid-edit shouldn't snap the user's typed values.
+  const settingsRef = useRef(getAdminSettings());
+  const settings = settingsRef.current;
+  const amenityOptions = settings.amenities.length > 0 ? settings.amenities : DEFAULT_AMENITIES;
   const initialType = ((): PropertyType => {
     const q = searchParams?.get("type");
-    const valid: PropertyType[] = ["room", "house", "apartment", "condo", "flat", "villa"];
-    return valid.includes(q as PropertyType) ? (q as PropertyType) : "apartment";
+    const valid = settings.activePropertyTypes;
+    return valid.includes(q as PropertyType) ? (q as PropertyType) : valid[0] ?? "apartment";
   })();
 
   const [title, setTitle] = useState("");
@@ -111,7 +104,7 @@ export default function ListRoomPage() {
   const [feesOpen, setFeesOpen] = useState(false);
   const [amenitiesOpen, setAmenitiesOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [rentPeriod, setRentPeriod] = useState<PricePeriod>("monthly");
+  const [rentPeriod, setRentPeriod] = useState<PricePeriod>(settings.defaultPricePeriod);
   const pinFetchRef = useRef(0);
 
   async function handlePinChange(next: PinValue | null) {
@@ -274,7 +267,17 @@ export default function ListRoomPage() {
   function addFee() {
     const used = new Set(fees.map((f) => f.type));
     const next = FEE_TYPES.find((t) => !used.has(t.value)) ?? FEE_TYPES[FEE_TYPES.length - 1];
-    setFees((prev) => [...prev, { id: newId(), type: next.value, price: "" }]);
+    // Pre-fill utility prices from admin-configured defaults so the host
+    // doesn't have to retype the standard rates every listing.
+    const prefilled =
+      next.value === "water"
+        ? String(settings.defaultWaterPrice)
+        : next.value === "electricity"
+        ? String(settings.defaultElectricityPrice)
+        : next.value === "wifi"
+        ? String(settings.defaultWifiPrice)
+        : "";
+    setFees((prev) => [...prev, { id: newId(), type: next.value, price: prefilled }]);
   }
 
   function resetForm() {
@@ -288,7 +291,7 @@ export default function ListRoomPage() {
     setPin(null);
     setSelected(new Set());
     setFees([{ id: newId(), type: "rent", price: "" }]);
-    setRentPeriod("monthly");
+    setRentPeriod(settings.defaultPricePeriod);
     photos.forEach((p) => URL.revokeObjectURL(p.url));
     setPhotos([]);
     setContactPhones(session?.phoneNumber ? [session.phoneNumber] : [""]);
@@ -823,6 +826,7 @@ export default function ListRoomPage() {
         onClose={() => setAmenitiesOpen(false)}
         selected={selected}
         toggle={toggle}
+        options={amenityOptions}
       />
 
       <DetailsSheet
@@ -1131,12 +1135,14 @@ function AmenitiesSheet({
   open,
   onClose,
   selected,
-  toggle
+  toggle,
+  options
 }: {
   open: boolean;
   onClose: () => void;
   selected: Set<string>;
   toggle: (a: string) => void;
+  options: string[];
 }) {
   useEffect(() => {
     if (!open) return;
@@ -1183,7 +1189,7 @@ function AmenitiesSheet({
         </div>
         <div className="overflow-y-auto p-4 sm:p-5">
           <ul className="flex flex-wrap gap-2">
-            {AMENITIES.map((a) => {
+            {options.map((a) => {
               const active = selected.has(a);
               return (
                 <li key={a}>

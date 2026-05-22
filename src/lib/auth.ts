@@ -7,6 +7,8 @@ import {
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "./firebase";
 import { clearSession, getSession, setSession } from "./session";
+import { findAdminUserByPhone } from "./admin";
+import { setViewMode } from "./view-mode";
 
 // Firebase Auth has no phone + password flow, so we bridge phone numbers
 // to email+password by packing the phone as the local part of an email.
@@ -42,6 +44,13 @@ export async function registerWithPhone(params: {
 }
 
 export async function loginWithPhone(phoneNumber: string, password: string) {
+  // Mock-data only: honor the admin user store's status field. A user the
+  // admin has disabled cannot log in, regardless of Firebase config.
+  const adminEntry = findAdminUserByPhone(phoneNumber);
+  if (adminEntry?.status === "disabled") {
+    throw new Error("This account has been disabled. Please contact an admin.");
+  }
+
   if (!isFirebaseConfigured || !auth) {
     // Demo mode: accept any credentials and sign the user in locally.
     const uid = `demo-${phoneNumber.replace(/\D/g, "")}`;
@@ -59,6 +68,10 @@ export async function signOut() {
     await fbSignOut(auth);
   }
   clearSession();
+  // The admin/user view preference is per-user, not per-browser. Reset on
+  // signOut so a subsequent non-admin sign-in doesn't inherit a stale
+  // "admin" mode flag.
+  setViewMode("user");
 }
 
 // Change the phone the user signs in with. The uid stays stable (so existing

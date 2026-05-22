@@ -1,18 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Icon from "./Icon";
 import AuthModal from "./AuthModal";
 import LanguageToggle from "./LanguageToggle";
 import { useSession } from "@/lib/session";
 import { loadOverrides, subscribeOverrides } from "@/lib/profile-overrides";
+import { isAdmin } from "@/lib/admin";
+import { setViewMode, useViewMode } from "@/lib/view-mode";
 
 const LIST_ROOM_PATH = "/profile/list-room";
 
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const session = useSession();
   const [authOpen, setAuthOpen] = useState(false);
   // When the user opens AuthModal via "List room" while logged out, we want
@@ -48,11 +51,18 @@ export default function Navbar() {
     }
   }
 
+  // onAdmin drives header chrome (admin pill, hide "List room"). Path always
+  // wins inside /user/admin/*, otherwise the sticky viewMode preference lets
+  // an admin keep their admin context on shared routes like /rooms/[id].
+  const viewMode = useViewMode();
+  const pathOnAdmin = pathname?.startsWith("/user/admin") ?? false;
+  const onAdmin = pathOnAdmin || (viewMode === "admin" && isAdmin(session));
+
   return (
     <>
       <header className="sticky top-0 z-[1050] border-b border-slate-200/70 bg-white/80 backdrop-blur">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
-          <Link href="/explore" className="flex items-center gap-2">
+        <nav className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
+          <Link href={onAdmin ? "/user/admin" : "/explore"} className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white">
               <Icon name="home" className="h-5 w-5" />
             </span>
@@ -61,16 +71,23 @@ export default function Navbar() {
             </span>
           </Link>
 
+          <div className="flex-1" />
+
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Desktop-only: on mobile the bottom nav owns this action. */}
-            <button
-              type="button"
-              onClick={handleListRoom}
-              className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full border border-brand bg-white px-4 text-sm font-semibold text-brand transition hover:bg-brand/5 sm:inline-flex"
-            >
-              <Icon name="plus" className="h-4 w-4" />
-              List room
-            </button>
+            {onAdmin ? null : (
+              <button
+                type="button"
+                onClick={handleListRoom}
+                className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full border border-brand bg-white px-4 text-sm font-semibold text-brand transition hover:bg-brand/5 sm:inline-flex"
+              >
+                <Icon name="plus" className="h-4 w-4" />
+                List room
+              </button>
+            )}
+
+            {/* Demo affordance: hop between User and Admin views without logging out. */}
+            <ViewSwitch onAdmin={onAdmin} />
 
             {/* Always visible: language toggle. */}
             <LanguageToggle />
@@ -133,3 +150,51 @@ export default function Navbar() {
     </>
   );
 }
+
+function ViewSwitch({ onAdmin }: { onAdmin: boolean }) {
+  const router = useRouter();
+  const session = useSession();
+
+  // Only render for actual admin sessions. Logged-out and regular users can't
+  // self-promote anymore — they have to sign in with an admin account via the
+  // normal AuthModal flow. (Previously this button silently added the current
+  // uid to the admin allowlist; that was a frontend-only convenience for the
+  // mock demo and a hard "no" for any real deployment.)
+  if (!isAdmin(session)) return null;
+
+  function goAdmin() {
+    setViewMode("admin");
+    router.push("/user/admin");
+  }
+
+  function goUser() {
+    setViewMode("user");
+    router.push("/explore");
+  }
+
+  return (
+    <div className="inline-flex items-center rounded-full border border-slate-200 bg-white p-0.5 text-[11px] font-semibold sm:text-xs">
+      <button
+        type="button"
+        onClick={goUser}
+        aria-pressed={!onAdmin}
+        className={`rounded-full px-2 py-1 transition sm:px-3 sm:py-1.5 ${
+          !onAdmin ? "bg-brand text-white" : "text-ink-muted hover:text-ink"
+        }`}
+      >
+        User
+      </button>
+      <button
+        type="button"
+        onClick={goAdmin}
+        aria-pressed={onAdmin}
+        className={`rounded-full px-2 py-1 transition sm:px-3 sm:py-1.5 ${
+          onAdmin ? "bg-brand text-white" : "text-ink-muted hover:text-ink"
+        }`}
+      >
+        Admin
+      </button>
+    </div>
+  );
+}
+
