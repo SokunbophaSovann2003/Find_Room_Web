@@ -7,7 +7,7 @@ import {
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "./firebase";
 import { clearSession, getSession, setSession } from "./session";
-import { findAdminUserByPhone } from "./admin";
+import { ensureAdminUser, findAdminUserByPhone, pushIncomingNotification } from "./admin";
 import { setViewMode } from "./view-mode";
 
 // Firebase Auth has no phone + password flow, so we bridge phone numbers
@@ -29,6 +29,13 @@ export async function registerWithPhone(params: {
     // Demo mode: no backend configured, sign the user in locally.
     const uid = `demo-${phoneNumber.replace(/\D/g, "")}`;
     setSession({ uid, username, phoneNumber });
+    ensureAdminUser({ uid, username, phoneNumber });
+    pushIncomingNotification({
+      kind: "user-registered",
+      title: "New user registered",
+      body: `${username} joined Joul with phone ${phoneNumber}.`,
+      relatedId: uid
+    });
     return { uid };
   }
 
@@ -40,6 +47,13 @@ export async function registerWithPhone(params: {
     createdAt: Date.now()
   });
   setSession({ uid: cred.user.uid, username, phoneNumber });
+  ensureAdminUser({ uid: cred.user.uid, username, phoneNumber });
+  pushIncomingNotification({
+    kind: "user-registered",
+    title: "New user registered",
+    body: `${username} joined Joul with phone ${phoneNumber}.`,
+    relatedId: cred.user.uid
+  });
   return cred.user;
 }
 

@@ -1,12 +1,34 @@
 import type { Metadata, Viewport } from "next";
+import { Poppins, Noto_Sans_Khmer } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import AdminFloatingNav from "@/components/admin/AdminFloatingNav";
 import Footer from "@/components/Footer";
+import Toaster from "@/components/Toaster";
+import HtmlLangSync from "@/components/HtmlLangSync";
 import "./globals.css";
 
+// next/font self-hosts the font files at build time. That avoids the
+// Google Fonts CDN entirely, eliminates layout shift, and — critically —
+// fixes Android phones that were silently failing to fetch Khmer glyphs
+// via the CSS @import. Noto Sans Khmer renders with substantially
+// heavier, more visible strokes than Kantumruy Pro at every weight.
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-poppins",
+  display: "swap"
+});
+
+const notoKhmer = Noto_Sans_Khmer({
+  subsets: ["khmer"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-khmer",
+  display: "swap"
+});
+
 export const metadata: Metadata = {
-  title: "FindRoom.KH — Find your perfect room rental in Cambodia",
+  title: "Joul.KH — Find your perfect room rental in Cambodia",
   description:
     "Browse verified rooms for rent across Phnom Penh and all of Cambodia, or list your own room in minutes.",
   // PWA wiring: the manifest tells the browser this site is installable.
@@ -19,7 +41,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "FindRoom",
+    title: "Joul",
     statusBarStyle: "default"
   }
 };
@@ -34,7 +56,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`${poppins.variable} ${notoKhmer.variable}`}
+    >
       <body className="flex min-h-screen flex-col">
         <Navbar />
         <main className="flex-1">
@@ -43,6 +68,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AdminFloatingNav />
         </main>
         <Footer />
+        <Toaster />
+        <HtmlLangSync />
       </body>
     </html>
   );

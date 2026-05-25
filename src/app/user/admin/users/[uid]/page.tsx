@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import RoomCard from "@/components/RoomCard";
 import Icon, { propertyIcon } from "@/components/Icon";
+import ConfirmModal from "@/components/ConfirmModal";
 import UserFormModal, { type UserFormValues } from "@/components/admin/UserFormModal";
 import {
   deleteAdminUser,
@@ -13,6 +14,8 @@ import {
   useAdminUsers
 } from "@/lib/admin";
 import { useLocalRooms } from "@/lib/local-rooms";
+import { toast } from "@/lib/toast";
+import { useT } from "@/lib/language";
 
 export default function AdminUserDetailPage() {
   const router = useRouter();
@@ -20,6 +23,7 @@ export default function AdminUserDetailPage() {
   const uid = decodeURIComponent(params.uid ?? "");
   const users = useAdminUsers();
   const allRooms = useLocalRooms();
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -35,12 +39,12 @@ export default function AdminUserDetailPage() {
         <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-ink-muted">
           <Icon name="user" className="h-7 w-7" />
         </span>
-        <h2 className="text-lg font-bold">User not found</h2>
+        <h2 className="text-lg font-bold">{t("admin.userDetail.notFound.title")}</h2>
         <p className="max-w-sm text-sm text-ink-muted">
-          This account may have been deleted. Return to the user list to manage everyone else.
+          {t("admin.userDetail.notFound.body")}
         </p>
         <Link href="/user/admin/users" className="btn-primary mt-2">
-          Back to users
+          {t("admin.userDetail.backToUsers")}
         </Link>
       </div>
     );
@@ -49,12 +53,25 @@ export default function AdminUserDetailPage() {
   function handleEditSave(values: UserFormValues) {
     updateAdminUser(user!.uid, values);
     setEditing(false);
+    toast.success(t("toast.admin.user.updated", { name: values.username }));
   }
 
   function handleDelete() {
+    const name = user!.username;
     deleteAdminUser(user!.uid);
     setConfirmDelete(false);
+    toast.success(t("toast.admin.user.deleted", { name }));
     router.replace("/user/admin/users");
+  }
+
+  function handleToggleStatus() {
+    if (!user) return;
+    toggleAdminUserStatus(user.uid);
+    toast.success(
+      user.status === "active"
+        ? t("toast.admin.user.disabled", { name: user.username })
+        : t("toast.admin.user.enabled", { name: user.username })
+    );
   }
 
   const initial = user.username.trim().charAt(0).toUpperCase() || "?";
@@ -67,7 +84,7 @@ export default function AdminUserDetailPage() {
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-muted hover:text-ink"
         >
           <Icon name="chevron-left" className="h-4 w-4" />
-          All users
+          {t("admin.userDetail.allUsers")}
         </Link>
       </div>
 
@@ -127,17 +144,24 @@ export default function AdminUserDetailPage() {
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <Link
+              href={`/user/admin/notifications?tab=send&to=${encodeURIComponent(user.uid)}`}
+              className="btn-secondary"
+            >
+              <Icon name="message" className="h-4 w-4" />
+              {t("admin.userDetail.sendNotification")}
+            </Link>
             <button type="button" onClick={() => setEditing(true)} className="btn-secondary">
               <Icon name="pencil" className="h-4 w-4" />
-              Edit
+              {t("admin.userDetail.edit")}
             </button>
             <button
               type="button"
-              onClick={() => toggleAdminUserStatus(user.uid)}
+              onClick={handleToggleStatus}
               className="btn-secondary"
             >
               <Icon name="shield" className="h-4 w-4" />
-              {user.status === "active" ? "Disable" : "Enable"}
+              {user.status === "active" ? t("admin.userDetail.disable") : t("admin.userDetail.enable")}
             </button>
             <button
               type="button"
@@ -145,24 +169,31 @@ export default function AdminUserDetailPage() {
               className="btn-danger"
             >
               <Icon name="trash" className="h-4 w-4" />
-              Delete
+              {t("admin.userDetail.delete")}
             </button>
           </div>
         </div>
 
         {/* Mobile action row */}
         <div className="mt-4 flex flex-wrap justify-center gap-2 sm:hidden">
+          <Link
+            href={`/user/admin/notifications?tab=send&to=${encodeURIComponent(user.uid)}`}
+            className="btn-secondary"
+          >
+            <Icon name="message" className="h-4 w-4" />
+            {t("admin.userDetail.send")}
+          </Link>
           <button type="button" onClick={() => setEditing(true)} className="btn-secondary">
             <Icon name="pencil" className="h-4 w-4" />
-            Edit
+            {t("admin.userDetail.edit")}
           </button>
           <button
             type="button"
-            onClick={() => toggleAdminUserStatus(user.uid)}
+            onClick={handleToggleStatus}
             className="btn-secondary"
           >
             <Icon name="shield" className="h-4 w-4" />
-            {user.status === "active" ? "Disable" : "Enable"}
+            {user.status === "active" ? t("admin.userDetail.disable") : t("admin.userDetail.enable")}
           </button>
           <button
             type="button"
@@ -170,7 +201,7 @@ export default function AdminUserDetailPage() {
             className="btn-danger"
           >
             <Icon name="trash" className="h-4 w-4" />
-            Delete
+            {t("admin.userDetail.delete")}
           </button>
         </div>
       </section>
@@ -178,7 +209,7 @@ export default function AdminUserDetailPage() {
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold sm:text-xl">
-            Listings
+            {t("admin.userDetail.listings")}
             <span className="ml-2 rounded-full bg-brand/10 px-2.5 py-0.5 text-sm font-semibold text-brand">
               {listings.length}
             </span>
@@ -190,9 +221,9 @@ export default function AdminUserDetailPage() {
             <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 text-brand">
               <Icon name="home" className="h-6 w-6" />
             </span>
-            <h3 className="text-base font-bold">No listings yet</h3>
+            <h3 className="text-base font-bold">{t("admin.userDetail.noListings.title")}</h3>
             <p className="max-w-sm text-sm text-ink-muted">
-              This user hasn&apos;t published any rooms.
+              {t("admin.userDetail.noListings.body")}
             </p>
           </div>
         ) : (
@@ -221,7 +252,7 @@ export default function AdminUserDetailPage() {
                       <p className="mt-0.5 text-sm font-bold text-brand">
                         ${room.price}
                         <span className="ml-0.5 text-[11px] font-medium text-ink-muted">
-                          / month
+                          {t("room.suffix.monthly")}
                         </span>
                       </p>
                     </div>
@@ -248,68 +279,51 @@ export default function AdminUserDetailPage() {
         />
       ) : null}
 
-      {confirmDelete ? (
-        <div
-          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/40 px-4"
-          onClick={() => setConfirmDelete(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-cardHover"
-          >
-            <div className="mb-2 flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-700">
-                <Icon name="trash" className="h-4 w-4" />
-              </span>
-              <h3 className="text-base font-bold">Delete this user?</h3>
-            </div>
-            <p className="text-sm text-ink-muted">
-              <b>{user.username}</b> will be removed from the user directory. Their listings stay
-              but lose their owner link.
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setConfirmDelete(false)} className="btn-ghost">
-                Cancel
-              </button>
-              <button type="button" onClick={handleDelete} className="btn-danger">
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmModal
+        open={confirmDelete}
+        title={t("admin.userDetail.delete.title")}
+        body={
+          <>
+            <b>{user.username}</b>{t("admin.userDetail.delete.body.suffix")}
+          </>
+        }
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
 
 function RolePill({ role }: { role: "admin" | "user" }) {
+  const t = useT();
   if (role === "admin") {
     return (
       <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
-        Admin
+        {t("admin.role.admin")}
       </span>
     );
   }
   return (
     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-ink-muted">
-      User
+      {t("admin.role.user")}
     </span>
   );
 }
 
 function StatusPill({ status }: { status: "active" | "disabled" }) {
+  const t = useT();
   if (status === "active") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        Active
+        {t("admin.status.active")}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
       <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-      Disabled
+      {t("admin.status.disabled")}
     </span>
   );
 }

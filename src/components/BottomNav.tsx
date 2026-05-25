@@ -9,6 +9,7 @@ import { useSession } from "@/lib/session";
 import { useKeyboardOpen } from "@/lib/use-keyboard-open";
 import { isAdmin } from "@/lib/admin";
 import { useViewMode } from "@/lib/view-mode";
+import { useT } from "@/lib/language";
 
 const LIST_ROOM_PATH = "/profile/list-room";
 
@@ -32,6 +33,7 @@ export default function BottomNav() {
   const [authNext, setAuthNext] = useState<string | null>(null);
   const keyboardOpen = useKeyboardOpen();
   const viewMode = useViewMode();
+  const t = useT();
 
   if (shouldHide(pathname)) return null;
   // Don't stack with the admin floating nav when the signed-in admin is in
@@ -65,7 +67,7 @@ export default function BottomNav() {
       <div className="h-20 sm:hidden" aria-hidden />
 
       <nav
-        aria-label="Primary"
+        aria-label={t("bottomNav.primary.aria")}
         // z-[1050] keeps the bar above Leaflet's pane/control z-indexes
         // (which top out at 1000) but below the app's modals at z-[1100].
         className={`fixed inset-x-0 bottom-0 z-[1050] border-t border-slate-200 bg-white/95 backdrop-blur sm:hidden ${
@@ -82,14 +84,14 @@ export default function BottomNav() {
             }`}
           >
             <Icon name="home" className="h-5 w-5" />
-            <span>Home</span>
+            <span>{t("bottomNav.home")}</span>
           </Link>
 
           <div className="flex justify-center">
             <button
               type="button"
               onClick={handleListRoom}
-              aria-label="List your room"
+              aria-label={t("bottomNav.listRoom.aria")}
               className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-white shadow-cardHover ring-4 ring-white transition hover:bg-brand-dark active:scale-95"
             >
               <Icon name="plus" className="h-6 w-6" />
@@ -105,7 +107,7 @@ export default function BottomNav() {
             }`}
           >
             <Icon name="user" className="h-5 w-5" />
-            <span>Profile</span>
+            <span>{t("bottomNav.profile")}</span>
           </button>
         </div>
       </nav>

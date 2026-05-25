@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Icon, { propertyIcon } from "./Icon";
+import { useT } from "@/lib/language";
 
 export default function ImageGallery({
   images,
@@ -12,6 +13,7 @@ export default function ImageGallery({
   title: string;
   typeLabel?: string;
 }) {
+  const t = useT();
   const [active, setActive] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
   const hero = images[active] ?? images[0];
@@ -51,8 +53,8 @@ export default function ImageGallery({
           </div>
         )}
         {typeLabel ? (
-          <span className="absolute left-4 top-4 rounded-full bg-brand px-3 py-1 text-xs font-semibold capitalize text-white shadow">
-            {typeLabel}
+          <span className="absolute left-4 top-4 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white shadow">
+            {t(`type.${typeLabel}`) || typeLabel}
           </span>
         ) : null}
         {images.length > 0 ? (
@@ -62,7 +64,7 @@ export default function ImageGallery({
             className="absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-full bg-white/95 px-3 py-2 text-xs font-semibold shadow transition hover:bg-white"
           >
             <Icon name="camera" className="h-4 w-4" />
-            {images.length} photos
+            {t("gallery.photoCount", { n: images.length })}
           </button>
         ) : null}
       </div>
@@ -89,7 +91,7 @@ export default function ImageGallery({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`${title} — all photos`}
+          aria-label={t("gallery.allPhotos.aria", { title })}
           className="fixed inset-0 z-[1100] flex flex-col bg-ink"
         >
           <div className="flex items-center justify-between px-4 py-3 text-white">
@@ -99,7 +101,7 @@ export default function ImageGallery({
             <button
               type="button"
               onClick={() => setViewerOpen(false)}
-              aria-label="Close"
+              aria-label={t("common.close")}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
             >
               <Icon name="x" className="h-5 w-5" />
@@ -121,7 +123,7 @@ export default function ImageGallery({
                 <button
                   type="button"
                   onClick={() => setActive((i) => (i - 1 + images.length) % images.length)}
-                  aria-label="Previous photo"
+                  aria-label={t("gallery.prev.aria")}
                   className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:left-6 sm:h-12 sm:w-12"
                 >
                   <Icon name="chevron-left" className="h-6 w-6" />
@@ -129,7 +131,7 @@ export default function ImageGallery({
                 <button
                   type="button"
                   onClick={() => setActive((i) => (i + 1) % images.length)}
-                  aria-label="Next photo"
+                  aria-label={t("gallery.next.aria")}
                   className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:right-6 sm:h-12 sm:w-12"
                 >
                   <Icon name="chevron-right" className="h-6 w-6" />
@@ -145,7 +147,7 @@ export default function ImageGallery({
                   key={src + i}
                   type="button"
                   onClick={() => setActive(i)}
-                  aria-label={`Show photo ${i + 1}`}
+                  aria-label={t("gallery.showPhoto.aria", { n: i + 1 })}
                   className={`relative h-14 w-20 shrink-0 overflow-hidden rounded-lg ring-2 transition ${
                     i === active ? "ring-white" : "ring-transparent opacity-60 hover:opacity-100"
                   }`}

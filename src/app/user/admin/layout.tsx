@@ -1,7 +1,7 @@
 import AdminShell from "@/components/admin/AdminShell";
 
 export const metadata = {
-  title: "Admin · FindRoom.KH"
+  title: "Admin · Joul.KH"
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

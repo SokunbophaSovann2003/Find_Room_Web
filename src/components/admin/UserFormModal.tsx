@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Icon from "@/components/Icon";
+import SelectField from "@/components/SelectField";
 import type { AdminUser } from "@/lib/admin";
+import { useT } from "@/lib/language";
 
 export type UserFormValues = {
   username: string;
   phoneNumber: string;
   email?: string;
-  avatarUrl?: string;
   role: AdminUser["role"];
   status: AdminUser["status"];
 };
@@ -27,11 +28,11 @@ export default function UserFormModal({
   const [username, setUsername] = useState(initial?.username ?? "");
   const [phoneNumber, setPhoneNumber] = useState(initial?.phoneNumber ?? "");
   const [email, setEmail] = useState(initial?.email ?? "");
-  const [avatarUrl, setAvatarUrl] = useState(initial?.avatarUrl ?? "");
   const [role, setRole] = useState<AdminUser["role"]>(initial?.role ?? "user");
   const [status, setStatus] = useState<AdminUser["status"]>(initial?.status ?? "active");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const t = useT();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -45,7 +46,7 @@ export default function UserFormModal({
     e.preventDefault();
     if (saving) return;
     if (!username.trim() || !phoneNumber.trim()) {
-      setError("Name and phone are required.");
+      setError(t("admin.userForm.error.required"));
       return;
     }
     setError(null);
@@ -55,12 +56,11 @@ export default function UserFormModal({
         username: username.trim(),
         phoneNumber: phoneNumber.trim(),
         email: email.trim() || undefined,
-        avatarUrl: avatarUrl.trim() || undefined,
         role,
         status
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save.");
+      setError(err instanceof Error ? err.message : t("admin.userForm.error.saveFailed"));
       setSaving(false);
     }
   }
@@ -76,12 +76,12 @@ export default function UserFormModal({
         className="w-full max-w-md rounded-2xl bg-white p-5 shadow-cardHover sm:p-6"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold">{mode === "add" ? "Add user" : "Edit user"}</h3>
+          <h3 className="text-lg font-bold">{mode === "add" ? t("admin.userForm.title.add") : t("admin.userForm.title.edit")}</h3>
           <button
             type="button"
             onClick={onCancel}
             className="rounded-full p-1 text-ink-muted hover:bg-slate-100 hover:text-ink"
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             <Icon name="x" className="h-5 w-5" />
           </button>
@@ -89,7 +89,7 @@ export default function UserFormModal({
 
         <div className="space-y-4">
           <div>
-            <label className="label" htmlFor="u-name">Name</label>
+            <label className="label" htmlFor="u-name">{t("admin.userForm.field.name")}</label>
             <input
               id="u-name"
               className="input"
@@ -99,7 +99,7 @@ export default function UserFormModal({
             />
           </div>
           <div>
-            <label className="label" htmlFor="u-phone">Phone</label>
+            <label className="label" htmlFor="u-phone">{t("admin.userForm.field.phone")}</label>
             <input
               id="u-phone"
               className="input"
@@ -111,7 +111,7 @@ export default function UserFormModal({
             />
           </div>
           <div>
-            <label className="label" htmlFor="u-email">Email (optional)</label>
+            <label className="label" htmlFor="u-email">{t("admin.userForm.field.email")}</label>
             <input
               id="u-email"
               className="input"
@@ -120,40 +120,32 @@ export default function UserFormModal({
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div>
-            <label className="label" htmlFor="u-avatar">Avatar URL (optional)</label>
-            <input
-              id="u-avatar"
-              className="input"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              placeholder="https://…"
-            />
-          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label" htmlFor="u-role">Role</label>
-              <select
+              <label className="label" htmlFor="u-role">{t("admin.userForm.field.role")}</label>
+              <SelectField<AdminUser["role"]>
                 id="u-role"
-                className="input"
+                ariaLabel={t("admin.userForm.field.role")}
                 value={role}
-                onChange={(e) => setRole(e.target.value as AdminUser["role"])}
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-              </select>
+                options={[
+                  { value: "user", label: t("admin.role.user") },
+                  { value: "admin", label: t("admin.role.admin") }
+                ]}
+                onChange={setRole}
+              />
             </div>
             <div>
-              <label className="label" htmlFor="u-status">Status</label>
-              <select
+              <label className="label" htmlFor="u-status">{t("admin.userForm.field.status")}</label>
+              <SelectField<AdminUser["status"]>
                 id="u-status"
-                className="input"
+                ariaLabel={t("admin.userForm.field.status")}
                 value={status}
-                onChange={(e) => setStatus(e.target.value as AdminUser["status"])}
-              >
-                <option value="active">Active</option>
-                <option value="disabled">Disabled</option>
-              </select>
+                options={[
+                  { value: "active", label: t("admin.status.active") },
+                  { value: "disabled", label: t("admin.status.disabled") }
+                ]}
+                onChange={setStatus}
+              />
             </div>
           </div>
 
@@ -164,10 +156,10 @@ export default function UserFormModal({
 
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" onClick={onCancel} className="btn-ghost">
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" disabled={saving} className="btn-primary">
-            {saving ? "Saving…" : mode === "add" ? "Add user" : "Save changes"}
+            {saving ? t("common.saving") : mode === "add" ? t("admin.userForm.submit.add") : t("admin.userForm.submit.edit")}
           </button>
         </div>
       </form>

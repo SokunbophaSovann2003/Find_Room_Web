@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Icon, { propertyIcon, type IconName } from "@/components/Icon";
+import ConfirmModal from "@/components/ConfirmModal";
 import DateRangePicker from "@/components/DateRangePicker";
 import PriceRangePicker from "@/components/PriceRangePicker";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
@@ -14,6 +14,8 @@ import {
   updateLocalRoom,
   useLocalRooms
 } from "@/lib/local-rooms";
+import { toast } from "@/lib/toast";
+import { useT } from "@/lib/language";
 import type { PropertyType, Room } from "@/lib/types";
 
 type StatusFilter = "all" | "available" | "occupied";
@@ -22,9 +24,9 @@ type TypeFilter = "all" | PropertyType;
 const ADD_ROOM_PATH = "/profile/list-room";
 
 export default function AdminRoomsPage() {
-  const router = useRouter();
   const rooms = useLocalRooms();
   const users = useAdminUsers();
+  const t = useT();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -95,50 +97,59 @@ export default function AdminRoomsPage() {
       }
     });
     setEditing(null);
+    toast.success(t("toast.admin.listingUpdated"));
   }
 
   function handleToggleOccupied(room: Room) {
-    updateLocalRoom(room.id, { isOccupied: !room.isOccupied });
+    const nextOccupied = !room.isOccupied;
+    updateLocalRoom(room.id, { isOccupied: nextOccupied });
+    toast.success(
+      nextOccupied
+        ? t("toast.admin.listing.occupied", { title: room.title })
+        : t("toast.admin.listing.available", { title: room.title })
+    );
   }
 
   function handleDelete() {
     if (!confirmDelete) return;
+    const title = confirmDelete.title;
     deleteLocalRoom(confirmDelete.id);
     setConfirmDelete(null);
+    toast.success(t("toast.admin.listing.deleted", { title }));
   }
 
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Rooms</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t("admin.rooms.title")}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          View, edit, mark availability, or delete room listings.
+          {t("admin.rooms.subtitle")}
         </p>
       </header>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
-          label="Rooms"
+          label={t("admin.rooms.stat.rooms")}
           value={stats.total}
-          hint={`${stats.available} available`}
+          hint={t("admin.rooms.stat.availableHint", { n: stats.available })}
           icon="building"
         />
         <StatCard
-          label="Available"
+          label={t("admin.rooms.stat.available")}
           value={stats.available}
-          hint={stats.available === 0 ? "All occupied" : "Open to renters"}
+          hint={stats.available === 0 ? t("admin.rooms.stat.allOccupied") : t("admin.rooms.stat.openToRenters")}
           icon="home"
         />
         <StatCard
-          label="Occupied"
+          label={t("admin.rooms.stat.occupied")}
           value={stats.occupied}
-          hint={stats.occupied === 0 ? "None occupied" : "Currently rented"}
+          hint={stats.occupied === 0 ? t("admin.rooms.stat.noneOccupied") : t("admin.rooms.stat.currentlyRented")}
           icon="check"
         />
         <StatCard
-          label="Property types"
+          label={t("admin.rooms.stat.types")}
           value={stats.types}
-          hint={stats.types === 0 ? "No rooms yet" : "Distinct categories"}
+          hint={stats.types === 0 ? t("admin.rooms.stat.noRooms") : t("admin.rooms.stat.distinctCategories")}
           icon="bed"
         />
       </section>
@@ -153,7 +164,7 @@ export default function AdminRoomsPage() {
             />
             <input
               className="input pl-9"
-              placeholder="Search title, address, or owner"
+              placeholder={t("admin.rooms.search.placeholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -163,7 +174,7 @@ export default function AdminRoomsPage() {
             onClick={() => setFiltersOpen((v) => !v)}
             aria-expanded={filtersOpen}
             aria-controls="rooms-filter-controls"
-            aria-label={filtersOpen ? "Hide filters" : "Show filters"}
+            aria-label={filtersOpen ? t("admin.filter.hideFilters") : t("admin.filter.showFilters")}
             className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-ink-muted transition hover:bg-slate-50 hover:text-ink lg:hidden"
           >
             <Icon
@@ -178,24 +189,24 @@ export default function AdminRoomsPage() {
           className={`${filtersOpen ? "flex" : "hidden"} flex-col gap-3 lg:contents`}
         >
           <FilterSelect
-            ariaLabel="Status"
+            ariaLabel={t("admin.filter.statusLabel")}
             value={statusFilter}
             onChange={(v) => setStatusFilter(v as StatusFilter)}
             options={[
-              { value: "all", label: "Any status" },
-              { value: "available", label: "Available" },
-              { value: "occupied", label: "Occupied" }
+              { value: "all", label: t("admin.filter.anyStatus") },
+              { value: "available", label: t("admin.status.available") },
+              { value: "occupied", label: t("admin.status.occupied") }
             ]}
           />
           <FilterSelect
-            ariaLabel="Property type"
+            ariaLabel={t("admin.filter.typeLabel")}
             value={typeFilter}
             onChange={(v) => setTypeFilter(v as TypeFilter)}
             options={[
-              { value: "all", label: "Any type" },
-              ...ALL_PROPERTY_TYPES.map((t) => ({
-                value: t,
-                label: t.charAt(0).toUpperCase() + t.slice(1)
+              { value: "all", label: t("admin.filter.anyType") },
+              ...ALL_PROPERTY_TYPES.map((pt) => ({
+                value: pt,
+                label: t(`admin.propertyType.${pt}`)
               }))
             ]}
           />
@@ -210,7 +221,7 @@ export default function AdminRoomsPage() {
               <span
                 className={`truncate ${locationLabel ? "text-ink" : "text-ink-soft"}`}
               >
-                {locationLabel || "Any location"}
+                {locationLabel || t("admin.filter.anyLocation")}
               </span>
               <Icon name="map-pin" className="h-4 w-4 shrink-0 text-ink-soft" />
             </button>
@@ -226,16 +237,16 @@ export default function AdminRoomsPage() {
           <DateRangePicker
             from={dateFrom}
             to={dateTo}
-            placeholder="Any created date"
-            onChange={(f, t) => {
+            placeholder={t("admin.filter.anyCreatedDate")}
+            onChange={(f, to) => {
               setDateFrom(f);
-              setDateTo(t);
+              setDateTo(to);
             }}
           />
           <PriceRangePicker
             min={priceMin}
             max={priceMax}
-            placeholder="Any price"
+            placeholder={t("admin.filter.anyPrice")}
             onChange={(mn, mx) => {
               setPriceMin(mn);
               setPriceMax(mx);
@@ -245,7 +256,7 @@ export default function AdminRoomsPage() {
 
         <Link href={ADD_ROOM_PATH} className="btn-primary justify-center">
           <Icon name="plus" className="h-4 w-4" />
-          Add room
+          {t("admin.rooms.addRoom")}
         </Link>
       </div>
 
@@ -254,19 +265,19 @@ export default function AdminRoomsPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-ink-soft">
             <tr>
-              <th className="px-4 py-3 font-semibold">Listing</th>
-              <th className="px-4 py-3 font-semibold">Owner</th>
-              <th className="px-4 py-3 font-semibold">Location</th>
-              <th className="px-4 py-3 font-semibold">Price</th>
-              <th className="px-4 py-3 font-semibold">Status</th>
-              <th className="px-4 py-3 text-right font-semibold">Actions</th>
+              <th className="px-4 py-3 font-semibold">{t("admin.rooms.col.listing")}</th>
+              <th className="px-4 py-3 font-semibold">{t("admin.rooms.col.owner")}</th>
+              <th className="px-4 py-3 font-semibold">{t("admin.rooms.col.location")}</th>
+              <th className="px-4 py-3 font-semibold">{t("admin.rooms.col.price")}</th>
+              <th className="px-4 py-3 font-semibold">{t("admin.rooms.col.status")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("admin.rooms.col.actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center text-sm text-ink-muted">
-                  No rooms match this search.
+                  {t("admin.rooms.empty")}
                 </td>
               </tr>
             ) : (
@@ -284,7 +295,7 @@ export default function AdminRoomsPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-ink">{room.title}</p>
-                        <p className="truncate text-xs capitalize text-ink-muted">{room.type}</p>
+                        <p className="truncate text-xs text-ink-muted">{t(`type.${room.type}`)}</p>
                       </div>
                     </Link>
                   </td>
@@ -311,7 +322,6 @@ export default function AdminRoomsPage() {
                   <td className="px-4 py-3">
                     <RowActions
                       room={room}
-                      onView={() => router.push(`/rooms/${room.id}`)}
                       onEdit={() => setEditing(room)}
                       onToggle={() => handleToggleOccupied(room)}
                       onDelete={() => setConfirmDelete(room)}
@@ -328,7 +338,7 @@ export default function AdminRoomsPage() {
       <ul className="space-y-2 md:hidden">
         {filtered.length === 0 ? (
           <li className="card px-4 py-10 text-center text-sm text-ink-muted">
-            No rooms match this search.
+            {t("admin.rooms.empty")}
           </li>
         ) : (
           filtered.map((room) => (
@@ -359,7 +369,7 @@ export default function AdminRoomsPage() {
                     <p className="text-sm font-bold text-brand">
                       ${room.price}
                       <span className="ml-0.5 text-[11px] font-medium text-ink-muted">
-                        / month
+                        {t("room.suffix.monthly")}
                       </span>
                     </p>
                     <StatusPill occupied={!!room.isOccupied} />
@@ -367,7 +377,6 @@ export default function AdminRoomsPage() {
                 </div>
                 <RowActions
                   room={room}
-                  onView={() => router.push(`/rooms/${room.id}`)}
                   onEdit={() => setEditing(room)}
                   onToggle={() => handleToggleOccupied(room)}
                   onDelete={() => setConfirmDelete(room)}
@@ -387,35 +396,19 @@ export default function AdminRoomsPage() {
         />
       ) : null}
 
-      {confirmDelete ? (
-        <div
-          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/40 px-4"
-          onClick={() => setConfirmDelete(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-cardHover"
-          >
-            <div className="mb-2 flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-700">
-                <Icon name="trash" className="h-4 w-4" />
-              </span>
-              <h3 className="text-base font-bold">Delete room?</h3>
-            </div>
-            <p className="text-sm text-ink-muted">
-              <b>{confirmDelete.title}</b> will be removed. This can&apos;t be undone in mock data.
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setConfirmDelete(null)} className="btn-ghost">
-                Cancel
-              </button>
-              <button type="button" onClick={handleDelete} className="btn-danger">
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmModal
+        open={!!confirmDelete}
+        title={t("admin.rooms.delete.title")}
+        body={
+          confirmDelete ? (
+            <>
+              <b>{confirmDelete.title}</b>{t("admin.rooms.delete.body.suffix")}
+            </>
+          ) : null
+        }
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
@@ -546,36 +539,36 @@ function FilterSelect({
 }
 
 function StatusPill({ occupied }: { occupied: boolean }) {
+  const t = useT();
   if (occupied) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
         <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-        Occupied
+        {t("admin.status.occupied")}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-      Available
+      {t("admin.status.available")}
     </span>
   );
 }
 
 function RowActions({
   room,
-  onView,
   onEdit,
   onToggle,
   onDelete
 }: {
   room: Room;
-  onView: () => void;
   onEdit: () => void;
   onToggle: () => void;
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   return (
     <div className="relative">
       <button
@@ -583,7 +576,7 @@ function RowActions({
         onClick={() => setOpen((v) => !v)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-100 hover:text-ink"
-        aria-label="Row actions"
+        aria-label={t("admin.rowActions.aria")}
       >
         <Icon name="more-vertical" className="h-4 w-4" />
       </button>
@@ -592,14 +585,13 @@ function RowActions({
           role="menu"
           className="absolute right-0 top-full z-30 mt-1.5 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-cardHover"
         >
-          <MenuItem icon="home" label="View on site" onClick={onView} />
-          <MenuItem icon="pencil" label="Edit" onClick={onEdit} />
+          <MenuItem icon="pencil" label={t("admin.rooms.action.edit")} onClick={onEdit} />
           <MenuItem
             icon="shield"
-            label={room.isOccupied ? "Mark available" : "Mark occupied"}
+            label={room.isOccupied ? t("admin.rooms.action.markAvailable") : t("admin.rooms.action.markOccupied")}
             onClick={onToggle}
           />
-          <MenuItem icon="trash" label="Delete" danger onClick={onDelete} />
+          <MenuItem icon="trash" label={t("admin.rooms.action.delete")} danger onClick={onDelete} />
         </div>
       ) : null}
     </div>

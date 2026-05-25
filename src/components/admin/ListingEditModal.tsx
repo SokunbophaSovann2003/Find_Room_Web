@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
+import SelectField from "@/components/SelectField";
 import type { AdminUser } from "@/lib/admin";
 import type { Room } from "@/lib/types";
+import { useT } from "@/lib/language";
 
 export type ListingEditValues = {
   title: string;
@@ -29,6 +31,7 @@ export default function ListingEditModal({
   const [ownerUid, setOwnerUid] = useState(room.owner.id);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const t = useT();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -47,7 +50,7 @@ export default function ListingEditModal({
     return [
       {
         uid: room.owner.id,
-        username: `${room.owner.name} (not in user directory)`,
+        username: t("admin.listingEdit.field.notInDirectory", { name: room.owner.name }),
         phoneNumber: "",
         role: "user" as const,
         status: "active" as const,
@@ -55,14 +58,14 @@ export default function ListingEditModal({
       },
       ...sorted
     ];
-  }, [users, room.owner]);
+  }, [users, room.owner, t]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (saving) return;
     const priceNum = Number(price);
     if (!title.trim() || !Number.isFinite(priceNum) || priceNum < 0) {
-      setError("Title and a non-negative price are required.");
+      setError(t("admin.listingEdit.error.required"));
       return;
     }
     setError(null);
@@ -75,7 +78,7 @@ export default function ListingEditModal({
         ownerUid
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save.");
+      setError(err instanceof Error ? err.message : t("admin.listingEdit.error.saveFailed"));
       setSaving(false);
     }
   }
@@ -91,12 +94,12 @@ export default function ListingEditModal({
         className="w-full max-w-md rounded-2xl bg-white p-5 shadow-cardHover sm:p-6"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold">Edit listing</h3>
+          <h3 className="text-lg font-bold">{t("admin.listingEdit.title")}</h3>
           <button
             type="button"
             onClick={onCancel}
             className="rounded-full p-1 text-ink-muted hover:bg-slate-100 hover:text-ink"
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             <Icon name="x" className="h-5 w-5" />
           </button>
@@ -104,7 +107,7 @@ export default function ListingEditModal({
 
         <div className="space-y-4">
           <div>
-            <label className="label" htmlFor="l-title">Title</label>
+            <label className="label" htmlFor="l-title">{t("admin.listingEdit.field.title")}</label>
             <input
               id="l-title"
               className="input"
@@ -114,7 +117,7 @@ export default function ListingEditModal({
             />
           </div>
           <div>
-            <label className="label" htmlFor="l-price">Monthly price (USD)</label>
+            <label className="label" htmlFor="l-price">{t("admin.listingEdit.field.price")}</label>
             <input
               id="l-price"
               type="number"
@@ -126,20 +129,17 @@ export default function ListingEditModal({
             />
           </div>
           <div>
-            <label className="label" htmlFor="l-owner">Owner</label>
-            <select
+            <label className="label" htmlFor="l-owner">{t("admin.listingEdit.field.owner")}</label>
+            <SelectField<string>
               id="l-owner"
-              className="input"
+              ariaLabel={t("admin.listingEdit.field.owner")}
               value={ownerUid}
-              onChange={(e) => setOwnerUid(e.target.value)}
-            >
-              {ownerOptions.map((u) => (
-                <option key={u.uid} value={u.uid}>
-                  {u.username}
-                  {u.phoneNumber ? ` · ${u.phoneNumber}` : ""}
-                </option>
-              ))}
-            </select>
+              options={ownerOptions.map((u) => ({
+                value: u.uid,
+                label: `${u.username}${u.phoneNumber ? ` · ${u.phoneNumber}` : ""}`
+              }))}
+              onChange={setOwnerUid}
+            />
           </div>
           <button
             type="button"
@@ -147,9 +147,9 @@ export default function ListingEditModal({
             className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-left transition hover:bg-slate-50"
           >
             <span>
-              <span className="block text-sm font-semibold text-ink">Marked as occupied</span>
+              <span className="block text-sm font-semibold text-ink">{t("admin.listingEdit.toggle.label")}</span>
               <span className="block text-xs text-ink-muted">
-                Hide the listing from new renter inquiries.
+                {t("admin.listingEdit.toggle.hint")}
               </span>
             </span>
             <span
@@ -172,10 +172,10 @@ export default function ListingEditModal({
 
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" onClick={onCancel} className="btn-ghost">
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" disabled={saving} className="btn-primary">
-            {saving ? "Saving…" : "Save changes"}
+            {saving ? t("common.saving") : t("admin.listingEdit.saveChanges")}
           </button>
         </div>
       </form>

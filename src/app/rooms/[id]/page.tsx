@@ -5,21 +5,45 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ImageGallery from "@/components/ImageGallery";
 import RoomCard from "@/components/RoomCard";
-import Icon, { amenityIcon } from "@/components/Icon";
+import Icon, { amenityIcon, type IconName } from "@/components/Icon";
+import ConfirmModal from "@/components/ConfirmModal";
+import ListingEditModal, { type ListingEditValues } from "@/components/admin/ListingEditModal";
 import { findRoomById, similarRooms } from "@/lib/mock-data";
-import { getLocalRoomById } from "@/lib/local-rooms";
+import { deleteLocalRoom, getLocalRoomById, updateLocalRoom } from "@/lib/local-rooms";
 import { useSession } from "@/lib/session";
+import { isAdmin, pushIncomingNotification, useAdminUsers } from "@/lib/admin";
+import { useViewMode } from "@/lib/view-mode";
+import { toast } from "@/lib/toast";
+import { useT } from "@/lib/language";
 import type { Room } from "@/lib/types";
+
+const REPORT_REASONS = [
+  { value: "misleading", key: "room.report.reason.misleading" },
+  { value: "priceWrong", key: "room.report.reason.priceWrong" },
+  { value: "alreadyRented", key: "room.report.reason.alreadyRented" },
+  { value: "suspicious", key: "room.report.reason.suspicious" },
+  { value: "other", key: "room.report.reason.other" }
+] as const;
+type ReportReason = (typeof REPORT_REASONS)[number]["value"];
 
 type RoomState = Room | "loading" | "missing";
 
 export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const session = useSession();
+  const viewMode = useViewMode();
+  const adminUsers = useAdminUsers();
+  const t = useT();
   const [room, setRoom] = useState<RoomState>(() => findRoomById(params.id) ?? "loading");
   const [trackedId, setTrackedId] = useState(params.id);
   const [contactOpen, setContactOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason | null>(null);
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportSent, setReportSent] = useState(false);
+  const [adminEditOpen, setAdminEditOpen] = useState(false);
+  const [adminDeleteOpen, setAdminDeleteOpen] = useState(false);
   // Defer the Google Maps embed until the user explicitly asks for it. The
   // embed pulls www.google.com which is blocked by the dev preview tool, and
   // the iframe is heavy on initial load anyway.
@@ -68,19 +92,24 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   if (room === "missing") {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <h1 className="text-2xl font-extrabold tracking-tight">Room not found</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">{t("room.notFound.title")}</h1>
         <p className="mt-2 text-sm text-ink-muted">
-          The listing you’re looking for doesn’t exist or has been removed.
+          {t("room.notFound.body")}
         </p>
         <Link href="/explore" className="btn-primary mt-6">
-          Back to Explore
+          {t("room.notFound.cta")}
         </Link>
       </div>
     );
   }
 
   const isOwner = session?.uid === room.owner.id;
-  const similar = isOwner ? [] : similarRooms(room);
+  // Admin chrome: the admin has switched to "Admin" view and we're rendering
+  // /rooms/[id] outside the admin shell. In that mode we surface moderation
+  // actions in place of the renter-facing CTAs (Contact / Location), hide the
+  // marketing footer, and drop the Similar Rooms strip.
+  const adminViewActive = viewMode === "admin" && isAdmin(session);
+  const similar = isOwner || adminViewActive ? [] : similarRooms(room);
   const mapQuery =
     room.lat != null && room.lng != null
       ? `${room.lat},${room.lng}`
@@ -88,21 +117,9 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
   const phoneNumbers = room.owner.phoneNumbers ?? [];
   const telegramPhones = room.owner.telegramPhones ?? [];
-  const periodSuffixMap: Record<NonNullable<Room["pricePeriod"]>, string> = {
-    daily: "/ day",
-    weekly: "/ week",
-    monthly: "/ month",
-    yearly: "/ year"
-  };
-  const periodLabelMap: Record<NonNullable<Room["pricePeriod"]>, string> = {
-    daily: "Daily rent",
-    weekly: "Weekly rent",
-    monthly: "Monthly rent",
-    yearly: "Yearly rent"
-  };
   const pricePeriod = room.pricePeriod ?? "monthly";
-  const priceSuffix = periodSuffixMap[pricePeriod];
-  const rentLabel = periodLabelMap[pricePeriod];
+  const priceSuffix = t(`room.suffix.${pricePeriod}`);
+  const rentLabel = t(`room.fee.rent.${pricePeriod}`);
 
   const fullAddress = [room.address, room.area, room.district, room.city]
     .filter(Boolean)
@@ -111,14 +128,14 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const locationCard = (
     <section>
       <div className="mb-2 flex items-end justify-between">
-        <h2 className="text-base font-bold">Location</h2>
+        <h2 className="text-base font-bold">{t("room.section.location")}</h2>
         <a
           href={mapsLink}
           target="_blank"
           rel="noreferrer"
           className="text-xs font-medium text-brand hover:text-brand-dark"
         >
-          Open in Maps ↗
+          {t("room.location.openMaps")}
         </a>
       </div>
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
@@ -142,8 +159,8 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               className="flex h-full w-full flex-col items-center justify-center gap-2 text-ink-muted transition hover:bg-slate-200/60"
             >
               <Icon name="map-pin" className="h-8 w-8 text-brand" />
-              <span className="text-sm font-semibold text-ink">Show map</span>
-              <span className="text-[11px] text-ink-soft">Loads Google Maps</span>
+              <span className="text-sm font-semibold text-ink">{t("room.location.showMap")}</span>
+              <span className="text-[11px] text-ink-soft">{t("room.location.loadsGoogleMaps")}</span>
             </button>
           )}
         </div>
@@ -151,62 +168,115 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
     </section>
   );
 
+  const ownerIdentity = (
+    <>
+      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-slate-200 ring-2 ring-brand/20">
+        {room.owner.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={room.owner.avatarUrl}
+            alt={room.owner.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-lg font-bold text-brand">
+            {room.owner.name.trim().charAt(0).toUpperCase() || "?"}
+          </span>
+        )}
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] uppercase tracking-wide text-ink-soft">
+          {t("room.host.listedBy")}
+        </p>
+        <p className="truncate font-semibold text-ink">{room.owner.name}</p>
+      </div>
+    </>
+  );
+
   const hostCard = (
     <section>
-      <h2 className="mb-3 text-base font-bold lg:hidden">Contact the host</h2>
+      <h2 className="mb-3 text-base font-bold lg:hidden">{t("room.section.host")}</h2>
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-        <div className="flex items-center gap-3">
-          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-slate-200 ring-2 ring-brand/20">
-            {room.owner.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={room.owner.avatarUrl}
-                alt={room.owner.name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center text-lg font-bold text-brand">
-                {room.owner.name.trim().charAt(0).toUpperCase() || "?"}
-              </span>
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-wide text-ink-soft">
-              Listed by
-            </p>
-            <p className="truncate font-semibold text-ink">{room.owner.name}</p>
-          </div>
-        </div>
+        {adminViewActive ? (
+          <Link
+            href={`/user/admin/users/${room.owner.id}`}
+            className="-m-1 flex items-center gap-3 rounded-xl p-1 transition hover:bg-slate-50"
+          >
+            {ownerIdentity}
+          </Link>
+        ) : (
+          <div className="flex items-center gap-3">{ownerIdentity}</div>
+        )}
 
         <ul className="mt-4 space-y-2">
           {phoneNumbers.map((p) => (
             <ContactRow
               key={`tel-${p}`}
               icon="phone"
-              label="Phone"
+              label={t("room.contactLabel.phone")}
               value={p}
               href={`tel:${p.replace(/\s/g, "")}`}
             />
           ))}
-          {telegramPhones.map((t) => {
-            const handle = `+${t.replace(/\D/g, "")}`;
+          {telegramPhones.map((tg) => {
+            const handle = `+${tg.replace(/\D/g, "")}`;
             return (
               <ContactRow
-                key={`tg-${t}`}
+                key={`tg-${tg}`}
                 icon="telegram"
-                label="Telegram"
-                value={t}
+                label={t("room.contactLabel.telegram")}
+                value={tg}
                 href={`https://t.me/${handle}`}
               />
             );
           })}
         </ul>
+
+        {!isOwner && !adminViewActive ? (
+          <div className="mt-4 border-t border-slate-100 pt-3 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setReportReason(null);
+                setReportDetails("");
+                setReportSent(false);
+                setReportOpen(true);
+              }}
+              className="text-xs font-semibold text-ink-muted underline-offset-2 transition hover:text-red-600 hover:underline"
+            >
+              {t("room.host.reportListing")}
+            </button>
+          </div>
+        ) : null}
       </div>
     </section>
   );
 
+  function handleSubmitReport() {
+    if (!reportReason) return;
+    const reporter = session?.username ?? session?.phoneNumber ?? t("room.report.guestName");
+    const detailsLine = reportDetails.trim()
+      ? t("room.report.notif.details", { value: reportDetails.trim() })
+      : "";
+    pushIncomingNotification({
+      kind: "listing-flagged",
+      title: t("room.report.notif.title"),
+      body: t("room.report.notif.body", {
+        reporter,
+        title: (room as Room).title,
+        reason: t(`room.report.reason.${reportReason}`),
+        details: detailsLine
+      }),
+      relatedId: (room as Room).id
+    });
+    setReportSent(true);
+  }
+
   return (
-    <div className="pb-24 sm:pb-0">
+    // pb-24 clears the mobile sticky CTA / admin pill. The renter view drops
+    // that padding on sm+ because the sticky bar is mobile-only there, but the
+    // admin pill stays at every breakpoint, so keep the cushion when adminViewActive.
+    <div className={adminViewActive ? "pb-28" : "pb-24 sm:pb-0"}>
       <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6 sm:pt-8">
         <button
           type="button"
@@ -227,7 +297,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           className="mb-3 -ml-2 inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-sm font-medium text-ink-muted transition hover:bg-slate-100 hover:text-brand active:scale-[0.98]"
         >
           <Icon name="arrow-right" className="h-4 w-4 rotate-180" />
-          Back
+          {t("common.back")}
         </button>
 
         <ImageGallery images={room.images} title={room.title} typeLabel={room.type} />
@@ -236,9 +306,12 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           <div className="space-y-6">
             <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
               <div className="min-w-0">
-                <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl lg:text-3xl">
-                  {room.title}
-                </h1>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl lg:text-3xl">
+                    {room.title}
+                  </h1>
+                  {adminViewActive ? <AdminStatusPill occupied={!!room.isOccupied} /> : null}
+                </div>
                 <p className="mt-1 inline-flex items-center gap-1 text-sm text-ink-muted">
                   <Icon name="map-pin" className="h-4 w-4" />
                   {fullAddress}
@@ -259,17 +332,17 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               where the parent column is ~730px wide.
             */}
             <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8">
-              <StatChip icon="bed" value={room.bedrooms} label="Bed" />
+              <StatChip icon="bed" value={room.bedrooms} label={t("room.stat.bed")} />
               {room.areaSqm ? (
                 <StatChip icon="ruler" value={room.areaSqm} label="m²" />
               ) : null}
               {room.floor != null ? (
-                <StatChip icon="elevator" value={room.floor} label="Floor" />
+                <StatChip icon="elevator" value={room.floor} label={t("room.stat.floor")} />
               ) : null}
             </ul>
 
             <section>
-              <h2 className="mb-2 text-base font-bold">About this place</h2>
+              <h2 className="mb-2 text-base font-bold">{t("room.section.about")}</h2>
               <p className="text-sm leading-relaxed text-ink-muted">
                 {room.description}
               </p>
@@ -277,7 +350,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
 
             {room.amenities.length > 0 ? (
               <section>
-                <h2 className="mb-3 text-base font-bold">What this place offers</h2>
+                <h2 className="mb-3 text-base font-bold">{t("room.section.amenities")}</h2>
                 <ul className="flex flex-wrap gap-2">
                   {room.amenities.map((a) => (
                     <li
@@ -293,20 +366,20 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             ) : null}
 
             <section>
-              <h2 className="mb-2 text-base font-bold">Fees & utilities</h2>
+              <h2 className="mb-2 text-base font-bold">{t("room.section.fees")}</h2>
               <dl className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                 <FeeRow label={rentLabel} value={`$${room.price} ${priceSuffix}`} />
                 {room.deposit != null ? (
-                  <FeeRow label="Deposit (before move-in)" value={`$${room.deposit}`} />
+                  <FeeRow label={t("room.fee.deposit")} value={`$${room.deposit}`} />
                 ) : null}
                 {room.electricityPrice != null ? (
-                  <FeeRow label="Electricity" value={`$${room.electricityPrice} / kWh`} />
+                  <FeeRow label={t("room.fee.electricity")} value={`$${room.electricityPrice} ${t("room.fee.electricity.unit")}`} />
                 ) : null}
                 {room.waterPrice != null ? (
-                  <FeeRow label="Water" value={`$${room.waterPrice} / m³`} />
+                  <FeeRow label={t("room.fee.water")} value={`$${room.waterPrice} ${t("room.fee.water.unit")}`} />
                 ) : null}
                 {room.wifiPrice != null ? (
-                  <FeeRow label="Wi-Fi" value={`$${room.wifiPrice} / month`} />
+                  <FeeRow label={t("room.fee.wifi")} value={`$${room.wifiPrice} ${t("room.fee.wifi.unit")}`} />
                 ) : null}
                 {room.otherFees?.map((f) => (
                   <FeeRow key={f.label} label={f.label} value={f.amount} />
@@ -328,7 +401,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
 
         {similar.length > 0 ? (
           <section className="mt-12">
-            <h2 className="mb-4 text-lg font-bold">Similar rooms</h2>
+            <h2 className="mb-4 text-lg font-bold">{t("room.section.similar")}</h2>
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {similar.map((r) => (
                 <RoomCard key={r.id} room={r} />
@@ -339,7 +412,9 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
       </div>
 
       {/*
-        Mobile-only sticky action bar.
+        Sticky action bar. Mobile-only when in renter view (the desktop layout
+        keeps Contact/Location inline). In admin view it stays visible at every
+        breakpoint so the admin always has the moderation tools within reach.
         - Solid bg + no backdrop-blur: backdrop-filter on `position: fixed`
           elements has historically caused event-handling glitches on iOS
           Safari where taps on the bar's children silently fail.
@@ -347,37 +422,124 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           don't sit under the device chrome.
         - touch-action: manipulation removes the 300ms tap delay.
       */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-4 py-3 sm:hidden"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)", touchAction: "manipulation" }}
-      >
-        <div className="flex items-center gap-2">
-          <div className="shrink-0 whitespace-nowrap">
-            <span className="text-xl font-extrabold leading-tight text-brand">${room.price}</span>
-            <span className="ml-0.5 text-xs font-medium text-ink-muted">{priceSuffix}</span>
+      {adminViewActive ? (
+        // Mobile: edge-to-edge bar (matches the global AdminFloatingNav chrome).
+        // Desktop: centered floating pill so it doesn't span the whole window.
+        <div
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-[1050] flex justify-center sm:px-3"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)", touchAction: "manipulation" }}
+        >
+          <div className="pointer-events-auto grid w-full max-w-md grid-cols-3 items-start gap-1 border-t border-slate-200 bg-white/95 px-2 pb-2 pt-2 backdrop-blur sm:items-center sm:rounded-2xl sm:border sm:px-2 sm:py-2 sm:shadow-cardHover sm:mb-3">
+            <AdminActionButton
+              icon="pencil"
+              label={t("admin.rooms.action.edit")}
+              onClick={() => setAdminEditOpen(true)}
+            />
+            <AdminActionButton
+              icon="shield"
+              tone={room.isOccupied ? "amber" : "emerald"}
+              label={t(
+                room.isOccupied
+                  ? "admin.rooms.action.markAvailable"
+                  : "admin.rooms.action.markOccupied"
+              )}
+              onClick={() => {
+                const next = !room.isOccupied;
+                updateLocalRoom(room.id, { isOccupied: next });
+                setRoom({ ...(room as Room), isOccupied: next });
+                toast.success(
+                  next
+                    ? t("toast.admin.listing.occupied", { title: room.title })
+                    : t("toast.admin.listing.available", { title: room.title })
+                );
+              }}
+            />
+            <AdminActionButton
+              icon="trash"
+              label={t("admin.rooms.action.delete")}
+              danger
+              onClick={() => setAdminDeleteOpen(true)}
+            />
           </div>
-          <button
-            type="button"
-            onClick={() => setLocationOpen(true)}
-            className="btn-secondary h-11 flex-1 justify-center px-3"
-          >
-            <Icon name="map-pin" className="h-4 w-4" />
-            Location
-          </button>
-          <button
-            type="button"
-            onClick={() => setContactOpen(true)}
-            className="btn-primary h-11 flex-1 justify-center px-3"
-          >
-            <Icon name="phone" className="h-4 w-4" />
-            Contact
-          </button>
         </div>
-      </div>
+      ) : (
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-4 py-3 sm:hidden"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)", touchAction: "manipulation" }}
+        >
+          <div className="flex items-center gap-2">
+            <div className="shrink-0 whitespace-nowrap">
+              <span className="text-xl font-extrabold leading-tight text-brand">${room.price}</span>
+              <span className="ml-0.5 text-xs font-medium text-ink-muted">{priceSuffix}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLocationOpen(true)}
+              className="btn-secondary h-11 flex-1 justify-center px-3"
+            >
+              <Icon name="map-pin" className="h-4 w-4" />
+              {t("room.cta.location")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setContactOpen(true)}
+              className="btn-primary h-11 flex-1 justify-center px-3"
+            >
+              <Icon name="phone" className="h-4 w-4" />
+              {t("room.cta.contact")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {adminEditOpen ? (
+        <ListingEditModal
+          room={room as Room}
+          users={adminUsers}
+          onCancel={() => setAdminEditOpen(false)}
+          onSubmit={async (values: ListingEditValues) => {
+            const ownerName =
+              adminUsers.find((u) => u.uid === values.ownerUid)?.username ??
+              (room as Room).owner.name;
+            const patch: Partial<Room> = {
+              title: values.title,
+              price: values.price,
+              isOccupied: values.isOccupied,
+              owner: {
+                ...(room as Room).owner,
+                id: values.ownerUid,
+                name: ownerName
+              }
+            };
+            updateLocalRoom((room as Room).id, patch);
+            setRoom({ ...(room as Room), ...patch });
+            setAdminEditOpen(false);
+            toast.success(t("toast.admin.listingUpdated"));
+          }}
+        />
+      ) : null}
+
+      <ConfirmModal
+        open={adminDeleteOpen}
+        title={t("admin.rooms.delete.title")}
+        body={
+          <>
+            <b>{(room as Room).title}</b>{t("admin.rooms.delete.body.suffix")}
+          </>
+        }
+        onCancel={() => setAdminDeleteOpen(false)}
+        onConfirm={() => {
+          const title = (room as Room).title;
+          deleteLocalRoom((room as Room).id);
+          setAdminDeleteOpen(false);
+          toast.success(t("toast.admin.listing.deleted", { title }));
+          router.push("/user/admin");
+        }}
+      />
 
       <SheetModal
         open={contactOpen}
-        title="Contact the host"
+        title={t("room.section.host")}
         onClose={() => setContactOpen(false)}
       >
         <div className="overflow-y-auto p-4">
@@ -397,7 +559,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-wide text-ink-soft">Listed by</p>
+              <p className="text-[11px] uppercase tracking-wide text-ink-soft">{t("room.host.listedBy")}</p>
               <p className="truncate font-semibold text-ink">{room.owner.name}</p>
             </div>
           </div>
@@ -406,19 +568,19 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               <ContactRow
                 key={`tel-${p}`}
                 icon="phone"
-                label="Phone"
+                label={t("room.contactLabel.phone")}
                 value={p}
                 href={`tel:${p.replace(/\s/g, "")}`}
               />
             ))}
-            {telegramPhones.map((t) => {
-              const handle = `+${t.replace(/\D/g, "")}`;
+            {telegramPhones.map((tg) => {
+              const handle = `+${tg.replace(/\D/g, "")}`;
               return (
                 <ContactRow
-                  key={`tg-${t}`}
+                  key={`tg-${tg}`}
                   icon="telegram"
-                  label="Telegram"
-                  value={t}
+                  label={t("room.contactLabel.telegram")}
+                  value={tg}
                   href={`https://t.me/${handle}`}
                 />
               );
@@ -429,7 +591,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
 
       <SheetModal
         open={locationOpen}
-        title="Location"
+        title={t("room.section.location")}
         onClose={() => setLocationOpen(false)}
         bodyClassName="flex flex-1 flex-col overflow-hidden"
         panelClassName="h-[85vh] sm:h-auto"
@@ -454,8 +616,8 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               className="flex h-full w-full flex-col items-center justify-center gap-2 text-ink-muted transition hover:bg-slate-200/60"
             >
               <Icon name="map-pin" className="h-10 w-10 text-brand" />
-              <span className="text-sm font-semibold text-ink">Show map</span>
-              <span className="text-[11px] text-ink-soft">Loads Google Maps</span>
+              <span className="text-sm font-semibold text-ink">{t("room.location.showMap")}</span>
+              <span className="text-[11px] text-ink-soft">{t("room.location.loadsGoogleMaps")}</span>
             </button>
           )}
         </div>
@@ -465,8 +627,91 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           rel="noreferrer"
           className="border-t border-slate-100 px-4 py-3 text-center text-sm font-semibold text-brand hover:bg-brand/5"
         >
-          Open in Maps ↗
+          {t("room.location.openMaps")}
         </a>
+      </SheetModal>
+
+      <SheetModal
+        open={reportOpen}
+        title={t("room.report.title")}
+        onClose={() => setReportOpen(false)}
+      >
+        {reportSent ? (
+          <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+              <Icon name="check" className="h-6 w-6" />
+            </span>
+            <h3 className="text-base font-bold">{t("room.report.success.title")}</h3>
+            <p className="max-w-sm text-sm text-ink-muted">
+              {t("room.report.success.body")}
+            </p>
+            <button
+              type="button"
+              onClick={() => setReportOpen(false)}
+              className="btn-primary mt-2"
+            >
+              {t("room.report.done")}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4 p-4">
+            <p className="text-sm text-ink-muted">
+              {t("room.report.intro")}
+            </p>
+            <div>
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-ink-soft">
+                {t("room.report.reason.label")}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {REPORT_REASONS.map((r) => {
+                  const active = reportReason === r.value;
+                  return (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => setReportReason(r.value)}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                        active
+                          ? "bg-brand text-white shadow-sm"
+                          : "border border-slate-200 bg-white text-ink-muted hover:text-ink"
+                      }`}
+                    >
+                      {t(r.key)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-ink-muted">
+                {t("room.report.details.label")} <span className="font-normal text-ink-soft">{t("common.optional")}</span>
+              </label>
+              <textarea
+                className="input min-h-[100px] resize-y"
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+                placeholder={t("room.report.details.placeholder")}
+              />
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+              <button
+                type="button"
+                onClick={() => setReportOpen(false)}
+                className="btn-ghost"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitReport}
+                disabled={!reportReason}
+                className="btn-primary disabled:opacity-50"
+              >
+                {t("room.report.submit")}
+              </button>
+            </div>
+          </div>
+        )}
       </SheetModal>
     </div>
   );
@@ -487,6 +732,7 @@ function SheetModal({
   panelClassName?: string;
   bodyClassName?: string;
 }) {
+  const t = useT();
   if (!open) return null;
   return (
     <div
@@ -509,7 +755,7 @@ function SheetModal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
           >
             <Icon name="x" className="h-5 w-5" />
@@ -589,5 +835,57 @@ function FeeRow({ label, value }: { label: string; value: string }) {
       <dt className="text-ink-muted">{label}</dt>
       <dd className="font-semibold text-ink">{value}</dd>
     </div>
+  );
+}
+
+function AdminStatusPill({ occupied }: { occupied: boolean }) {
+  const t = useT();
+  if (occupied) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+        {t("admin.status.occupied")}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      {t("admin.status.available")}
+    </span>
+  );
+}
+
+function AdminActionButton({
+  icon,
+  label,
+  onClick,
+  danger = false,
+  tone
+}: {
+  icon: IconName;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+  // Optional accent that matches the status pill semantics (amber = occupied,
+  // emerald = available). Overrides the default neutral text color.
+  tone?: "amber" | "emerald";
+}) {
+  const colorClass = danger
+    ? "text-red-700 hover:bg-red-50"
+    : tone === "amber"
+      ? "text-amber-700 hover:bg-amber-50"
+      : tone === "emerald"
+        ? "text-emerald-700 hover:bg-emerald-50"
+        : "text-ink-muted hover:bg-slate-50 hover:text-ink";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center gap-0.5 rounded-xl px-1.5 py-2 text-[11px] font-semibold transition ${colorClass}`}
+    >
+      <Icon name={icon} className="h-5 w-5" />
+      <span className="text-center leading-tight">{label}</span>
+    </button>
   );
 }

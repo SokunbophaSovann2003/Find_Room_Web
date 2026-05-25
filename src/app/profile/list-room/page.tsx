@@ -11,7 +11,17 @@ import { addLocalRoom, getLocalRoomById } from "@/lib/local-rooms";
 import { findRoomById } from "@/lib/mock-data";
 import { downscalePhoto } from "@/lib/image";
 import { loadOverrides } from "@/lib/profile-overrides";
-import { DEFAULT_AMENITIES, getAdminSettings } from "@/lib/admin";
+import { DEFAULT_AMENITIES, getAdminSettings, pushIncomingNotification } from "@/lib/admin";
+import ConfirmModal from "@/components/ConfirmModal";
+import SelectField from "@/components/SelectField";
+import {
+  clearListRoomPrefs,
+  loadListRoomPrefs,
+  saveListRoomPrefs,
+  type ListRoomFeePref
+} from "@/lib/list-room-prefs";
+import { toast } from "@/lib/toast";
+import { useT } from "@/lib/language";
 import type { Room, PropertyType, PricePeriod } from "@/lib/types";
 
 const PRICE_PERIODS: { value: PricePeriod; label: string; suffix: string }[] = [
@@ -78,6 +88,7 @@ const MAX_PHOTOS = 5;
 export default function ListRoomPage() {
   const router = useRouter();
   const session = useSession();
+  const t = useT();
   const searchParams = useSearchParams();
   // Read admin-configured defaults once per mount — settings changes
   // mid-edit shouldn't snap the user's typed values.
@@ -104,6 +115,7 @@ export default function ListRoomPage() {
   const [feesOpen, setFeesOpen] = useState(false);
   const [amenitiesOpen, setAmenitiesOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [rentPeriod, setRentPeriod] = useState<PricePeriod>(settings.defaultPricePeriod);
   const pinFetchRef = useRef(0);
 
@@ -159,7 +171,7 @@ export default function ListRoomPage() {
     if (!source) return;
     copyAppliedRef.current = true;
 
-    setTitle(`Copy of ${source.title}`);
+    setTitle(`${t("listRoom.copyPrefix")} ${source.title}`);
     setDescription(source.description);
     setType(source.type);
     setBedrooms(source.bedrooms);
@@ -208,8 +220,53 @@ export default function ListRoomPage() {
       setTelegramPhones(source.owner.telegramPhones);
     }
   }, [searchParams]);
+
+  // Hydrate the persisted "things that don't change per listing" fields
+  // (location, fees, amenities, contacts…) from the user's last publish.
+  // Skipped when copying from an existing listing — the copy flow already
+  // owns those fields.
+  const prefsAppliedRef = useRef(false);
+  useEffect(() => {
+    if (prefsAppliedRef.current) return;
+    if (!session?.uid) return;
+    if (searchParams?.get("copyFrom")) return;
+    const prefs = loadListRoomPrefs(session.uid);
+    if (!prefs) return;
+    prefsAppliedRef.current = true;
+
+    if (prefs.description) setDescription(prefs.description);
+    if (prefs.location && Object.keys(prefs.location).length > 0) {
+      setLocation(prefs.location);
+    }
+    if (prefs.pin) setPin(prefs.pin);
+    if (prefs.amenities?.length) setSelected(new Set(prefs.amenities));
+    if (prefs.rentPeriod) setRentPeriod(prefs.rentPeriod);
+    if (prefs.fees?.length) {
+      setFees(
+        prefs.fees.map((f) => ({
+          id: newId(),
+          type: f.type,
+          price: f.price,
+          customLabel: f.customLabel,
+          customUnit: f.customUnit
+        }))
+      );
+    }
+    if (prefs.contactPhones?.length) setContactPhones(prefs.contactPhones);
+    if (prefs.telegramPhones?.length) setTelegramPhones(prefs.telegramPhones);
+  }, [session?.uid, searchParams]);
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [fees, setFees] = useState<FeeRow[]>([{ id: newId(), type: "rent", price: "" }]);
+  // Pre-populate with Rent + Electricity + Water so the host only has to fill
+  // in their rent price — admin settings provide reasonable utility defaults.
+  const [fees, setFees] = useState<FeeRow[]>(() => {
+    const s = getAdminSettings();
+    return [
+      { id: newId(), type: "rent", price: "" },
+      { id: newId(), type: "electricity", price: String(s.defaultElectricityPrice) },
+      { id: newId(), type: "water", price: String(s.defaultWaterPrice) }
+    ];
+  });
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -228,7 +285,9 @@ export default function ListRoomPage() {
     }
     if (oversized > 0) {
       setError(
-        `${oversized} photo${oversized === 1 ? " is" : "s are"} larger than 10 MB and ${oversized === 1 ? "was" : "were"} skipped.`
+        oversized === 1
+          ? t("listRoom.photos.oversized.one")
+          : t("listRoom.photos.oversized.many", { n: oversized })
       );
     } else {
       setError(null);
@@ -280,8 +339,7 @@ export default function ListRoomPage() {
     setFees((prev) => [...prev, { id: newId(), type: next.value, price: prefilled }]);
   }
 
-  function resetForm() {
-    if (!window.confirm("Clear all fields and start over?")) return;
+  function performResetForm() {
     setTitle("");
     setDescription("");
     setBedrooms(1);
@@ -297,6 +355,16 @@ export default function ListRoomPage() {
     setContactPhones(session?.phoneNumber ? [session.phoneNumber] : [""]);
     setTelegramPhones([""]);
     setError(null);
+    // Also discard the persisted prefs so the cleared state sticks across
+    // visits — otherwise the next mount would re-hydrate what we just wiped.
+    if (session?.uid) clearListRoomPrefs(session.uid);
+    toast.info(t("toast.form.cleared"));
+  }
+
+  function resetForm() {
+    // The previous implementation used the native window.confirm. We surface a
+    // styled ConfirmModal instead so the prompt matches the rest of the app.
+    setConfirmResetOpen(true);
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -305,17 +373,17 @@ export default function ListRoomPage() {
     setError(null);
 
     if (!session) {
-      setError("You need to be signed in to publish a listing.");
+      setError(t("listRoom.error.signInRequired"));
       return;
     }
-    if (!title.trim()) return failWith("Add a title for your listing.");
-    if (!description.trim()) return failWith("Add a short description.");
-    if (!location.province) return failWith("Pick a province for your listing.");
+    if (!title.trim()) return failWith(t("listRoom.error.titleRequired"));
+    if (!description.trim()) return failWith(t("listRoom.error.descriptionRequired"));
+    if (!location.province) return failWith(t("listRoom.error.provinceRequired"));
 
     const rentFee = fees.find((f) => f.type === "rent");
     const rentValue = Number(rentFee?.price);
     if (!rentFee || !Number.isFinite(rentValue) || rentValue <= 0) {
-      return failWith("Set a monthly rent amount.");
+      return failWith(t("listRoom.error.rentRequired"));
     }
 
     setSubmitting(true);
@@ -370,7 +438,7 @@ export default function ListRoomPage() {
         images,
         owner: {
           id: session.uid,
-          name: savedUsername ?? session.username ?? "FindRoom user",
+          name: savedUsername ?? session.username ?? "Joul user",
           phoneNumbers: ownerPhones,
           telegramPhones: ownerTelegrams.length ? ownerTelegrams : undefined,
           memberSince: new Date().toISOString().slice(0, 10),
@@ -380,10 +448,44 @@ export default function ListRoomPage() {
       };
 
       addLocalRoom(room);
+      pushIncomingNotification({
+        kind: "listing-posted",
+        title: t("listRoom.notif.title"),
+        body: t("listRoom.notif.body", {
+          owner: room.owner.name,
+          title: room.title,
+          price: room.price,
+          suffix: periodSuffix(room.pricePeriod ?? "monthly")
+        }),
+        relatedId: room.id
+      });
+
+      // Persist the cross-listing fields so the next visit pre-fills them.
+      // Strip the local numeric ids from fees — they're regenerated on hydrate
+      // so they never collide with the page's id counter.
+      if (session?.uid) {
+        saveListRoomPrefs(session.uid, {
+          description,
+          location,
+          pin,
+          amenities: Array.from(selected),
+          fees: fees.map<ListRoomFeePref>((f) => ({
+            type: f.type,
+            price: f.price,
+            customLabel: f.customLabel,
+            customUnit: f.customUnit
+          })),
+          rentPeriod,
+          contactPhones: ownerPhones,
+          telegramPhones: ownerTelegrams
+        });
+      }
+
+      toast.success(t("toast.listing.published", { title: room.title }));
       router.replace("/profile");
     } catch (err) {
       setSubmitting(false);
-      failWith(err instanceof Error ? err.message : "Could not save the listing.");
+      failWith(err instanceof Error ? err.message : t("listRoom.error.saveFailed"));
     }
   }
 
@@ -395,7 +497,7 @@ export default function ListRoomPage() {
   const rentFee = fees.find((f) => f.type === "rent");
 
   return (
-    <div className="pb-28 sm:pb-0">
+    <div className="pb-28">
       <div className="mx-auto max-w-2xl px-4 pt-4 sm:px-6 sm:pt-8">
         <nav className="mb-3 flex items-center gap-2 text-sm text-ink-muted">
           <button
@@ -404,33 +506,33 @@ export default function ListRoomPage() {
             className="-ml-2 inline-flex h-9 items-center gap-1.5 rounded-full px-2 font-medium text-ink-muted transition hover:bg-slate-100 hover:text-brand"
           >
             <Icon name="arrow-right" className="h-4 w-4 rotate-180" />
-            Profile
+            {t("listRoom.nav.profile")}
           </button>
         </nav>
 
         <header className="mb-5">
           <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">
-            List your{" "}
+            {t("listRoom.title.template")}{" "}
             <span className="text-brand">
-              {PROPERTY_TYPE_OPTIONS.find((p) => p.value === type)?.label ?? "Room"}
+              {t(`type.${type}`) || t("listRoom.title.highlight.fallback")}
             </span>
           </h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Type or tap into any field below — the layout is how renters will see it.
+            {t("listRoom.subtitle")}
           </p>
         </header>
 
         <form id="list-room-form" onSubmit={handleSubmit}>
           {/* Photos */}
           <section>
-            <h2 className="mb-2 text-base font-bold">Photos</h2>
+            <h2 className="mb-2 text-base font-bold">{t("listRoom.photos.heading")}</h2>
             <ul className="grid grid-cols-5 gap-2 sm:grid-cols-6">
               {photos.length < MAX_PHOTOS ? (
                 <li>
                   <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 bg-white text-ink-muted transition hover:border-brand hover:bg-brand/5 hover:text-brand">
                     <Icon name="plus" className="h-5 w-5" />
                     <span className="text-[10px] font-semibold">
-                      {photos.length === 0 ? "Add" : "More"}
+                      {photos.length === 0 ? t("listRoom.photos.add") : t("listRoom.photos.more")}
                     </span>
                     <input
                       type="file"
@@ -455,7 +557,7 @@ export default function ListRoomPage() {
                   <button
                     type="button"
                     onClick={() => removePhoto(p.id)}
-                    aria-label="Remove photo"
+                    aria-label={t("listRoom.photos.remove.aria")}
                     className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-ink shadow transition hover:bg-white"
                   >
                     <Icon name="x" className="h-3 w-3" />
@@ -468,13 +570,13 @@ export default function ListRoomPage() {
           {/* Title */}
           <section className="mt-5">
             <h2 className="mb-2 text-base font-bold">
-              Title <span className="text-red-500">*</span>
+              {t("listRoom.titleField.heading")} <span className="text-red-500">*</span>
             </h2>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Cozy studio near Riverside"
+              placeholder={t("listRoom.titleField.placeholder")}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink placeholder:text-ink-soft transition hover:border-slate-300 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
             />
           </section>
@@ -483,15 +585,17 @@ export default function ListRoomPage() {
           <section className="mt-5">
             <h2 className="mb-2 text-base font-bold">
               <span className="text-brand">
-                {PROPERTY_TYPE_OPTIONS.find((p) => p.value === type)?.label ?? "Property"}
+                {t(`type.${type}`)}
               </span>{" "}
-              details
+              {t("listRoom.details.heading")}
             </h2>
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
               <ul className="flex flex-wrap items-center gap-x-5 gap-y-1.5 px-4 py-3.5 text-sm text-ink-muted">
                 <li className="inline-flex items-center gap-1.5">
                   <Icon name="bed" className="h-4 w-4 text-brand" />
-                  {bedrooms} bed{bedrooms === 1 ? "" : "s"}
+                  {bedrooms === 1
+                    ? t("listRoom.details.bed.one")
+                    : t("listRoom.details.bed.many", { n: bedrooms })}
                 </li>
                 {areaSqm ? (
                   <li className="inline-flex items-center gap-1.5">
@@ -501,7 +605,9 @@ export default function ListRoomPage() {
                 ) : null}
                 <li className="inline-flex items-center gap-1.5">
                   <Icon name="elevator" className="h-4 w-4 text-brand" />
-                  {floor} floor{floor === 1 ? "" : "s"}
+                  {floor === 1
+                    ? t("listRoom.details.floor.one")
+                    : t("listRoom.details.floor.many", { n: floor })}
                 </li>
               </ul>
               <button
@@ -510,7 +616,7 @@ export default function ListRoomPage() {
                 className="flex w-full items-center justify-center gap-1.5 border-t border-slate-100 px-4 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand/5"
               >
                 <Icon name="pencil" className="h-4 w-4" />
-                Edit details
+                {t("listRoom.details.edit")}
               </button>
             </div>
           </section>
@@ -518,12 +624,12 @@ export default function ListRoomPage() {
           {/* About this place */}
           <section className="mt-5">
             <h2 className="mb-2 text-base font-bold">
-              About this place <span className="text-red-500">*</span>
+              {t("listRoom.about.heading")} <span className="text-red-500">*</span>
             </h2>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Tell renters what to expect — the neighbourhood, vibe, anything special."
+              placeholder={t("listRoom.about.placeholder")}
               rows={4}
               className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-relaxed text-ink placeholder:text-ink-soft transition hover:border-slate-300 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
             />
@@ -531,7 +637,7 @@ export default function ListRoomPage() {
 
           {/* Amenities */}
           <section className="mt-5">
-            <h2 className="mb-2 text-base font-bold">What this place offers</h2>
+            <h2 className="mb-2 text-base font-bold">{t("listRoom.amenities.heading")}</h2>
             <ul className="flex flex-wrap gap-2">
               <li>
                 <button
@@ -540,7 +646,7 @@ export default function ListRoomPage() {
                   className="inline-flex items-center gap-1.5 rounded-full border border-brand bg-brand px-3 py-1.5 text-sm text-white transition hover:bg-brand-dark"
                 >
                   <Icon name="plus" className="h-3.5 w-3.5" />
-                  <span className="font-semibold">Add</span>
+                  <span className="font-semibold">{t("listRoom.amenities.add")}</span>
                 </button>
               </li>
               {Array.from(selected).map((a) => (
@@ -558,7 +664,7 @@ export default function ListRoomPage() {
           {/* Fees & utilities */}
           <section className="mt-5">
             <h2 className="mb-2 text-base font-bold">
-              Fees & utilities <span className="text-red-500">*</span>
+              {t("listRoom.fees.heading")} <span className="text-red-500">*</span>
             </h2>
             {(() => {
               const filledExtras = fees.filter(
@@ -570,7 +676,7 @@ export default function ListRoomPage() {
                   {hasRent || filledExtras.length > 0 ? (
                     <>
                       <div className="flex items-center gap-3 px-4 py-2.5">
-                        <span className="flex-1 text-sm text-ink">Rent fee</span>
+                        <span className="flex-1 text-sm text-ink">{t("listRoom.fees.rentLabel")}</span>
                         <span className="text-sm font-semibold text-ink">
                           ${rentFee?.price || "0"}
                         </span>
@@ -579,11 +685,11 @@ export default function ListRoomPage() {
                         </span>
                       </div>
                       {filledExtras.map((f) => {
-                        const meta = FEE_TYPES.find((t) => t.value === f.type);
+                        const meta = FEE_TYPES.find((ft) => ft.value === f.type);
                         const label =
                           f.type === "other"
-                            ? f.customLabel?.trim() || "Other"
-                            : meta?.label ?? f.type;
+                            ? f.customLabel?.trim() || t("listRoom.fees.other.fallback")
+                            : t(`feeType.${f.type}`) || meta?.label || f.type;
                         return (
                           <div
                             key={f.id}
@@ -610,7 +716,7 @@ export default function ListRoomPage() {
                     </>
                   ) : (
                     <div className="px-4 py-3 text-sm text-ink-soft">
-                      Set the rent and any utility fees.
+                      {t("listRoom.fees.fillIn")}
                     </div>
                   )}
                   <button
@@ -619,7 +725,7 @@ export default function ListRoomPage() {
                     className="flex w-full items-center justify-center gap-1.5 border-t border-slate-100 px-4 py-2 text-xs font-semibold text-brand transition hover:bg-brand/5"
                   >
                     <Icon name="pencil" className="h-3.5 w-3.5" />
-                    {hasRent || filledExtras.length > 0 ? "Edit fees" : "Add fees"}
+                    {hasRent || filledExtras.length > 0 ? t("listRoom.fees.editFees") : t("listRoom.fees.addFees")}
                   </button>
                 </div>
               );
@@ -628,13 +734,13 @@ export default function ListRoomPage() {
 
           {/* Contact */}
           <section className="mt-5">
-            <h2 className="text-base font-bold">Contact the host</h2>
+            <h2 className="text-base font-bold">{t("room.section.host")}</h2>
             <p className="mb-2 text-xs text-ink-muted">
-              Renters will use these contact to reach you.
+              {t("listRoom.contact.heading")}
             </p>
             {(() => {
               const phones = contactPhones.filter((p) => p.trim());
-              const tgs = telegramPhones.filter((t) => t.trim());
+              const tgs = telegramPhones.filter((tg) => tg.trim());
               const hasAny = phones.length + tgs.length > 0;
               return (
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -649,25 +755,25 @@ export default function ListRoomPage() {
                           <span className="flex-1 truncate text-sm font-semibold text-ink">
                             {p}
                           </span>
-                          <span className="text-xs text-ink-muted">Phone</span>
+                          <span className="text-xs text-ink-muted">{t("room.contactLabel.phone")}</span>
                         </div>
                       ))}
-                      {tgs.map((t) => (
+                      {tgs.map((tg) => (
                         <div
-                          key={`tg-${t}`}
+                          key={`tg-${tg}`}
                           className="flex items-center gap-3 border-t border-slate-100 px-4 py-2.5"
                         >
                           <Icon name="telegram" className="h-4 w-4 shrink-0 text-brand" />
                           <span className="flex-1 truncate text-sm font-semibold text-ink">
-                            {t}
+                            {tg}
                           </span>
-                          <span className="text-xs text-ink-muted">Telegram</span>
+                          <span className="text-xs text-ink-muted">{t("room.contactLabel.telegram")}</span>
                         </div>
                       ))}
                     </>
                   ) : (
                     <div className="px-4 py-3 text-sm text-ink-soft">
-                      Add phones and Telegram for renters to reach you.
+                      {t("listRoom.contact.add")}
                     </div>
                   )}
                   <button
@@ -676,7 +782,7 @@ export default function ListRoomPage() {
                     className="flex w-full items-center justify-center gap-1.5 border-t border-slate-100 px-4 py-2 text-xs font-semibold text-brand transition hover:bg-brand/5"
                   >
                     <Icon name="pencil" className="h-3.5 w-3.5" />
-                    {hasAny ? "Edit contacts" : "Add contact info"}
+                    {hasAny ? t("listRoom.contact.edit") : t("listRoom.contact.add")}
                   </button>
                 </div>
               );
@@ -686,7 +792,7 @@ export default function ListRoomPage() {
           {/* Location */}
           <section className="mt-5">
             <h2 className="mb-3 text-base font-bold">
-              Location <span className="text-red-500">*</span>
+              {t("listRoom.location.heading")} <span className="text-red-500">*</span>
             </h2>
             <div className="space-y-2">
               <button
@@ -699,7 +805,7 @@ export default function ListRoomPage() {
                     location.province ? "text-ink" : "text-ink-soft"
                   }`}
                 >
-                  {formatLocation(location) || "Pick province, then district / area…"}
+                  {formatLocation(location) || t("search.location.placeholder")}
                 </span>
                 <Icon name="chevron-down" className="ml-2 h-4 w-4 shrink-0 text-ink-soft" />
               </button>
@@ -715,8 +821,8 @@ export default function ListRoomPage() {
                     }`}
                   >
                     {pin
-                      ? pin.name ?? "Pinned — finding place name…"
-                      : "Open map to drop a pin or use my location…"}
+                      ? pin.name ?? t("listRoom.location.pin.move")
+                      : t("listRoom.location.pin.set")}
                   </span>
                   <Icon name="map-pin" className="ml-2 h-4 w-4 shrink-0 text-ink-soft" />
                 </button>
@@ -724,7 +830,7 @@ export default function ListRoomPage() {
                   <button
                     type="button"
                     onClick={() => handlePinChange(null)}
-                    aria-label="Clear pin"
+                    aria-label={t("common.clear")}
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-ink-soft transition hover:bg-slate-100 hover:text-ink"
                   >
                     <Icon name="x" className="h-4 w-4" />
@@ -744,46 +850,53 @@ export default function ListRoomPage() {
             </p>
           ) : null}
 
-          <div className="hidden items-center justify-end gap-2 pt-2 sm:flex">
-            <button
-              type="button"
-              onClick={resetForm}
-              disabled={submitting}
-              className="btn-secondary"
-            >
-              <Icon name="trash" className="h-4 w-4" />
-              Clear form
-            </button>
-            <button type="submit" disabled={submitting} className="btn-primary">
-              {submitting ? "Publishing…" : "Publish listing"}
-              {submitting ? null : <Icon name="arrow-right" className="h-4 w-4" />}
-            </button>
-          </div>
         </form>
       </div>
 
+      {/*
+        Page-owned action bar. Pinned to the bottom at every breakpoint so the
+        host always has Create/Cancel/Clear in reach — replaces the global
+        BottomNav / AdminFloatingNav (both hide on this route).
+      */}
       <div
-        className="fixed inset-x-0 bottom-0 z-40 flex gap-2 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:hidden"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+        className="fixed inset-x-0 bottom-0 z-[1050] border-t border-slate-200 bg-white/95 backdrop-blur"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <button
-          type="button"
-          onClick={resetForm}
-          disabled={submitting}
-          className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-ink-muted transition hover:bg-slate-50 disabled:opacity-50"
-        >
-          <Icon name="trash" className="h-4 w-4" />
-          Clear
-        </button>
-        <button
-          type="submit"
-          form="list-room-form"
-          disabled={submitting}
-          className="btn-primary h-11 flex-1 justify-center"
-        >
-          {submitting ? "Publishing…" : "Publish"}
-          {submitting ? null : <Icon name="arrow-right" className="h-4 w-4" />}
-        </button>
+        <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-3 sm:px-6">
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push("/profile");
+              }
+            }}
+            disabled={submitting}
+            className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-ink-muted transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            <Icon name="x" className="h-4 w-4" />
+            {t("listRoom.bottomBar.cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={resetForm}
+            disabled={submitting}
+            className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-ink-muted transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            <Icon name="trash" className="h-4 w-4" />
+            {t("listRoom.bottomBar.clear")}
+          </button>
+          <button
+            type="submit"
+            form="list-room-form"
+            disabled={submitting}
+            className="btn-primary h-11 flex-1 justify-center"
+          >
+            {submitting ? t("listRoom.bottomBar.creating") : t("listRoom.bottomBar.create")}
+            {submitting ? null : <Icon name="arrow-right" className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
       <LocationPicker
@@ -841,6 +954,18 @@ export default function ListRoomPage() {
         areaSqm={areaSqm}
         setAreaSqm={setAreaSqm}
       />
+
+      <ConfirmModal
+        open={confirmResetOpen}
+        title={t("listRoom.confirmClear.title")}
+        body={t("listRoom.confirmClear.body")}
+        confirmLabel={t("listRoom.confirmClear.confirm")}
+        onCancel={() => setConfirmResetOpen(false)}
+        onConfirm={() => {
+          setConfirmResetOpen(false);
+          performResetForm();
+        }}
+      />
     </div>
   );
 }
@@ -861,6 +986,7 @@ function ContactSheet({
   telegramPhones: string[];
   setTelegramPhones: (next: string[]) => void;
 }) {
+  const t = useT();
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -886,19 +1012,19 @@ function ContactSheet({
       className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Contact the host"
+      aria-label={t("listRoom.modal.editContact.title")}
     >
       <div className="absolute inset-0 bg-ink/50" onClick={onClose} aria-hidden />
       <div className="relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:max-h-[80vh] sm:max-w-md sm:rounded-3xl">
         <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
           <span aria-hidden />
           <h3 className="text-center text-base font-semibold text-ink">
-            Contact the host
+            {t("listRoom.modal.editContact.title")}
           </h3>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
           >
             <Icon name="x" className="h-5 w-5" />
@@ -906,20 +1032,20 @@ function ContactSheet({
         </div>
         <div className="space-y-4 overflow-y-auto p-4 sm:p-5">
           <ContactListEditor
-            label="Phone numbers"
+            label={t("listRoom.contact.phones.heading")}
             iconName="phone"
             placeholder="+855 12 345 678"
             values={contactPhones}
             onChange={setContactPhones}
-            addLabel="Add phone"
+            addLabel={t("listRoom.contact.phone.add")}
           />
           <ContactListEditor
-            label="Telegram phones"
+            label={t("listRoom.contact.telegram.heading")}
             iconName="telegram"
             placeholder="+855 12 345 678"
             values={telegramPhones}
             onChange={setTelegramPhones}
-            addLabel="Add Telegram"
+            addLabel={t("listRoom.contact.telegram.add")}
           />
         </div>
         <div
@@ -931,7 +1057,7 @@ function ContactSheet({
             onClick={onClose}
             className="btn-primary h-11 w-full justify-center"
           >
-            Done
+            {t("listRoom.modal.done")}
           </button>
         </div>
       </div>
@@ -958,6 +1084,7 @@ function FeesSheet({
   rentPeriod: PricePeriod;
   setRentPeriod: (p: PricePeriod) => void;
 }) {
+  const t = useT();
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -986,19 +1113,19 @@ function FeesSheet({
       className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Fees & utilities"
+      aria-label={t("listRoom.modal.editFees.title")}
     >
       <div className="absolute inset-0 bg-ink/50" onClick={onClose} aria-hidden />
       <div className="relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:max-h-[80vh] sm:max-w-md sm:rounded-3xl">
         <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
           <span aria-hidden />
           <h3 className="text-center text-base font-semibold text-ink">
-            Fees & utilities
+            {t("listRoom.modal.editFees.title")}
           </h3>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
           >
             <Icon name="x" className="h-5 w-5" />
@@ -1006,7 +1133,7 @@ function FeesSheet({
         </div>
         <div className="overflow-y-auto p-4 sm:p-5">
           <div className="grid grid-cols-[1fr_auto_auto_2rem] items-center gap-x-2 gap-y-3">
-            <span className="text-sm font-semibold text-ink">Rent fee</span>
+            <span className="text-sm font-semibold text-ink">{t("listRoom.fees.rentLabel")}</span>
             <div className="flex h-9 items-stretch overflow-hidden rounded border border-slate-200 bg-white focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
               <span className="flex items-center px-2 text-sm font-semibold text-ink-muted">$</span>
               <input
@@ -1019,25 +1146,17 @@ function FeesSheet({
                 className="w-16 bg-transparent pr-2 text-right text-sm font-semibold text-ink placeholder:text-ink-soft focus:outline-none"
               />
             </div>
-            <div className="relative col-span-2">
-              <select
+            <div className="col-span-2">
+              <SelectField<PricePeriod>
+                ariaLabel={t("listRoom.field.rentPeriod")}
                 value={rentPeriod}
-                onChange={(e) => setRentPeriod(e.target.value as PricePeriod)}
-                className="h-9 w-full cursor-pointer appearance-none rounded border border-slate-200 bg-white pl-3 pr-9 text-xs font-semibold text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
-              >
-                {PRICE_PERIODS.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-              <Icon
-                name="chevron-down"
-                className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
+                options={PRICE_PERIODS.map((p) => ({ value: p.value, label: t(`period.${p.value}`) || p.label }))}
+                onChange={setRentPeriod}
+                triggerClassName="flex h-9 w-full cursor-pointer items-center justify-between gap-1 rounded border border-slate-200 bg-white pl-3 pr-2 text-xs font-semibold text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
               />
             </div>
             {extras.map((fee) => {
-              const meta = FEE_TYPES.find((t) => t.value === fee.type) ?? FEE_TYPES[0];
+              const meta = FEE_TYPES.find((ft) => ft.value === fee.type) ?? FEE_TYPES[0];
               const isOther = fee.type === "other";
               return (
                 <Fragment key={fee.id}>
@@ -1046,25 +1165,20 @@ function FeesSheet({
                       type="text"
                       value={fee.customLabel ?? ""}
                       onChange={(e) => updateFee(fee.id, { customLabel: e.target.value })}
-                      placeholder="Name this fee…"
+                      placeholder={t("listRoom.field.feeLabel")}
                       className="h-9 min-w-0 rounded border border-slate-200 bg-white px-2 text-sm text-ink placeholder:text-ink-soft focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
                     />
                   ) : (
-                    <div className="relative min-w-0">
-                      <select
+                    <div className="min-w-0">
+                      <SelectField<string>
+                        ariaLabel={t("listRoom.field.feeType")}
                         value={fee.type}
-                        onChange={(e) => updateFee(fee.id, { type: e.target.value })}
-                        className="h-9 w-full cursor-pointer appearance-none rounded border border-slate-200 bg-white pl-3 pr-9 text-sm text-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
-                      >
-                        {FEE_TYPES.filter((t) => t.value !== "rent").map((t) => (
-                          <option key={t.value} value={t.value}>
-                            {t.label}
-                          </option>
-                        ))}
-                      </select>
-                      <Icon
-                        name="chevron-down"
-                        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
+                        options={FEE_TYPES.filter((ft) => ft.value !== "rent").map((ft) => ({
+                          value: ft.value,
+                          label: t(`feeType.${ft.value}`) || ft.label
+                        }))}
+                        onChange={(v) => updateFee(fee.id, { type: v })}
+                        triggerClassName="flex h-9 w-full cursor-pointer items-center justify-between gap-1 rounded border border-slate-200 bg-white pl-3 pr-2 text-sm text-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
                       />
                     </div>
                   )}
@@ -1085,7 +1199,7 @@ function FeesSheet({
                       type="text"
                       value={fee.customUnit ?? ""}
                       onChange={(e) => updateFee(fee.id, { customUnit: e.target.value })}
-                      placeholder="/ unit"
+                      placeholder={t("listRoom.field.feeUnit")}
                       className="h-9 w-20 rounded border border-slate-200 bg-white px-2 text-xs text-ink placeholder:text-ink-soft focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
                     />
                   ) : (
@@ -1096,7 +1210,7 @@ function FeesSheet({
                   <button
                     type="button"
                     onClick={() => removeFee(fee.id)}
-                    aria-label="Remove fee"
+                    aria-label={t("common.remove")}
                     className="flex h-8 w-8 items-center justify-center rounded-full text-ink-soft transition hover:bg-slate-100 hover:text-ink"
                   >
                     <Icon name="x" className="h-4 w-4" />
@@ -1111,7 +1225,7 @@ function FeesSheet({
             className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-sm font-semibold text-ink-muted transition hover:border-brand hover:bg-brand/5 hover:text-brand"
           >
             <Icon name="plus" className="h-4 w-4" />
-            Add fee
+            {t("listRoom.field.addFee")}
           </button>
         </div>
         <div
@@ -1123,7 +1237,7 @@ function FeesSheet({
             onClick={onClose}
             className="btn-primary h-11 w-full justify-center"
           >
-            Done
+            {t("listRoom.modal.done")}
           </button>
         </div>
       </div>
@@ -1144,6 +1258,7 @@ function AmenitiesSheet({
   toggle: (a: string) => void;
   options: string[];
 }) {
+  const t = useT();
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -1169,19 +1284,19 @@ function AmenitiesSheet({
       className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Amenities"
+      aria-label={t("listRoom.modal.editAmenities.title")}
     >
       <div className="absolute inset-0 bg-ink/50" onClick={onClose} aria-hidden />
       <div className="relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:max-h-[80vh] sm:max-w-md sm:rounded-3xl">
         <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
           <span aria-hidden />
           <h3 className="text-center text-base font-semibold text-ink">
-            What this place offers
+            {t("listRoom.amenities.heading")}
           </h3>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
           >
             <Icon name="x" className="h-5 w-5" />
@@ -1222,7 +1337,7 @@ function AmenitiesSheet({
             onClick={onClose}
             className="btn-primary h-11 w-full justify-center"
           >
-            Done
+            {t("listRoom.modal.done")}
           </button>
         </div>
       </div>
@@ -1253,6 +1368,7 @@ function DetailsSheet({
   areaSqm: string;
   setAreaSqm: (v: string) => void;
 }) {
+  const t = useT();
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -1278,19 +1394,19 @@ function DetailsSheet({
       className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Property details"
+      aria-label={t("listRoom.modal.editDetails.title")}
     >
       <div className="absolute inset-0 bg-ink/50" onClick={onClose} aria-hidden />
       <div className="relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:max-h-[80vh] sm:max-w-md sm:rounded-3xl">
         <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
           <span aria-hidden />
           <h3 className="text-center text-base font-semibold text-ink">
-            Property details
+            {t("listRoom.modal.editDetails.title")}
           </h3>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
           >
             <Icon name="x" className="h-5 w-5" />
@@ -1299,7 +1415,7 @@ function DetailsSheet({
         <div className="overflow-y-auto">
           <label className="flex items-center gap-3 px-4 py-3 focus-within:bg-slate-50">
             <Icon name="bed" className="h-4 w-4 shrink-0 text-brand" />
-            <span className="flex-1 text-sm text-ink">Bedrooms</span>
+            <span className="flex-1 text-sm text-ink">{t("listRoom.field.bedrooms")}</span>
             <input
               type="number"
               min={0}
@@ -1310,7 +1426,7 @@ function DetailsSheet({
           </label>
           <label className="flex items-center gap-3 border-t border-slate-100 px-4 py-3 focus-within:bg-slate-50">
             <Icon name="ruler" className="h-4 w-4 shrink-0 text-brand" />
-            <span className="flex-1 text-sm text-ink">Area / m²</span>
+            <span className="flex-1 text-sm text-ink">{t("listRoom.field.area")}</span>
             <input
               type="number"
               min={0}
@@ -1322,7 +1438,7 @@ function DetailsSheet({
           </label>
           <label className="flex items-center gap-3 border-t border-slate-100 px-4 py-3 focus-within:bg-slate-50">
             <Icon name="elevator" className="h-4 w-4 shrink-0 text-brand" />
-            <span className="flex-1 text-sm text-ink">Floor</span>
+            <span className="flex-1 text-sm text-ink">{t("listRoom.field.floor")}</span>
             <input
               type="number"
               min={0}
@@ -1341,7 +1457,7 @@ function DetailsSheet({
             onClick={onClose}
             className="btn-primary h-11 w-full justify-center"
           >
-            Done
+            {t("listRoom.modal.done")}
           </button>
         </div>
       </div>

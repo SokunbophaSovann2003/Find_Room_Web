@@ -1,6 +1,6 @@
-# FindRoom.KH — Web
+# Joul.KH — Web
 
-Website for FindRoom.KH, a room rental platform for Cambodia. Shares its Firebase backend with the `findroom_kh` Flutter mobile app.
+Website for Joul.KH, a room rental platform for Cambodia. (Project directory and Firebase backend keep the `findroom` name for storage compatibility; only the user-facing brand is "Joul".) Shares its backend with the `findroom_kh` Flutter mobile app.
 
 ## Stack
 

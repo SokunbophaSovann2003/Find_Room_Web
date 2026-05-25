@@ -5,7 +5,17 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Poppins", "ui-sans-serif", "system-ui", "sans-serif"]
+        // Fonts come from next/font/google (see app/layout.tsx) which
+        // self-hosts them — no Google CDN dependency. The browser picks
+        // a glyph from the first family that covers the character:
+        // Latin → Poppins, Khmer → Noto Sans Khmer.
+        sans: [
+          "var(--font-poppins)",
+          "var(--font-khmer)",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif"
+        ]
       },
       colors: {
         brand: {

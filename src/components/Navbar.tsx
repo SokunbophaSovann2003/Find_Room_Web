@@ -8,8 +8,9 @@ import AuthModal from "./AuthModal";
 import LanguageToggle from "./LanguageToggle";
 import { useSession } from "@/lib/session";
 import { loadOverrides, subscribeOverrides } from "@/lib/profile-overrides";
-import { isAdmin } from "@/lib/admin";
+import { isAdmin, useUserNotifications } from "@/lib/admin";
 import { setViewMode, useViewMode } from "@/lib/view-mode";
+import { useT } from "@/lib/language";
 
 const LIST_ROOM_PATH = "/profile/list-room";
 
@@ -17,6 +18,7 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const session = useSession();
+  const t = useT();
   const [authOpen, setAuthOpen] = useState(false);
   // When the user opens AuthModal via "List room" while logged out, we want
   // sign-in success to drop them on the list-room screen — not just close the
@@ -67,27 +69,21 @@ export default function Navbar() {
               <Icon name="home" className="h-5 w-5" />
             </span>
             <span className="text-lg font-extrabold tracking-tight">
-              FindRoom<span className="text-brand">.KH</span>
+              Joul<span className="text-brand">.KH</span>
             </span>
           </Link>
 
           <div className="flex-1" />
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Desktop-only: on mobile the bottom nav owns this action. */}
-            {onAdmin ? null : (
-              <button
-                type="button"
-                onClick={handleListRoom}
-                className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full border border-brand bg-white px-4 text-sm font-semibold text-brand transition hover:bg-brand/5 sm:inline-flex"
-              >
-                <Icon name="plus" className="h-4 w-4" />
-                List room
-              </button>
-            )}
-
             {/* Demo affordance: hop between User and Admin views without logging out. */}
             <ViewSwitch onAdmin={onAdmin} />
+
+            {/* Notifications bell — only for signed-in users in user view.
+                Admin view has its own notifications surface in the floating nav.
+                Sits to the left of the language toggle so the cluster reads
+                identity → action → language → profile. */}
+            {session && !onAdmin ? <NotificationBell /> : null}
 
             {/* Always visible: language toggle. */}
             <LanguageToggle />
@@ -96,14 +92,14 @@ export default function Navbar() {
               // Desktop-only: on mobile the bottom-nav Profile tab handles this.
               <Link
                 href="/profile"
-                aria-label="Your profile"
+                aria-label={t("nav.profile")}
                 className="hidden h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 transition hover:ring-2 hover:ring-brand/30 sm:block"
               >
                 {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={avatarUrl}
-                    alt={session.username ?? "Profile"}
+                    alt={session.username ?? t("nav.profile")}
                     className="h-full w-full object-cover"
                   />
                 ) : initial ? (
@@ -126,7 +122,21 @@ export default function Navbar() {
                 }}
                 className="btn-primary hidden px-4 py-2 text-sm sm:inline-flex"
               >
-                Log in
+                {t("nav.logIn")}
+              </button>
+            )}
+
+            {/* Desktop-only: on mobile the bottom nav owns this action. Sits
+                last so it reads as the primary call-to-action after the user's
+                identity affordances. */}
+            {onAdmin ? null : (
+              <button
+                type="button"
+                onClick={handleListRoom}
+                className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full border border-brand bg-white px-4 text-sm font-semibold text-brand transition hover:bg-brand/5 sm:inline-flex"
+              >
+                <Icon name="plus" className="h-4 w-4" />
+                {t("nav.listRoom")}
               </button>
             )}
           </div>
@@ -151,9 +161,35 @@ export default function Navbar() {
   );
 }
 
+function NotificationBell() {
+  const session = useSession();
+  const notifications = useUserNotifications(session);
+  const unread = notifications.filter((n) => !n.read).length;
+  const t = useT();
+  return (
+    <Link
+      href="/profile/notifications"
+      aria-label={
+        unread > 0
+          ? t("nav.notifications.ariaWithCount", { n: unread })
+          : t("nav.notifications.aria")
+      }
+      className="relative flex h-10 w-10 shrink-0 items-center justify-center text-ink-muted transition hover:text-ink"
+    >
+      <Icon name="bell" className="h-6 w-6" />
+      {unread > 0 ? (
+        <span className="absolute right-0 top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white">
+          {unread > 9 ? "9+" : unread}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
 function ViewSwitch({ onAdmin }: { onAdmin: boolean }) {
   const router = useRouter();
   const session = useSession();
+  const t = useT();
 
   // Only render for actual admin sessions. Logged-out and regular users can't
   // self-promote anymore — they have to sign in with an admin account via the
@@ -162,39 +198,34 @@ function ViewSwitch({ onAdmin }: { onAdmin: boolean }) {
   // mock demo and a hard "no" for any real deployment.)
   if (!isAdmin(session)) return null;
 
-  function goAdmin() {
-    setViewMode("admin");
-    router.push("/user/admin");
+  function toggle() {
+    if (onAdmin) {
+      setViewMode("user");
+      router.push("/explore");
+    } else {
+      setViewMode("admin");
+      router.push("/user/admin");
+    }
   }
 
-  function goUser() {
-    setViewMode("user");
-    router.push("/explore");
-  }
+  const currentLabel = onAdmin ? t("nav.view.admin") : t("nav.view.user");
+  const nextLabel = onAdmin ? t("nav.view.user") : t("nav.view.admin");
 
   return (
-    <div className="inline-flex items-center rounded-full border border-slate-200 bg-white p-0.5 text-[11px] font-semibold sm:text-xs">
-      <button
-        type="button"
-        onClick={goUser}
-        aria-pressed={!onAdmin}
-        className={`rounded-full px-2 py-1 transition sm:px-3 sm:py-1.5 ${
-          !onAdmin ? "bg-brand text-white" : "text-ink-muted hover:text-ink"
-        }`}
-      >
-        User
-      </button>
-      <button
-        type="button"
-        onClick={goAdmin}
-        aria-pressed={onAdmin}
-        className={`rounded-full px-2 py-1 transition sm:px-3 sm:py-1.5 ${
-          onAdmin ? "bg-brand text-white" : "text-ink-muted hover:text-ink"
-        }`}
-      >
-        Admin
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={toggle}
+      title={t("nav.view.toggle.title", { current: currentLabel, next: nextLabel })}
+      aria-label={t("nav.view.toggle.aria", { current: currentLabel, next: nextLabel })}
+      aria-pressed={onAdmin}
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border shadow-sm transition hover:ring-2 hover:ring-brand/30 ${
+        onAdmin
+          ? "border-brand bg-brand text-white"
+          : "border-slate-200 bg-white text-ink-muted"
+      }`}
+    >
+      <Icon name={onAdmin ? "shield" : "user"} className="h-4 w-4" />
+    </button>
   );
 }
 

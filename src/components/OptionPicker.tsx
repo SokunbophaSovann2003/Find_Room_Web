@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Icon from "./Icon";
+import { useT } from "@/lib/language";
 
 interface OptionPickerProps<T extends string> {
   open: boolean;
@@ -22,6 +23,7 @@ export default function OptionPicker<T extends string>({
   onChange,
   mode = "modal"
 }: OptionPickerProps<T>) {
+  const t = useT();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -109,7 +111,7 @@ export default function OptionPicker<T extends string>({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
           >
             <Icon name="x" className="h-5 w-5" />

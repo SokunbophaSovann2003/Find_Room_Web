@@ -1,6 +1,7 @@
 "use client";
 
 import Icon from "./Icon";
+import { useT } from "@/lib/language";
 
 // Editable list of contact strings (phone numbers, Telegram handles, etc.).
 // Used in the create-room form so each listing publishes its own contacts.
@@ -21,6 +22,7 @@ export default function ContactListEditor({
   addLabel: string;
   emptyHint?: string;
 }) {
+  const t = useT();
   function update(i: number, val: string) {
     onChange(values.map((v, idx) => (idx === i ? val : v)));
   }
@@ -50,7 +52,7 @@ export default function ContactListEditor({
             <button
               type="button"
               onClick={() => remove(i)}
-              aria-label={`Remove ${label.toLowerCase()} ${i + 1}`}
+              aria-label={t("contactList.remove.aria", { label, n: i + 1 })}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-ink-soft transition hover:bg-slate-100 hover:text-ink"
             >
               <Icon name="x" className="h-4 w-4" />

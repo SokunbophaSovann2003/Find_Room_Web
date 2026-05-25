@@ -1,8 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import Icon, { propertyIcon } from "./Icon";
+import { useT } from "@/lib/language";
 import type { Room } from "@/lib/types";
 
 export default function RoomCard({ room }: { room: Room }) {
+  const t = useT();
+  const pricePeriod = room.pricePeriod ?? "monthly";
   return (
     <Link
       href={`/rooms/${room.id}`}
@@ -27,8 +32,8 @@ export default function RoomCard({ room }: { room: Room }) {
         )}
 
         <div className="absolute left-3 top-3 flex gap-1.5">
-          <span className="rounded-full bg-brand px-2.5 py-1 text-[11px] font-semibold capitalize text-white shadow">
-            {room.type}
+          <span className="rounded-full bg-brand px-2.5 py-1 text-[11px] font-semibold text-white shadow">
+            {t(`type.${room.type}`)}
           </span>
         </div>
 
@@ -56,7 +61,7 @@ export default function RoomCard({ room }: { room: Room }) {
           ) : null}
           {room.floor != null ? (
             <span className="inline-flex items-center gap-1">
-              <Icon name="elevator" className="h-4 w-4 shrink-0" /> {room.floor}F
+              <Icon name="elevator" className="h-4 w-4 shrink-0" /> {room.floor}{t("roomCard.floor.short")}
             </span>
           ) : null}
         </div>
@@ -64,9 +69,9 @@ export default function RoomCard({ room }: { room: Room }) {
         <div className="mt-3 flex items-baseline justify-between border-t border-slate-100 pt-3">
           <div>
             <span className="text-base font-extrabold text-brand sm:text-lg">${room.price}</span>
-            <span className="text-xs text-ink-soft"> / month</span>
+            <span className="text-xs text-ink-soft"> {t(`room.suffix.${pricePeriod}`)}</span>
           </div>
-          <span className="hidden text-xs font-medium text-brand sm:inline">View details →</span>
+          <span className="hidden text-xs font-medium text-brand sm:inline">{t("roomCard.viewDetails")}</span>
         </div>
       </div>
     </Link>

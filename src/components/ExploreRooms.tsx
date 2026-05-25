@@ -35,10 +35,20 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
   const [view, setView] = useState<View>("list");
   const localRooms = useLocalRooms();
   const { filter } = useExploreFilter();
-  const allRooms = useMemo(
-    () => applyFilter([...localRooms, ...rooms], filter),
-    [localRooms, rooms, filter]
-  );
+  const allRooms = useMemo(() => {
+    // Admin seeding copies MOCK_ROOMS into local-rooms with a "mock-" id
+    // prefix, so the same listing can show up in both arrays. Collapse them
+    // by canonical id; localRooms wins, which preserves any admin edits.
+    const seen = new Set<string>();
+    const canonical = (id: string) => (id.startsWith("mock-") ? id.slice(5) : id);
+    const merged = [...localRooms, ...rooms].filter((r) => {
+      const key = canonical(r.id);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return applyFilter(merged, filter);
+  }, [localRooms, rooms, filter]);
   const [bounds, setBounds] = useState<Bounds | null>(null);
 
   const focus = useMemo(() => getLocationFocus(filter.location), [filter.location]);
@@ -82,7 +92,7 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
             fallback={
               <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-sm text-ink-muted">
                 <Icon name="map-pin" className="h-6 w-6 text-brand" />
-                <p>Map failed to load. Switch to list view to keep browsing.</p>
+                <p>{t("explore.map.loadFailed")}</p>
               </div>
             }
           >
@@ -97,12 +107,12 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
             <Icon name="search" className="h-6 w-6" />
           </span>
           <h3 className="text-base font-bold">
-            {view === "map" ? "No rooms in this area" : "No rooms match these filters"}
+            {view === "map" ? t("explore.empty.map.title") : t("explore.empty.filters.title")}
           </h3>
           <p className="max-w-sm text-sm text-ink-muted">
             {view === "map"
-              ? "Pan or zoom out to find more rooms."
-              : "Try widening the location or clearing the property type."}
+              ? t("explore.empty.map.hint")
+              : t("explore.empty.filters.hint")}
           </p>
         </div>
       ) : (

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Icon from "./Icon";
 import { loginWithPhone, registerWithPhone } from "@/lib/auth";
+import { useT } from "@/lib/language";
 
 type Tab = "login" | "register";
 
@@ -20,6 +21,7 @@ export default function AuthModal({
   defaultTab?: Tab;
 }) {
   const [tab, setTab] = useState<Tab>(defaultTab);
+  const t = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +63,7 @@ export default function AuthModal({
         {dismissible ? (
           <button
             type="button"
-            aria-label="Close"
+            aria-label={t("common.close")}
             onClick={onClose}
             className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
           >
@@ -74,7 +76,7 @@ export default function AuthModal({
             <Icon name="home" className="h-5 w-5" />
           </span>
           <span className="text-base font-extrabold tracking-tight">
-            FindRoom<span className="text-brand">.KH</span>
+            Joul<span className="text-brand">.KH</span>
           </span>
         </div>
 
@@ -95,6 +97,7 @@ function LoginForm({
   onSuccess?: () => void;
   switchToRegister: () => void;
 }) {
+  const t = useT();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -104,7 +107,7 @@ function LoginForm({
     e.preventDefault();
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 8 || digits.length > 9) {
-      setError("Enter a valid Cambodian phone number (8-9 digits after +855).");
+      setError(t("auth.error.phone.invalid"));
       return;
     }
     setLoading(true);
@@ -113,7 +116,7 @@ function LoginForm({
       await loginWithPhone(`+855${digits}`, password);
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to sign in");
+      setError(err instanceof Error ? err.message : t("auth.error.signInFailed"));
     } finally {
       setLoading(false);
     }
@@ -121,12 +124,12 @@ function LoginForm({
 
   return (
     <>
-      <h2 className="text-xl font-extrabold tracking-tight">Welcome back</h2>
-      <p className="text-sm text-ink-muted">Log in with your phone number to continue.</p>
+      <h2 className="text-xl font-extrabold tracking-tight">{t("auth.login.title")}</h2>
+      <p className="text-sm text-ink-muted">{t("auth.login.subtitle")}</p>
 
       <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
         <div>
-          <label className="label">Phone number</label>
+          <label className="label">{t("auth.field.phone")}</label>
           <div className="flex overflow-hidden rounded-xl border border-slate-200 bg-white focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
             <span className="flex items-center border-r border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-ink-muted">
               +855
@@ -143,7 +146,7 @@ function LoginForm({
         </div>
 
         <div>
-          <label className="label">Password</label>
+          <label className="label">{t("auth.field.password")}</label>
           <input
             type="password"
             placeholder="••••••••"
@@ -159,19 +162,19 @@ function LoginForm({
         ) : null}
 
         <button type="submit" className="btn-primary w-full" disabled={loading}>
-          {loading ? "Signing in…" : "Log in"}
+          {loading ? t("auth.login.submitting") : t("auth.login.submit")}
           {loading ? null : <Icon name="arrow-right" className="h-4 w-4" />}
         </button>
       </form>
 
       <p className="mt-4 text-center text-sm text-ink-muted">
-        No account yet?{" "}
+        {t("auth.switch.toRegister.q")}{" "}
         <button
           type="button"
           onClick={switchToRegister}
           className="font-semibold text-brand hover:text-brand-dark"
         >
-          Create one
+          {t("auth.switch.toRegister.cta")}
         </button>
       </p>
     </>
@@ -185,6 +188,7 @@ function RegisterForm({
   onSuccess?: () => void;
   switchToLogin: () => void;
 }) {
+  const t = useT();
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -194,16 +198,16 @@ function RegisterForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!username.trim()) {
-      setError("Enter your name.");
+      setError(t("auth.error.name.required"));
       return;
     }
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 8 || digits.length > 9) {
-      setError("Enter a valid Cambodian phone number (8-9 digits after +855).");
+      setError(t("auth.error.phone.invalid"));
       return;
     }
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t("auth.error.password.tooShort"));
       return;
     }
     setLoading(true);
@@ -212,7 +216,7 @@ function RegisterForm({
       await registerWithPhone({ username: username.trim(), phoneNumber: `+855${digits}`, password });
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to create account");
+      setError(err instanceof Error ? err.message : t("auth.error.signUpFailed"));
     } finally {
       setLoading(false);
     }
@@ -220,14 +224,14 @@ function RegisterForm({
 
   return (
     <>
-      <h2 className="text-xl font-extrabold tracking-tight">Create your account</h2>
-      <p className="text-sm text-ink-muted">It takes less than a minute.</p>
+      <h2 className="text-xl font-extrabold tracking-tight">{t("auth.register.title")}</h2>
+      <p className="text-sm text-ink-muted">{t("auth.register.subtitle")}</p>
 
       <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
         <div>
-          <label className="label">Full name</label>
+          <label className="label">{t("auth.field.fullName")}</label>
           <input
-            placeholder="Sokha Chan"
+            placeholder={t("auth.field.fullName.placeholder")}
             className="input"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -236,7 +240,7 @@ function RegisterForm({
         </div>
 
         <div>
-          <label className="label">Phone number</label>
+          <label className="label">{t("auth.field.phone")}</label>
           <div className="flex overflow-hidden rounded-xl border border-slate-200 bg-white focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
             <span className="flex items-center border-r border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-ink-muted">
               +855
@@ -253,10 +257,10 @@ function RegisterForm({
         </div>
 
         <div>
-          <label className="label">Password</label>
+          <label className="label">{t("auth.field.password")}</label>
           <input
             type="password"
-            placeholder="At least 8 characters"
+            placeholder={t("auth.field.password.placeholder.short")}
             className="input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -271,19 +275,19 @@ function RegisterForm({
         ) : null}
 
         <button type="submit" className="btn-primary w-full" disabled={loading}>
-          {loading ? "Creating…" : "Create account"}
+          {loading ? t("auth.register.submitting") : t("auth.register.submit")}
           {loading ? null : <Icon name="arrow-right" className="h-4 w-4" />}
         </button>
       </form>
 
       <p className="mt-4 text-center text-sm text-ink-muted">
-        Already have an account?{" "}
+        {t("auth.switch.toLogin.q")}{" "}
         <button
           type="button"
           onClick={switchToLogin}
           className="font-semibold text-brand hover:text-brand-dark"
         >
-          Log in
+          {t("auth.switch.toLogin.cta")}
         </button>
       </p>
     </>

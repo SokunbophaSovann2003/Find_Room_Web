@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage, type Language } from "@/lib/language";
+import { useLanguage, useT, type Language } from "@/lib/language";
 
 // flagcdn ships sharp rectangular SVG flags. We render them in a rounded-
 // rectangle badge (matching the 2:3 flag aspect) so the full design — the
@@ -11,21 +11,19 @@ const FLAG_URLS: Record<Language, string> = {
   en: "https://flagcdn.com/gb.svg"
 };
 
-const LABELS: Record<Language, string> = {
-  km: "Khmer",
-  en: "English"
-};
-
 export default function LanguageToggle({ className = "" }: { className?: string }) {
   const { language, toggleLanguage } = useLanguage();
+  const t = useT();
   const next: Language = language === "km" ? "en" : "km";
+  const currentLabel = t(`language.${language}`);
+  const nextLabel = t(`language.${next}`);
 
   return (
     <button
       type="button"
       onClick={toggleLanguage}
-      title={`${LABELS[language]} — tap to switch to ${LABELS[next]}`}
-      aria-label={`Current language: ${LABELS[language]}. Tap to switch to ${LABELS[next]}.`}
+      title={t("language.toggle.title", { current: currentLabel, next: nextLabel })}
+      aria-label={t("language.toggle.aria", { current: currentLabel, next: nextLabel })}
       className={`flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm transition hover:ring-2 hover:ring-brand/30 ${className}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}

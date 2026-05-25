@@ -56,7 +56,7 @@ export function seedSampleListings(session: {
 
   const owner: Owner = {
     id: session.uid,
-    name: session.username ?? "FindRoom user",
+    name: session.username ?? "Joul user",
     phoneNumbers: session.phoneNumber ? [session.phoneNumber] : [],
     telegramPhones: session.phoneNumber ? [session.phoneNumber] : [],
     memberSince: new Date().toISOString().slice(0, 10),

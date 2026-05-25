@@ -8,12 +8,14 @@ import AuthModal from "@/components/AuthModal";
 import { getSession, subscribeSession, type Session } from "@/lib/session";
 import { isAdmin, seedMockListings } from "@/lib/admin";
 import { signOut } from "@/lib/auth";
+import { useT } from "@/lib/language";
 
 type Status = "checking" | "denied" | "ok";
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>("checking");
   const [session, setSessionState] = useState<Session | null>(null);
+  const t = useT();
 
   useEffect(() => {
     function apply(s: Session | null) {
@@ -31,7 +33,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <div className="flex min-h-[60vh] items-center justify-center px-4 text-center">
         <div className="flex flex-col items-center gap-3 text-ink-muted">
           <span className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-          <p className="text-sm">Checking your access…</p>
+          <p className="text-sm">{t("admin.shell.checking")}</p>
         </div>
       </div>
     );
@@ -61,6 +63,7 @@ function DeniedScreen({
   onAuthSuccess: () => void;
 }) {
   const router = useRouter();
+  const t = useT();
   // Open the login modal whenever the user is signed out — this covers both
   // "never logged in" and "switched account" flows so they don't have to find
   // the login button themselves.
@@ -83,24 +86,24 @@ function DeniedScreen({
         <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
           <Icon name="shield" className="h-7 w-7" />
         </span>
-        <h1 className="text-xl font-extrabold">Admins only</h1>
+        <h1 className="text-xl font-extrabold">{t("admin.denied.title")}</h1>
         <p className="text-sm text-ink-muted">
           {session
-            ? "This area is restricted to FindRoom admins. Sign in with an admin account to continue."
-            : "Sign in with an admin account to manage the FindRoom platform."}
+            ? t("admin.denied.body.signedIn")
+            : t("admin.denied.body.signedOut")}
         </p>
         <div className="flex gap-2">
           <Link href="/explore" className="btn-secondary">
-            Back to explore
+            {t("admin.denied.backToExplore")}
           </Link>
           {session ? (
             <button type="button" className="btn-danger" onClick={handleSwitchAccount}>
-              Switch account
+              {t("admin.denied.switchAccount")}
             </button>
           ) : (
             <button type="button" className="btn-primary" onClick={() => setAuthOpen(true)}>
               <Icon name="log-out" className="h-4 w-4 rotate-180" />
-              Log in
+              {t("auth.login.submit")}
             </button>
           )}
         </div>

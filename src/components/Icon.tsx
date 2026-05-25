@@ -19,6 +19,7 @@ export type IconName =
   | "balcony"
   | "phone"
   | "message"
+  | "bell"
   | "user"
   | "menu"
   | "more-vertical"
@@ -135,6 +136,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   phone: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z" />,
   message: <path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2Z" />,
+  bell: (
+    <>
+      <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Z" />
+      <path d="M10 20a2 2 0 0 0 4 0" />
+    </>
+  ),
   user: (
     <>
       <circle cx="12" cy="8" r="4" />

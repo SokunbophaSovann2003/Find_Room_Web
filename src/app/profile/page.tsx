@@ -16,20 +16,23 @@ import {
   type ProfileOverrides
 } from "@/lib/profile-overrides";
 import { getAdminSettings } from "@/lib/admin";
+import { toast } from "@/lib/toast";
+import { useT } from "@/lib/language";
 import type { PropertyType } from "@/lib/types";
 
-const PROPERTY_TYPE_CHOICES: { value: PropertyType; label: string; hint: string }[] = [
-  { value: "room", label: "Room", hint: "A single room within a property" },
-  { value: "apartment", label: "Apartment", hint: "Self-contained unit in a building" },
-  { value: "condo", label: "Condo", hint: "Privately-owned unit in a managed complex" },
-  { value: "flat", label: "Flat", hint: "Small one-floor home" },
-  { value: "house", label: "House", hint: "Standalone home" },
-  { value: "villa", label: "Villa", hint: "Larger standalone home" }
+const PROPERTY_TYPE_CHOICES: { value: PropertyType; labelKey: string; hintKey: string }[] = [
+  { value: "room", labelKey: "type.room", hintKey: "pick.type.room.hint" },
+  { value: "apartment", labelKey: "type.apartment", hintKey: "pick.type.apartment.hint" },
+  { value: "condo", labelKey: "type.condo", hintKey: "pick.type.condo.hint" },
+  { value: "flat", labelKey: "type.flat", hintKey: "pick.type.flat.hint" },
+  { value: "house", labelKey: "type.house", hintKey: "pick.type.house.hint" },
+  { value: "villa", labelKey: "type.villa", hintKey: "pick.type.villa.hint" }
 ];
 
 export default function ProfilePage() {
   const router = useRouter();
   const session = useSession();
+  const t = useT();
   const allLocalRooms = useLocalRooms();
   const [overrides, setOverrides] = useState<ProfileOverrides>({});
   const [editing, setEditing] = useState<"profile" | null>(null);
@@ -52,7 +55,7 @@ export default function ProfilePage() {
 
   if (!session) return null;
 
-  const username = overrides.username ?? session.username ?? "FindRoom user";
+  const username = overrides.username ?? session.username ?? t("nav.profile");
   // Login phone is the auth identity — used to sign in. Contact info for
   // listings is now per-room, set during the create-room flow.
   const loginPhone = session.phoneNumber ?? "";
@@ -138,7 +141,7 @@ export default function ProfilePage() {
               className="btn-secondary"
             >
               <Icon name="pencil" className="h-4 w-4" />
-              Edit profile
+              {t("profile.editProfile")}
             </button>
             <button
               type="button"
@@ -147,7 +150,7 @@ export default function ProfilePage() {
               className="btn-danger"
             >
               <Icon name="log-out" className="h-4 w-4" />
-              {signingOut ? "Logging out…" : "Log out"}
+              {signingOut ? t("profile.loggingOut") : t("profile.logOut")}
             </button>
           </div>
         </div>
@@ -156,7 +159,7 @@ export default function ProfilePage() {
       <section className="mt-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold sm:text-xl">
-            My listings
+            {t("profile.myListings")}
             <span className="ml-2 rounded-full bg-brand/10 px-2.5 py-0.5 text-sm font-semibold text-brand">
               {listings.length}
             </span>
@@ -167,7 +170,7 @@ export default function ProfilePage() {
             className="btn-primary"
           >
             <Icon name="plus" className="h-4 w-4" />
-            List a room
+            {t("profile.listARoom")}
           </button>
         </div>
 
@@ -176,16 +179,16 @@ export default function ProfilePage() {
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand">
               <Icon name="home" className="h-7 w-7" />
             </span>
-            <h3 className="text-lg font-bold">No listings yet</h3>
+            <h3 className="text-lg font-bold">{t("profile.empty.title")}</h3>
             <p className="max-w-sm text-sm text-ink-muted">
-              Publish your first room to start receiving messages from renters.
+              {t("profile.empty.body")}
             </p>
             <button
               type="button"
               onClick={() => setPickTypeOpen(true)}
               className="btn-primary mt-2"
             >
-              Create your first listing
+              {t("profile.empty.cta")}
             </button>
           </div>
         ) : (
@@ -220,7 +223,7 @@ export default function ProfilePage() {
                         </span>
                         {room.isOccupied ? (
                           <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                            Occupied
+                            {t("profile.occupied")}
                           </span>
                         ) : null}
                       </p>
@@ -231,7 +234,7 @@ export default function ProfilePage() {
                       <p className="mt-0.5 text-sm font-bold text-brand">
                         ${room.price}
                         <span className="ml-0.5 text-[11px] font-medium text-ink-muted">
-                          / month
+                          {t("profile.month")}
                         </span>
                       </p>
                     </div>
@@ -249,7 +252,7 @@ export default function ProfilePage() {
                   <RoomCard room={room} />
                   {room.isOccupied ? (
                     <span className="pointer-events-none absolute left-3 top-12 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow">
-                      Occupied
+                      {t("profile.occupied")}
                     </span>
                   ) : null}
                   <div className="absolute right-2 top-2">
@@ -285,6 +288,7 @@ export default function ProfilePage() {
             saveOverrides(session.uid, merged);
             setOverrides(merged);
             setEditing(null);
+            toast.success(t("toast.profile.updated"));
           }}
         />
       ) : null}
@@ -310,6 +314,7 @@ function PropertyTypePicker({
   onClose: () => void;
   onPick: (type: PropertyType) => void;
 }) {
+  const t = useT();
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -339,19 +344,19 @@ function PropertyTypePicker({
       className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Pick a property type"
+      aria-label={t("pick.type.aria")}
     >
       <div className="absolute inset-0 bg-ink/50" onClick={onClose} aria-hidden />
       <div className="relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:max-h-[80vh] sm:max-w-md sm:rounded-3xl">
         <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
           <span aria-hidden />
           <h3 className="text-center text-base font-semibold text-ink">
-            What are you listing?
+            {t("pick.type.title")}
           </h3>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
           >
             <Icon name="x" className="h-5 w-5" />
@@ -369,9 +374,9 @@ function PropertyTypePicker({
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
                     <Icon name={propertyIcon(p.value)} className="h-5 w-5" />
                   </span>
-                  <span className="text-sm font-bold text-ink">{p.label}</span>
+                  <span className="text-sm font-bold text-ink">{t(p.labelKey)}</span>
                   <span className="text-xs leading-snug text-ink-muted">
-                    {p.hint}
+                    {t(p.hintKey)}
                   </span>
                 </button>
               </li>
@@ -400,6 +405,7 @@ function EditProfileModal({
     avatarUrl: string;
   }) => Promise<void> | void;
 }) {
+  const t = useT();
   const [username, setUsername] = useState(initial.username);
   const [loginPhone, setLoginPhone] = useState(initial.loginPhone);
   const [avatarUrl, setAvatarUrl] = useState(initial.avatarUrl);
@@ -414,7 +420,7 @@ function EditProfileModal({
     e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setPhotoError("Please choose an image file.");
+      setPhotoError(t("profile.edit.photo.error.fileType"));
       return;
     }
     setUploading(true);
@@ -423,7 +429,7 @@ function EditProfileModal({
       const dataUrl = await downscalePhoto(file, 320, 0.85);
       setAvatarUrl(dataUrl);
     } catch {
-      setPhotoError("Could not load that image.");
+      setPhotoError(t("profile.edit.photo.error.load"));
     } finally {
       setUploading(false);
     }
@@ -442,7 +448,7 @@ function EditProfileModal({
         avatarUrl: avatarUrl.trim()
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save changes.");
+      setError(err instanceof Error ? err.message : t("profile.edit.error.saveFailed"));
       setSaving(false);
     }
   }
@@ -458,12 +464,12 @@ function EditProfileModal({
         className="w-full max-w-md rounded-2xl bg-white p-5 shadow-cardHover sm:p-6"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold">Edit profile</h3>
+          <h3 className="text-lg font-bold">{t("profile.edit.title")}</h3>
           <button
             type="button"
             onClick={onCancel}
             className="rounded-full p-1 text-ink-muted hover:bg-slate-100 hover:text-ink"
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             <Icon name="x" className="h-5 w-5" />
           </button>
@@ -496,10 +502,10 @@ function EditProfileModal({
                 className="btn-secondary px-3 py-1.5 text-xs"
               >
                 {uploading
-                  ? "Loading…"
+                  ? t("profile.edit.photo.loading")
                   : avatarUrl
-                  ? "Change photo"
-                  : "Upload photo"}
+                  ? t("profile.edit.photo.change")
+                  : t("profile.edit.photo.upload")}
               </button>
               {avatarUrl ? (
                 <button
@@ -507,7 +513,7 @@ function EditProfileModal({
                   onClick={() => setAvatarUrl("")}
                   className="btn-ghost px-3 py-1.5 text-xs"
                 >
-                  Remove
+                  {t("common.remove")}
                 </button>
               ) : null}
             </div>
@@ -517,7 +523,7 @@ function EditProfileModal({
           </div>
           <div>
             <label className="label" htmlFor="profile-username">
-              Name
+              {t("profile.edit.name")}
             </label>
             <input
               id="profile-username"
@@ -529,7 +535,7 @@ function EditProfileModal({
           </div>
           <div>
             <label className="label" htmlFor="profile-login-phone">
-              Login phone
+              {t("profile.edit.loginPhone")}
             </label>
             <input
               id="profile-login-phone"
@@ -541,8 +547,7 @@ function EditProfileModal({
               required
             />
             <p className="mt-1 text-[11px] text-ink-soft">
-              You sign in with this number. Changing it doesn&rsquo;t affect
-              the contact info you publish on listings.
+              {t("profile.edit.loginPhone.hint")}
             </p>
           </div>
           {error ? (
@@ -554,10 +559,10 @@ function EditProfileModal({
 
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" onClick={onCancel} className="btn-ghost">
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" disabled={saving} className="btn-primary">
-            {saving ? "Saving…" : "Save"}
+            {saving ? t("common.saving") : t("common.save")}
           </button>
         </div>
       </form>
@@ -574,6 +579,7 @@ function ProfileActionsMenu({
   onLogout: () => void;
   signingOut: boolean;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -600,7 +606,7 @@ function ProfileActionsMenu({
       <button
         type="button"
         onClick={() => setOpen((cur) => !cur)}
-        aria-label="Profile options"
+        aria-label={t("profile.menu.aria")}
         aria-expanded={open}
         aria-haspopup="menu"
         className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-100 hover:text-ink"
@@ -622,7 +628,7 @@ function ProfileActionsMenu({
             className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium text-ink transition hover:bg-slate-50"
           >
             <Icon name="pencil" className="h-4 w-4 shrink-0" />
-            Edit profile
+            {t("profile.editProfile")}
           </button>
           <button
             type="button"
@@ -635,7 +641,7 @@ function ProfileActionsMenu({
             className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
           >
             <Icon name="log-out" className="h-4 w-4 shrink-0" />
-            {signingOut ? "Logging out…" : "Log out"}
+            {signingOut ? t("profile.loggingOut") : t("profile.logOut")}
           </button>
         </div>
       ) : null}

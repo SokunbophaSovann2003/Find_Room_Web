@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon from "./Icon";
+import { isAdmin } from "@/lib/admin";
+import { useSession } from "@/lib/session";
+import { useViewMode } from "@/lib/view-mode";
+import { useT } from "@/lib/language";
 
 const CONTACT = {
   phone: "+855 12 345 678",
@@ -13,11 +17,25 @@ const CONTACT = {
 
 export default function Footer() {
   const pathname = usePathname();
+  const session = useSession();
+  const viewMode = useViewMode();
+  const t = useT();
   const phoneDigits = CONTACT.phone.replace(/\D/g, "");
   const telegramLink = `+${CONTACT.telegram.replace(/\D/g, "")}`;
 
   // Admin shell owns its own surface — drop the marketing footer.
   if (pathname?.startsWith("/user/admin")) return null;
+  // The list-room form owns the full bottom area with its own action bar.
+  if (pathname === "/profile/list-room") return null;
+  // Admins reviewing a listing through admin chrome don't need the marketing
+  // footer below the listing — keep the surface focused on moderation.
+  if (
+    pathname?.startsWith("/rooms/") &&
+    viewMode === "admin" &&
+    isAdmin(session)
+  ) {
+    return null;
+  }
 
   return (
     <footer className="relative mt-20 hidden shrink-0 overflow-hidden bg-gradient-to-br from-brand-50 via-white to-amber-50 sm:block">
@@ -31,17 +49,17 @@ export default function Footer() {
               <Icon name="home" className="h-5 w-5" />
             </span>
             <span className="text-lg font-extrabold tracking-tight">
-              FindRoom<span className="text-brand">.KH</span>
+              Joul<span className="text-brand">.KH</span>
             </span>
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-ink-muted">
-            A simple place to share rooms for rent in Cambodia. Browse listings or post your own — no fuss.
+            {t("footer.tagline")}
           </p>
         </div>
 
         <div>
           <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
-            Get in touch
+            {t("footer.contact.heading")}
           </h3>
           <ul className="mt-4 space-y-2.5 text-sm">
             <ContactRow
@@ -70,10 +88,10 @@ export default function Footer() {
 
       <div className="relative border-t border-slate-200/70">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-ink-soft sm:flex-row sm:px-6">
-          <span>© {new Date().getFullYear()} FindRoom.KH</span>
+          <span>© {new Date().getFullYear()} Joul.KH</span>
           <span className="inline-flex items-center gap-1.5">
             <Icon name="map-pin" className="h-3.5 w-3.5" />
-            Made in Cambodia
+            {t("footer.madeIn")}
           </span>
         </div>
       </div>

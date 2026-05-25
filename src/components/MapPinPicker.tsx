@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import Icon from "./Icon";
+import { useT } from "@/lib/language";
 
 export interface PinValue {
   lat: number;
@@ -38,6 +39,7 @@ function FlyTo({ target }: { target: [number, number] | null }) {
 }
 
 function MyLocationControl({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   function handleClick() {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -55,7 +57,7 @@ function MyLocationControl({ onPick }: { onPick: (lat: number, lng: number) => v
     <button
       type="button"
       onClick={handleClick}
-      aria-label="Use my location"
+      aria-label={t("mapPin.useMyLocation.aria")}
       disabled={busy}
       className="absolute right-3 top-3 z-[1000] flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-brand shadow transition hover:bg-brand hover:text-white disabled:opacity-60"
     >
@@ -79,6 +81,7 @@ export default function MapPinPicker({
   value: PinValue | null;
   onChange: (next: PinValue) => void;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState<PinValue>(
     value ?? { lat: PHNOM_PENH[0], lng: PHNOM_PENH[1] }
   );
@@ -151,17 +154,17 @@ export default function MapPinPicker({
       className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Pin location on map"
+      aria-label={t("mapPin.aria")}
     >
       <div className="absolute inset-0 bg-ink/50" onClick={onClose} aria-hidden />
       <div className="relative flex h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:h-[80vh] sm:max-w-2xl sm:rounded-3xl">
         <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
           <span aria-hidden />
-          <h2 className="text-center text-base font-semibold text-ink">Pin location</h2>
+          <h2 className="text-center text-base font-semibold text-ink">{t("mapPin.title")}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
           >
             <Icon name="x" className="h-5 w-5" />
@@ -207,7 +210,7 @@ export default function MapPinPicker({
             }}
             className="btn-primary h-10"
           >
-            Confirm
+            {t("common.confirm")}
           </button>
         </div>
       </div>

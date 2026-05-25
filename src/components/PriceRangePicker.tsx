@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
+import { useT } from "@/lib/language";
 
 interface PriceRangePickerProps {
   min: string;
@@ -16,10 +17,12 @@ export default function PriceRangePicker({
   min,
   max,
   onChange,
-  placeholder = "Any price",
+  placeholder,
   currency = "$",
   className
 }: PriceRangePickerProps) {
+  const t = useT();
+  const resolvedPlaceholder = placeholder ?? t("search.sort.default");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +46,7 @@ export default function PriceRangePicker({
 
   const empty = !min && !max;
   const label = empty
-    ? placeholder
+    ? resolvedPlaceholder
     : `${min ? `${currency}${min}` : `${currency}0`} - ${max ? `${currency}${max}` : "∞"}`;
 
   return (
@@ -94,6 +97,7 @@ function PickerPanel({
   onCancel: () => void;
   onApply: (min: string, max: string) => void;
 }) {
+  const t = useT();
   const [tempMin, setTempMin] = useState(min);
   const [tempMax, setTempMax] = useState(max);
 
@@ -110,23 +114,23 @@ function PickerPanel({
       />
       <div
         role="dialog"
-        aria-label="Select price range"
+        aria-label={t("priceRange.aria")}
         className="fixed left-1/2 top-1/2 z-[1200] flex w-[min(360px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-cardHover lg:absolute lg:left-auto lg:right-0 lg:top-full lg:mt-1.5 lg:w-[320px] lg:translate-x-0 lg:translate-y-0"
       >
         <div className="border-b border-slate-100 px-4 py-2.5">
-          <p className="text-sm font-semibold text-ink">Price range</p>
-          <p className="text-[11px] text-ink-muted">Leave a field empty for no limit.</p>
+          <p className="text-sm font-semibold text-ink">{t("priceRange.heading")}</p>
+          <p className="text-[11px] text-ink-muted">{t("priceRange.hint")}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3 px-4 py-4">
           <PriceInput
-            label="Min"
+            label={t("priceRange.min")}
             currency={currency}
             value={tempMin}
             onChange={setTempMin}
           />
           <PriceInput
-            label="Max"
+            label={t("priceRange.max")}
             currency={currency}
             value={tempMax}
             onChange={setTempMax}
@@ -143,21 +147,21 @@ function PickerPanel({
             }}
             className="rounded-lg px-3 py-1.5 text-xs font-semibold text-ink-muted transition hover:bg-slate-100 hover:text-ink"
           >
-            Clear
+            {t("common.clear")}
           </button>
           <button
             type="button"
             onClick={onCancel}
             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-ink-muted transition hover:bg-slate-100 hover:text-ink"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
             onClick={commit}
             className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand/90"
           >
-            Apply
+            {t("priceRange.apply")}
           </button>
         </div>
       </div>

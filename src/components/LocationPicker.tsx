@@ -7,6 +7,7 @@ import {
   districtsOf,
   areasOf
 } from "@/lib/locations";
+import { useT } from "@/lib/language";
 
 export interface LocationValue {
   province?: string;
@@ -34,11 +35,16 @@ export default function LocationPicker({
   // The copy on the "all in X" rows changes to match.
   intent?: "browse" | "select";
 }) {
-  const allLabel = intent === "select" ? "Clear" : "Show all rooms";
+  const t = useT();
+  const allLabel = intent === "select" ? t("locationPicker.allLabel.select") : t("locationPicker.allLabel.browse");
   const provinceLabel = (province: string) =>
-    intent === "select" ? `Use ${province}` : `Show all rooms in ${province}`;
+    intent === "select"
+      ? t("locationPicker.use", { name: province })
+      : t("locationPicker.showAllIn", { name: province });
   const districtLabel = (district: string) =>
-    intent === "select" ? `Use ${district}` : `Show all rooms in ${district}`;
+    intent === "select"
+      ? t("locationPicker.use", { name: district })
+      : t("locationPicker.showAllIn", { name: district });
   const [view, setView] = useState<View>("province");
   const [draft, setDraft] = useState<{ province?: string; district?: string }>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -85,11 +91,11 @@ export default function LocationPicker({
         onClose();
       }
     }
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       document.addEventListener("mousedown", onClick);
     }, 0);
     return () => {
-      clearTimeout(t);
+      clearTimeout(timer);
       document.removeEventListener("mousedown", onClick);
     };
   }, [open, mode, onClose]);
@@ -153,7 +159,7 @@ export default function LocationPicker({
         <button
           type="button"
           onClick={back}
-          aria-label="Back"
+          aria-label={t("locationPicker.back.aria")}
           className="flex h-9 w-9 items-center justify-center rounded-full text-ink hover:bg-slate-100"
         >
           <Icon name="arrow-right" className="h-5 w-5 rotate-180" />
@@ -161,12 +167,12 @@ export default function LocationPicker({
       ) : (
         <span aria-hidden />
       )}
-      <h2 className="text-center text-sm font-semibold text-ink">Location</h2>
+      <h2 className="text-center text-sm font-semibold text-ink">{t("locationPicker.title")}</h2>
       {mode === "modal" ? (
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t("common.close")}
           className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
         >
           <Icon name="x" className="h-5 w-5" />
@@ -220,7 +226,7 @@ export default function LocationPicker({
       <div
         ref={dropdownRef}
         role="dialog"
-        aria-label="Location"
+        aria-label={t("locationPicker.aria")}
         className="absolute left-0 top-full z-[1100] mt-2 flex max-h-96 w-full min-w-[280px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-cardHover"
       >
         {header}
@@ -234,7 +240,7 @@ export default function LocationPicker({
       className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Location"
+      aria-label={t("locationPicker.aria")}
     >
       <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
 

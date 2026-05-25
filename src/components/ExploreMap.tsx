@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Icon from "./Icon";
+import { useT } from "@/lib/language";
 import type { Room } from "@/lib/types";
 
 export type Bounds = [[number, number], [number, number]];
@@ -63,6 +64,7 @@ function FocusController({ focus }: { focus?: MapFocus | null }) {
 
 function MyLocationControl() {
   const map = useMap();
+  const t = useT();
   function handleClick() {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -78,7 +80,7 @@ function MyLocationControl() {
     <button
       type="button"
       onClick={handleClick}
-      aria-label="Use my location"
+      aria-label={t("mapPin.useMyLocation.aria")}
       className="absolute right-3 top-3 z-[1000] flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-brand shadow transition hover:bg-brand hover:text-white"
     >
       <Icon name="map-pin" className="h-5 w-5" />

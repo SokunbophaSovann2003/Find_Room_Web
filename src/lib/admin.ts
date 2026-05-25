@@ -261,6 +261,29 @@ export function addAdminUser(input: Omit<AdminUser, "uid" | "createdAt"> & { uid
   return next;
 }
 
+// Upsert helper for the sign-up flow: register a new user in the admin
+// directory, no-op if they're already there. Default role/status reflect a
+// normal end-user account.
+export function ensureAdminUser(input: {
+  uid: string;
+  username: string;
+  phoneNumber: string;
+  email?: string;
+  role?: "user" | "admin";
+  status?: "active" | "disabled";
+}): AdminUser {
+  const existing = getAdminUserById(input.uid);
+  if (existing) return existing;
+  return addAdminUser({
+    uid: input.uid,
+    username: input.username,
+    phoneNumber: input.phoneNumber,
+    email: input.email,
+    role: input.role ?? "user",
+    status: input.status ?? "active"
+  });
+}
+
 export function updateAdminUser(uid: string, patch: Partial<Omit<AdminUser, "uid">>) {
   const users = getAdminUsers().map((u) => (u.uid === uid ? { ...u, ...patch } : u));
   writeUsers(users);
@@ -312,6 +335,10 @@ export interface AdminNotification {
   body: string;
   createdAt: number;
   read: boolean;
+  // Optional id that lets the admin jump to the related record from a row.
+  // For `user-registered` it's the user uid. For `listing-posted` and
+  // `listing-flagged` it's the room id. `system` rows leave it undefined.
+  relatedId?: string;
 }
 
 const NOTIF_KEY = "findroom.admin-notifications";
@@ -326,9 +353,10 @@ function seedNotifications(): AdminNotification[] {
       id: "n1",
       kind: "user-registered",
       title: "New user registered",
-      body: "Channary Sok joined FindRoom with phone +855 92 666 808.",
+      body: "Channary Sok joined Joul with phone +855 92 666 808.",
       createdAt: now - 12 * min,
-      read: false
+      read: false,
+      relatedId: "demo-85592666808"
     },
     {
       id: "n2",
@@ -336,7 +364,8 @@ function seedNotifications(): AdminNotification[] {
       title: "New listing posted",
       body: "Sokha Chan published \"Designer 1BR in BKK1\" for $480/month.",
       createdAt: now - 55 * min,
-      read: false
+      read: false,
+      relatedId: "16"
     },
     {
       id: "n3",
@@ -344,15 +373,17 @@ function seedNotifications(): AdminNotification[] {
       title: "Listing reported by a user",
       body: "A renter flagged \"Cosy room in Tuol Tom Poung\" — please review.",
       createdAt: now - 4 * 60 * min,
-      read: false
+      read: false,
+      relatedId: "23"
     },
     {
       id: "n4",
       kind: "user-registered",
       title: "New user registered",
-      body: "Vannak Heng joined FindRoom with phone +855 89 320 117.",
+      body: "Vannak Heng joined Joul with phone +855 89 320 117.",
       createdAt: now - 26 * 60 * min,
-      read: true
+      read: true,
+      relatedId: "demo-85589320117"
     },
     {
       id: "n5",
@@ -387,6 +418,31 @@ function writeNotifications(list: AdminNotification[]) {
   window.dispatchEvent(new Event(NOTIF_EVENT));
 }
 
+// Record an admin-visible incoming event (new sign-up, new listing, report, …).
+// Call this from the user-facing flow that triggers the event, NOT from
+// seeders — seeders write the rooms/users store directly to bypass this path.
+export function pushIncomingNotification(input: {
+  kind: AdminNotificationKind;
+  title: string;
+  body: string;
+  relatedId?: string;
+}): AdminNotification {
+  const n: AdminNotification = {
+    id: `n-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    kind: input.kind,
+    title: input.title,
+    body: input.body,
+    createdAt: Date.now(),
+    read: false,
+    relatedId: input.relatedId
+  };
+  // Make sure the store is initialized — getAdminNotifications seeds on
+  // first read, which we want even if no admin has visited yet.
+  const list = [n, ...getAdminNotifications()];
+  writeNotifications(list);
+  return n;
+}
+
 export function markNotificationRead(id: string, read = true) {
   const list = getAdminNotifications().map((n) => (n.id === id ? { ...n, read } : n));
   writeNotifications(list);
@@ -414,6 +470,349 @@ export function useAdminNotifications(): AdminNotification[] {
     };
   }, []);
   return list;
+}
+
+// ---------- Outbound notifications (admin → users) ----------
+//
+// The admin can compose messages, save reusable templates, and dispatch them to
+// a chosen audience. Like the rest of this section, everything lives in
+// localStorage — "sending" just records a campaign row so the admin sees a
+// history of what would have gone out.
+
+export interface AdminOutboundTemplate {
+  id: string;
+  name: string;
+  title: string;
+  body: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type AdminOutboundAudience =
+  | { kind: "all" }
+  | { kind: "role"; role: "user" | "admin" }
+  | { kind: "specific"; uids: string[] };
+
+export interface AdminOutboundCampaign {
+  id: string;
+  title: string;
+  body: string;
+  audience: AdminOutboundAudience;
+  recipientCount: number;
+  recipientSummary: string;
+  sentAt: number;
+}
+
+const TEMPLATES_KEY = "findroom.admin-outbound-templates";
+const TEMPLATES_EVENT = "findroom:admin-outbound-templates-change";
+const TEMPLATES_SEEDED_FLAG = "findroom.admin-outbound-templates-seeded";
+
+const CAMPAIGNS_KEY = "findroom.admin-outbound-campaigns";
+const CAMPAIGNS_EVENT = "findroom:admin-outbound-campaigns-change";
+
+function seedTemplates(): AdminOutboundTemplate[] {
+  const now = Date.now();
+  return [
+    {
+      id: "tpl-welcome",
+      name: "Welcome new user",
+      title: "Welcome to Joul!",
+      body: "Hi {{username}}, thanks for joining Joul. Browse listings, save favorites, and reach out to owners directly.",
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      id: "tpl-listing-approved",
+      name: "Listing approved",
+      title: "Your listing is live",
+      body: "Hi {{username}}, your listing has been approved and is now visible on Joul. Tenants can contact you on {{phone}}.",
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      id: "tpl-maintenance",
+      name: "Maintenance notice",
+      title: "Scheduled maintenance",
+      body: "Hi {{username}}, Joul will be briefly unavailable on Sunday from 1–3 AM (ICT) for maintenance. Sorry for any inconvenience.",
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      id: "tpl-promo",
+      name: "Promo / announcement",
+      title: "New in BKK1: 12 fresh listings",
+      body: "Hi {{username}}, we just added 12 new rooms in your favorite neighborhood. Tap to explore them now.",
+      createdAt: now,
+      updatedAt: now
+    }
+  ];
+}
+
+export function getOutboundTemplates(): AdminOutboundTemplate[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const seeded = window.localStorage.getItem(TEMPLATES_SEEDED_FLAG);
+    if (!seeded) {
+      const initial = seedTemplates();
+      window.localStorage.setItem(TEMPLATES_KEY, JSON.stringify(initial));
+      window.localStorage.setItem(TEMPLATES_SEEDED_FLAG, "1");
+      return initial;
+    }
+    const raw = window.localStorage.getItem(TEMPLATES_KEY);
+    return raw ? (JSON.parse(raw) as AdminOutboundTemplate[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeTemplates(list: AdminOutboundTemplate[]) {
+  window.localStorage.setItem(TEMPLATES_KEY, JSON.stringify(list));
+  window.dispatchEvent(new Event(TEMPLATES_EVENT));
+}
+
+export function addOutboundTemplate(input: { name: string; title: string; body: string }): AdminOutboundTemplate {
+  const now = Date.now();
+  const tpl: AdminOutboundTemplate = {
+    id: `tpl-${now}-${Math.random().toString(36).slice(2, 7)}`,
+    name: input.name.trim() || "Untitled template",
+    title: input.title,
+    body: input.body,
+    createdAt: now,
+    updatedAt: now
+  };
+  writeTemplates([tpl, ...getOutboundTemplates()]);
+  return tpl;
+}
+
+export function updateOutboundTemplate(id: string, patch: Partial<Pick<AdminOutboundTemplate, "name" | "title" | "body">>) {
+  const list = getOutboundTemplates().map((t) =>
+    t.id === id ? { ...t, ...patch, updatedAt: Date.now() } : t
+  );
+  writeTemplates(list);
+}
+
+export function deleteOutboundTemplate(id: string) {
+  writeTemplates(getOutboundTemplates().filter((t) => t.id !== id));
+}
+
+export function useOutboundTemplates(): AdminOutboundTemplate[] {
+  const [list, setList] = useState<AdminOutboundTemplate[]>([]);
+  useEffect(() => {
+    const sync = () => setList(getOutboundTemplates());
+    sync();
+    window.addEventListener(TEMPLATES_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(TEMPLATES_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+  return list;
+}
+
+export function getOutboundCampaigns(): AdminOutboundCampaign[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(CAMPAIGNS_KEY);
+    return raw ? (JSON.parse(raw) as AdminOutboundCampaign[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCampaigns(list: AdminOutboundCampaign[]) {
+  window.localStorage.setItem(CAMPAIGNS_KEY, JSON.stringify(list));
+  window.dispatchEvent(new Event(CAMPAIGNS_EVENT));
+}
+
+// Resolve the concrete list of users an audience targets. Disabled accounts are
+// dropped so the admin sees a realistic recipient count.
+export function resolveAudience(audience: AdminOutboundAudience): AdminUser[] {
+  const users = getAdminUsers().filter((u) => u.status === "active");
+  if (audience.kind === "all") return users;
+  if (audience.kind === "role") return users.filter((u) => u.role === audience.role);
+  const set = new Set(audience.uids);
+  return users.filter((u) => set.has(u.uid));
+}
+
+function audienceSummary(audience: AdminOutboundAudience, count: number): string {
+  if (audience.kind === "all") return `Everyone (${count})`;
+  if (audience.kind === "role") {
+    const label = audience.role === "admin" ? "Admins" : "Users";
+    return `${label} (${count})`;
+  }
+  if (count <= 3) {
+    const names = resolveAudience(audience).map((u) => u.username).join(", ");
+    return names || `0 users`;
+  }
+  return `${count} users`;
+}
+
+export function sendAdminOutbound(input: {
+  title: string;
+  body: string;
+  audience: AdminOutboundAudience;
+}): AdminOutboundCampaign | null {
+  const recipients = resolveAudience(input.audience);
+  if (recipients.length === 0) return null;
+  const campaign: AdminOutboundCampaign = {
+    id: `camp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title: input.title,
+    body: input.body,
+    audience: input.audience,
+    recipientCount: recipients.length,
+    recipientSummary: audienceSummary(input.audience, recipients.length),
+    sentAt: Date.now()
+  };
+  writeCampaigns([campaign, ...getOutboundCampaigns()]);
+  return campaign;
+}
+
+export function deleteOutboundCampaign(id: string) {
+  writeCampaigns(getOutboundCampaigns().filter((c) => c.id !== id));
+}
+
+export function useOutboundCampaigns(): AdminOutboundCampaign[] {
+  const [list, setList] = useState<AdminOutboundCampaign[]>([]);
+  useEffect(() => {
+    const sync = () => setList(getOutboundCampaigns());
+    sync();
+    window.addEventListener(CAMPAIGNS_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(CAMPAIGNS_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+  return list;
+}
+
+// ---------- User-side notifications ----------
+//
+// Each campaign is a single record on the admin side; we derive a per-user
+// view of it on demand instead of fanning out copies. Read state lives in
+// `findroom.user-read-campaigns.<uid>` (a JSON array of campaign ids).
+
+export interface UserNotification {
+  id: string; // = campaign id
+  title: string;
+  body: string;
+  createdAt: number;
+  read: boolean;
+}
+
+const USER_NOTIF_EVENT = "findroom:user-notifications-change";
+const USER_READ_KEY_PREFIX = "findroom.user-read-campaigns.";
+const userReadKey = (uid: string) => `${USER_READ_KEY_PREFIX}${uid}`;
+
+function getUserReadCampaignIds(uid: string): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(userReadKey(uid));
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+// New sign-ups aren't in the admin directory, so default to a synthetic
+// "user" role record so they still receive "all" and role=user broadcasts.
+function userContextForSession(session: {
+  uid: string;
+  username?: string;
+  phoneNumber?: string;
+}): AdminUser {
+  const existing = getAdminUserById(session.uid);
+  if (existing) return existing;
+  return {
+    uid: session.uid,
+    username: session.username ?? "User",
+    phoneNumber: session.phoneNumber ?? "",
+    role: "user",
+    status: "active",
+    createdAt: Date.now()
+  };
+}
+
+function campaignMatchesUser(audience: AdminOutboundAudience, user: AdminUser): boolean {
+  if (audience.kind === "all") return true;
+  if (audience.kind === "role") return audience.role === user.role;
+  return audience.uids.includes(user.uid);
+}
+
+export function getUserNotifications(session: {
+  uid: string;
+  username?: string;
+  phoneNumber?: string;
+} | null): UserNotification[] {
+  if (!session) return [];
+  const user = userContextForSession(session);
+  const readSet = new Set(getUserReadCampaignIds(session.uid));
+  return getOutboundCampaigns()
+    .filter((c) => campaignMatchesUser(c.audience, user))
+    .map((c) => ({
+      id: c.id,
+      title: fillPlaceholders(c.title, user),
+      body: fillPlaceholders(c.body, user),
+      createdAt: c.sentAt,
+      read: readSet.has(c.id)
+    }));
+}
+
+export function markUserCampaignRead(uid: string, campaignId: string, read = true) {
+  if (typeof window === "undefined") return;
+  const ids = new Set(getUserReadCampaignIds(uid));
+  if (read) ids.add(campaignId);
+  else ids.delete(campaignId);
+  window.localStorage.setItem(userReadKey(uid), JSON.stringify([...ids]));
+  window.dispatchEvent(new Event(USER_NOTIF_EVENT));
+}
+
+export function markAllUserCampaignsRead(uid: string, campaignIds: string[]) {
+  if (typeof window === "undefined") return;
+  const merged = new Set([...getUserReadCampaignIds(uid), ...campaignIds]);
+  window.localStorage.setItem(userReadKey(uid), JSON.stringify([...merged]));
+  window.dispatchEvent(new Event(USER_NOTIF_EVENT));
+}
+
+export function useUserNotifications(session: {
+  uid: string;
+  username?: string;
+  phoneNumber?: string;
+} | null): UserNotification[] {
+  const [list, setList] = useState<UserNotification[]>([]);
+  useEffect(() => {
+    const sync = () => setList(getUserNotifications(session));
+    sync();
+    window.addEventListener(USER_NOTIF_EVENT, sync);
+    window.addEventListener(CAMPAIGNS_EVENT, sync);
+    window.addEventListener(USERS_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(USER_NOTIF_EVENT, sync);
+      window.removeEventListener(CAMPAIGNS_EVENT, sync);
+      window.removeEventListener(USERS_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, [session]);
+  return list;
+}
+
+// Expand a single `{{placeholder}}` against an AdminUser. Unknown placeholders
+// are left untouched so authors notice typos in the preview.
+export function fillPlaceholders(text: string, user: AdminUser): string {
+  return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key: string) => {
+    switch (key) {
+      case "username":
+        return user.username;
+      case "phone":
+        return user.phoneNumber;
+      case "email":
+        return user.email ?? "";
+      default:
+        return match;
+    }
+  });
 }
 
 // ---------- Platform settings ----------
@@ -462,7 +861,7 @@ export const DEFAULT_AMENITIES: string[] = [
 ];
 
 const DEFAULT_SETTINGS: AdminSettings = {
-  siteName: "FindRoom.KH",
+  siteName: "Joul.KH",
   supportEmail: "support@findroom.kh",
   supportPhone: "+855 12 000 000",
   defaultCurrency: "USD",
@@ -527,6 +926,9 @@ export function resetAllLocalData() {
     "findroom.admin-notifications",
     "findroom.admin-notifications-seeded",
     "findroom.admin-listings-seeded",
+    TEMPLATES_KEY,
+    TEMPLATES_SEEDED_FLAG,
+    CAMPAIGNS_KEY,
     SETTINGS_KEY
   ];
   for (const k of keysToClear) window.localStorage.removeItem(k);
@@ -539,5 +941,7 @@ export function resetAllLocalData() {
   }
   window.dispatchEvent(new Event(USERS_EVENT));
   window.dispatchEvent(new Event(NOTIF_EVENT));
+  window.dispatchEvent(new Event(TEMPLATES_EVENT));
+  window.dispatchEvent(new Event(CAMPAIGNS_EVENT));
   window.dispatchEvent(new Event("findroom:local-rooms-change"));
 }

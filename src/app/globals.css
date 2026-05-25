@@ -2,7 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap");
+/* Fonts are self-hosted via next/font/google in app/layout.tsx and
+   exposed as CSS variables on <html>. Browsers pick a glyph from the
+   first family that covers the character: Latin → Poppins, Khmer →
+   Noto Sans Khmer. */
 
 html {
   scroll-behavior: smooth;

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
+import SelectField from "@/components/SelectField";
 import {
   ALL_PROPERTY_TYPES,
   getAdminSettings,
@@ -15,22 +16,24 @@ import {
   type AdminSettings
 } from "@/lib/admin";
 import { useSession } from "@/lib/session";
+import { toast } from "@/lib/toast";
+import { useT } from "@/lib/language";
 import type { PricePeriod, PropertyType } from "@/lib/types";
 
-const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
-  room: "Room",
-  apartment: "Apartment",
-  condo: "Condo",
-  flat: "Flat",
-  house: "House",
-  villa: "Villa"
+const PROPERTY_TYPE_KEYS: Record<PropertyType, string> = {
+  room: "admin.propertyType.room",
+  apartment: "admin.propertyType.apartment",
+  condo: "admin.propertyType.condo",
+  flat: "admin.propertyType.flat",
+  house: "admin.propertyType.house",
+  villa: "admin.propertyType.villa"
 };
 
-const PRICE_PERIOD_LABELS: Record<PricePeriod, string> = {
-  daily: "Daily",
-  weekly: "Weekly",
-  monthly: "Monthly",
-  yearly: "Yearly"
+const PRICE_PERIOD_KEYS: Record<PricePeriod, string> = {
+  daily: "admin.pricePeriod.daily",
+  weekly: "admin.pricePeriod.weekly",
+  monthly: "admin.pricePeriod.monthly",
+  yearly: "admin.pricePeriod.yearly"
 };
 
 function settingsEqual(a: AdminSettings, b: AdminSettings): boolean {
@@ -58,6 +61,7 @@ export default function AdminSettingsPage() {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetDone, setResetDone] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     setDraft(stored);
@@ -69,6 +73,7 @@ export default function AdminSettingsPage() {
     saveAdminSettings(draft);
     setSavedAt(Date.now());
     setTimeout(() => setSavedAt(null), 2500);
+    toast.success(t("toast.admin.settings.saved"));
   }
 
   function handleReset() {
@@ -77,40 +82,41 @@ export default function AdminSettingsPage() {
     setConfirmReset(false);
     setResetDone(true);
     setTimeout(() => setResetDone(false), 4000);
+    toast.success(t("toast.admin.settings.reset"));
   }
 
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Settings</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t("admin.settings.title")}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Manage platform-wide configuration. Values persist locally — backend wiring comes later.
+          {t("admin.settings.subtitle")}
         </p>
       </header>
 
       <Section
         icon="building"
-        title="General"
-        description="Site identity and contact details shown across FindRoom."
+        title={t("admin.settings.general.title")}
+        description={t("admin.settings.general.desc")}
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <Field
-            label="Site name"
+            label={t("admin.settings.field.siteName")}
             value={draft.siteName}
             onChange={(v) => setDraft({ ...draft, siteName: v })}
           />
           <Field
-            label="Support email"
+            label={t("admin.settings.field.supportEmail")}
             value={draft.supportEmail}
             onChange={(v) => setDraft({ ...draft, supportEmail: v })}
           />
           <Field
-            label="Support phone"
+            label={t("admin.settings.field.supportPhone")}
             value={draft.supportPhone}
             onChange={(v) => setDraft({ ...draft, supportPhone: v })}
           />
           <Field
-            label="Default currency"
+            label={t("admin.settings.field.defaultCurrency")}
             value={draft.defaultCurrency}
             onChange={(v) => setDraft({ ...draft, defaultCurrency: v })}
           />
@@ -119,24 +125,24 @@ export default function AdminSettingsPage() {
 
       <Section
         icon="map-pin"
-        title="Listing taxonomy"
-        description="Property types and amenities renters can filter by. New listings only see options enabled here."
+        title={t("admin.settings.taxonomy.title")}
+        description={t("admin.settings.taxonomy.desc")}
       >
         <div>
-          <p className="label mb-2">Property types</p>
+          <p className="label mb-2">{t("admin.settings.propertyTypes")}</p>
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {ALL_PROPERTY_TYPES.map((t) => {
-              const on = draft.activePropertyTypes.includes(t);
+            {ALL_PROPERTY_TYPES.map((pt) => {
+              const on = draft.activePropertyTypes.includes(pt);
               return (
-                <li key={t}>
+                <li key={pt}>
                   <button
                     type="button"
                     onClick={() =>
                       setDraft({
                         ...draft,
                         activePropertyTypes: on
-                          ? draft.activePropertyTypes.filter((x) => x !== t)
-                          : [...draft.activePropertyTypes, t]
+                          ? draft.activePropertyTypes.filter((x) => x !== pt)
+                          : [...draft.activePropertyTypes, pt]
                       })
                     }
                     className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm font-semibold transition ${
@@ -145,7 +151,7 @@ export default function AdminSettingsPage() {
                         : "border-slate-200 bg-white text-ink-muted hover:border-slate-300"
                     }`}
                   >
-                    <span>{PROPERTY_TYPE_LABELS[t]}</span>
+                    <span>{t(PROPERTY_TYPE_KEYS[pt])}</span>
                     {on ? <Icon name="check" className="h-4 w-4" /> : null}
                   </button>
                 </li>
@@ -154,13 +160,13 @@ export default function AdminSettingsPage() {
           </ul>
           {draft.activePropertyTypes.length === 0 ? (
             <p className="mt-2 text-xs text-red-700">
-              At least one property type must be enabled.
+              {t("admin.settings.propertyTypes.required")}
             </p>
           ) : null}
         </div>
 
         <div>
-          <p className="label mb-2">Amenities</p>
+          <p className="label mb-2">{t("admin.settings.amenities")}</p>
           <AmenitiesEditor
             amenities={draft.amenities}
             onChange={(amenities) => setDraft({ ...draft, amenities })}
@@ -170,47 +176,43 @@ export default function AdminSettingsPage() {
 
       <Section
         icon="bed"
-        title="Pricing defaults"
-        description="Pre-fill the list-room form so hosts don't enter the same numbers every time."
+        title={t("admin.settings.pricing.title")}
+        description={t("admin.settings.pricing.desc")}
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="label" htmlFor="s-period">Default price period</label>
-            <select
+            <label className="label" htmlFor="s-period">{t("admin.settings.pricing.defaultPeriod")}</label>
+            <SelectField<PricePeriod>
               id="s-period"
-              className="input"
+              ariaLabel={t("admin.settings.pricing.defaultPeriod")}
               value={draft.defaultPricePeriod}
-              onChange={(e) =>
-                setDraft({ ...draft, defaultPricePeriod: e.target.value as PricePeriod })
-              }
-            >
-              {(Object.keys(PRICE_PERIOD_LABELS) as PricePeriod[]).map((p) => (
-                <option key={p} value={p}>
-                  {PRICE_PERIOD_LABELS[p]}
-                </option>
-              ))}
-            </select>
+              options={(Object.keys(PRICE_PERIOD_KEYS) as PricePeriod[]).map((p) => ({
+                value: p,
+                label: t(PRICE_PERIOD_KEYS[p])
+              }))}
+              onChange={(v) => setDraft({ ...draft, defaultPricePeriod: v })}
+            />
           </div>
           <NumberField
-            label="Exchange rate (KHR per USD)"
+            label={t("admin.settings.pricing.exchangeRate")}
             value={draft.exchangeRateKhrPerUsd}
             step={50}
             onChange={(v) => setDraft({ ...draft, exchangeRateKhrPerUsd: v })}
           />
           <NumberField
-            label="Water default ($ / m³)"
+            label={t("admin.settings.pricing.water")}
             value={draft.defaultWaterPrice}
             step={0.05}
             onChange={(v) => setDraft({ ...draft, defaultWaterPrice: v })}
           />
           <NumberField
-            label="Electricity default ($ / kWh)"
+            label={t("admin.settings.pricing.electricity")}
             value={draft.defaultElectricityPrice}
             step={0.05}
             onChange={(v) => setDraft({ ...draft, defaultElectricityPrice: v })}
           />
           <NumberField
-            label="Wi-Fi default ($ / month)"
+            label={t("admin.settings.pricing.wifi")}
             value={draft.defaultWifiPrice}
             step={1}
             onChange={(v) => setDraft({ ...draft, defaultWifiPrice: v })}
@@ -220,25 +222,25 @@ export default function AdminSettingsPage() {
 
       <Section
         icon="shield"
-        title="Moderation"
-        description="Defaults for how new listings and accounts are handled."
+        title={t("admin.settings.moderation.title")}
+        description={t("admin.settings.moderation.desc")}
       >
         <div className="space-y-2">
           <ToggleRow
-            label="Auto-publish new listings"
-            hint="Off = listings need admin approval before going live."
+            label={t("admin.settings.moderation.autoPublish")}
+            hint={t("admin.settings.moderation.autoPublish.hint")}
             on={draft.autoPublishListings}
             onChange={(v) => setDraft({ ...draft, autoPublishListings: v })}
           />
           <ToggleRow
-            label="Require phone verification"
-            hint="Renters must verify by SMS before contacting hosts."
+            label={t("admin.settings.moderation.phoneVerification")}
+            hint={t("admin.settings.moderation.phoneVerification.hint")}
             on={draft.requirePhoneVerification}
             onChange={(v) => setDraft({ ...draft, requirePhoneVerification: v })}
           />
           <ToggleRow
-            label="Send email alerts for reports"
-            hint="Notify admins by email when a listing is flagged."
+            label={t("admin.settings.moderation.emailAlerts")}
+            hint={t("admin.settings.moderation.emailAlerts.hint")}
             on={draft.emailAlertsOnReports}
             onChange={(v) => setDraft({ ...draft, emailAlertsOnReports: v })}
           />
@@ -249,13 +251,13 @@ export default function AdminSettingsPage() {
 
       <Section
         icon="trash"
-        title="Danger zone"
-        description="Reset all locally-seeded demo data. Useful when you change seeds or want a clean slate."
+        title={t("admin.settings.danger.title")}
+        description={t("admin.settings.danger.desc")}
         tone="danger"
       >
         {resetDone ? (
           <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-            Local data has been reset. Reload the page to re-seed.
+            {t("admin.settings.danger.resetDone")}
           </p>
         ) : null}
         <button
@@ -264,7 +266,7 @@ export default function AdminSettingsPage() {
           className="btn-danger"
         >
           <Icon name="trash" className="h-4 w-4" />
-          Reset local data
+          {t("admin.settings.danger.resetButton")}
         </button>
       </Section>
 
@@ -275,10 +277,10 @@ export default function AdminSettingsPage() {
               {savedAt ? (
                 <span className="inline-flex items-center gap-1.5 text-emerald-700">
                   <Icon name="check" className="h-4 w-4" />
-                  Saved
+                  {t("admin.settings.savedBar.saved")}
                 </span>
               ) : (
-                "You have unsaved changes."
+                t("admin.settings.savedBar.unsaved")
               )}
             </p>
             <div className="flex gap-2">
@@ -288,7 +290,7 @@ export default function AdminSettingsPage() {
                 disabled={!dirty}
                 className="btn-ghost disabled:opacity-40"
               >
-                Discard
+                {t("admin.settings.savedBar.discard")}
               </button>
               <button
                 type="button"
@@ -297,7 +299,7 @@ export default function AdminSettingsPage() {
                 className="btn-primary disabled:opacity-50"
               >
                 <Icon name="check" className="h-4 w-4" />
-                Save changes
+                {t("admin.settings.savedBar.save")}
               </button>
             </div>
           </div>
@@ -317,18 +319,17 @@ export default function AdminSettingsPage() {
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-700">
                 <Icon name="trash" className="h-4 w-4" />
               </span>
-              <h3 className="text-base font-bold">Reset all local data?</h3>
+              <h3 className="text-base font-bold">{t("admin.settings.confirmReset.title")}</h3>
             </div>
             <p className="text-sm text-ink-muted">
-              This clears mock users, mock notifications, settings, and all locally-stored
-              listings. Your sign-in session stays. The data will re-seed on next load.
+              {t("admin.settings.confirmReset.body")}
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button type="button" onClick={() => setConfirmReset(false)} className="btn-ghost">
-                Cancel
+                {t("common.cancel")}
               </button>
               <button type="button" onClick={handleReset} className="btn-danger">
-                Reset
+                {t("common.reset")}
               </button>
             </div>
           </div>
@@ -346,6 +347,7 @@ function AmenitiesEditor({
   onChange: (next: string[]) => void;
 }) {
   const [input, setInput] = useState("");
+  const t = useT();
 
   function add() {
     const trimmed = input.trim();
@@ -374,7 +376,7 @@ function AmenitiesEditor({
             <button
               type="button"
               onClick={() => remove(a)}
-              aria-label={`Remove ${a}`}
+              aria-label={t("admin.settings.amenities.removeAria", { name: a })}
               className="flex h-5 w-5 items-center justify-center rounded-full text-ink-muted transition hover:bg-red-50 hover:text-red-700"
             >
               <Icon name="x" className="h-3 w-3" />
@@ -382,13 +384,13 @@ function AmenitiesEditor({
           </li>
         ))}
         {amenities.length === 0 ? (
-          <li className="text-xs text-ink-muted">No amenities yet.</li>
+          <li className="text-xs text-ink-muted">{t("admin.settings.amenities.empty")}</li>
         ) : null}
       </ul>
       <div className="mt-3 flex gap-2">
         <input
           className="input flex-1"
-          placeholder="Add an amenity (e.g. Rooftop)"
+          placeholder={t("admin.settings.amenities.placeholder")}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -400,7 +402,7 @@ function AmenitiesEditor({
         />
         <button type="button" onClick={add} className="btn-secondary">
           <Icon name="plus" className="h-4 w-4" />
-          Add
+          {t("common.add")}
         </button>
       </div>
     </div>
@@ -412,6 +414,7 @@ function AccessControlSection() {
   const session = useSession();
   const [uids, setUids] = useState<string[]>([]);
   const [addUid, setAddUid] = useState("");
+  const t = useT();
 
   useEffect(() => {
     setUids(getAdminUids());
@@ -473,15 +476,15 @@ function AccessControlSection() {
   return (
     <Section
       icon="shield"
-      title="Access control"
-      description="Who can reach the admin console. The bootstrap allowlist works even if the user directory is empty."
+      title={t("admin.settings.access.title")}
+      description={t("admin.settings.access.desc")}
     >
       <div className="space-y-4">
         <div>
-          <p className="label mb-2">Current admins</p>
+          <p className="label mb-2">{t("admin.settings.access.currentAdmins")}</p>
           {allAdmins.length === 0 ? (
             <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              No admins configured. Add at least one uid below before logging out.
+              {t("admin.settings.access.noAdmins")}
             </p>
           ) : (
             <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
@@ -506,7 +509,7 @@ function AccessControlSection() {
                             : "bg-slate-100 text-ink-muted"
                         }`}
                       >
-                        {s}
+                        {s === "Allowlist" ? t("admin.settings.access.allowlist") : t("admin.settings.access.role")}
                       </span>
                     ))}
                     {a.sources.includes("Allowlist") ? (
@@ -514,8 +517,8 @@ function AccessControlSection() {
                         <button
                           type="button"
                           disabled
-                          aria-label="You can't remove yourself"
-                          title="You can't remove yourself"
+                          aria-label={t("admin.settings.access.cantRemoveSelf")}
+                          title={t("admin.settings.access.cantRemoveSelf")}
                           className="cursor-not-allowed rounded-full p-1.5 text-slate-300"
                         >
                           <Icon name="trash" className="h-4 w-4" />
@@ -524,8 +527,8 @@ function AccessControlSection() {
                         <button
                           type="button"
                           onClick={() => handleRemove(a.uid)}
-                          aria-label="Remove from allowlist"
-                          title="Remove from allowlist"
+                          aria-label={t("admin.settings.access.removeFromAllowlist")}
+                          title={t("admin.settings.access.removeFromAllowlist")}
                           className="rounded-full p-1.5 text-ink-muted transition hover:bg-red-50 hover:text-red-700"
                         >
                           <Icon name="trash" className="h-4 w-4" />
@@ -540,11 +543,11 @@ function AccessControlSection() {
         </div>
 
         <div>
-          <p className="label mb-2">Add to bootstrap allowlist</p>
+          <p className="label mb-2">{t("admin.settings.access.addLabel")}</p>
           <div className="flex gap-2">
             <input
               className="input flex-1"
-              placeholder="user uid (e.g. demo-85512000000)"
+              placeholder={t("admin.settings.access.addPlaceholder")}
               value={addUid}
               onChange={(e) => setAddUid(e.target.value)}
               onKeyDown={(e) => {
@@ -556,15 +559,15 @@ function AccessControlSection() {
             />
             <button type="button" onClick={handleAdd} className="btn-secondary">
               <Icon name="plus" className="h-4 w-4" />
-              Add
+              {t("common.add")}
             </button>
           </div>
           <p className="mt-1.5 text-[11px] text-ink-soft">
-            For non-allowlist admins, edit a user in{" "}
+            {t("admin.settings.access.helperPrefix")}{" "}
             <Link href="/user/admin/users" className="font-semibold text-brand hover:underline">
-              Users
+              {t("admin.settings.access.helperLink")}
             </Link>
-            {" "}and set their role to Admin.
+            {t("admin.settings.access.helperSuffix")}
           </p>
         </div>
       </div>

@@ -3,10 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "./Icon";
+import ConfirmModal from "./ConfirmModal";
 import {
   deleteLocalRoom,
   updateLocalRoom
 } from "@/lib/local-rooms";
+import { toast } from "@/lib/toast";
+import { useT } from "@/lib/language";
 import type { Room } from "@/lib/types";
 
 export default function ListingActionMenu({
@@ -17,7 +20,9 @@ export default function ListingActionMenu({
   align?: "left" | "right";
 }) {
   const router = useRouter();
+  const t = useT();
   const [open, setOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,9 +51,7 @@ export default function ListingActionMenu({
   function handleDelete(e: React.MouseEvent) {
     stop(e);
     setOpen(false);
-    const ok = window.confirm(`Delete "${room.title}"? This can't be undone.`);
-    if (!ok) return;
-    deleteLocalRoom(room.id);
+    setConfirmDeleteOpen(true);
   }
 
   function handleCopy(e: React.MouseEvent) {
@@ -62,7 +65,14 @@ export default function ListingActionMenu({
   function handleToggleOccupied(e: React.MouseEvent) {
     stop(e);
     setOpen(false);
-    updateLocalRoom(room.id, { isOccupied: !room.isOccupied });
+    const nextOccupied = !room.isOccupied;
+    updateLocalRoom(room.id, { isOccupied: nextOccupied });
+    toast.success(
+      t(
+        nextOccupied ? "toast.listing.occupied" : "toast.listing.available",
+        { title: room.title }
+      )
+    );
   }
 
   return (
@@ -73,7 +83,7 @@ export default function ListingActionMenu({
           stop(e);
           setOpen((cur) => !cur);
         }}
-        aria-label="Listing options"
+        aria-label={t("listing.menu.aria")}
         aria-expanded={open}
         aria-haspopup="menu"
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-100 hover:text-ink"
@@ -89,13 +99,28 @@ export default function ListingActionMenu({
         >
           <MenuItem
             icon={room.isOccupied ? "check" : "home"}
-            label={room.isOccupied ? "Mark as available" : "Mark as occupied"}
+            label={t(room.isOccupied ? "listing.menu.markAvailable" : "listing.menu.markOccupied")}
             onClick={handleToggleOccupied}
           />
-          <MenuItem icon="copy" label="Copy" onClick={handleCopy} />
-          <MenuItem icon="trash" label="Delete" onClick={handleDelete} danger />
+          <MenuItem icon="copy" label={t("common.copy")} onClick={handleCopy} />
+          <MenuItem icon="trash" label={t("common.delete")} onClick={handleDelete} danger />
         </div>
       ) : null}
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title={t("listing.delete.confirm.title")}
+        body={
+          <>
+            <b>{room.title}</b> {t("listing.delete.confirm.body")}
+          </>
+        }
+        onCancel={() => setConfirmDeleteOpen(false)}
+        onConfirm={() => {
+          setConfirmDeleteOpen(false);
+          deleteLocalRoom(room.id);
+          toast.success(t("toast.listing.deleted", { title: room.title }));
+        }}
+      />
     </div>
   );
 }

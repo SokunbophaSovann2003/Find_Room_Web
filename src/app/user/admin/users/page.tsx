@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Icon, { type IconName } from "@/components/Icon";
+import ConfirmModal from "@/components/ConfirmModal";
 import DateRangePicker from "@/components/DateRangePicker";
 import UserFormModal, { type UserFormValues } from "@/components/admin/UserFormModal";
 import {
@@ -15,6 +16,8 @@ import {
   type AdminUser
 } from "@/lib/admin";
 import { useLocalRooms } from "@/lib/local-rooms";
+import { toast } from "@/lib/toast";
+import { useT } from "@/lib/language";
 
 type StatusFilter = "all" | "active" | "disabled";
 type RoleFilter = "all" | "user" | "admin";
@@ -23,6 +26,7 @@ export default function AdminUsersPage() {
   const router = useRouter();
   const users = useAdminUsers();
   const rooms = useLocalRooms();
+  const t = useT();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
@@ -70,52 +74,65 @@ export default function AdminUsersPage() {
   function handleAdd(values: UserFormValues) {
     addAdminUser(values);
     setAdding(false);
+    toast.success(t("toast.admin.user.added", { name: values.username }));
   }
 
   function handleEditSave(values: UserFormValues) {
     if (!editing) return;
     updateAdminUser(editing.uid, values);
     setEditing(null);
+    toast.success(t("toast.admin.user.updated", { name: values.username }));
   }
 
   function handleDelete() {
     if (!confirmDelete) return;
+    const name = confirmDelete.username;
     deleteAdminUser(confirmDelete.uid);
     setConfirmDelete(null);
+    toast.success(t("toast.admin.user.deleted", { name }));
+  }
+
+  function handleToggleStatus(u: AdminUser) {
+    toggleAdminUserStatus(u.uid);
+    toast.success(
+      u.status === "active"
+        ? t("toast.admin.user.disabled", { name: u.username })
+        : t("toast.admin.user.enabled", { name: u.username })
+    );
   }
 
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Users</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t("admin.users.title")}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          View, add, edit, disable or delete user accounts.
+          {t("admin.users.subtitle")}
         </p>
       </header>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
-          label="Users"
+          label={t("admin.users.stat.users")}
           value={stats.total}
-          hint={`${stats.active} active`}
+          hint={t("admin.users.stat.activeHint", { n: stats.active })}
           icon="user"
         />
         <StatCard
-          label="Active"
+          label={t("admin.users.stat.active")}
           value={stats.active}
-          hint={stats.active === 0 ? "No active accounts" : "Currently enabled"}
+          hint={stats.active === 0 ? t("admin.users.stat.noActive") : t("admin.users.stat.currentlyEnabled")}
           icon="check"
         />
         <StatCard
-          label="Disabled"
+          label={t("admin.users.stat.disabled")}
           value={stats.disabled}
-          hint={stats.disabled === 0 ? "All accounts active" : "Suspended accounts"}
+          hint={stats.disabled === 0 ? t("admin.users.stat.allActive") : t("admin.users.stat.suspended")}
           icon="shield"
         />
         <StatCard
-          label="Admins"
+          label={t("admin.users.stat.admins")}
           value={stats.admins}
-          hint={stats.admins === 1 ? "1 admin account" : `${stats.admins} admin accounts`}
+          hint={stats.admins === 1 ? t("admin.users.stat.oneAdmin") : t("admin.users.stat.manyAdmins", { n: stats.admins })}
           icon="shield"
         />
       </section>
@@ -130,7 +147,7 @@ export default function AdminUsersPage() {
             />
             <input
               className="input pl-9"
-              placeholder="Search name, phone, or email"
+              placeholder={t("admin.users.search.placeholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -140,7 +157,7 @@ export default function AdminUsersPage() {
             onClick={() => setFiltersOpen((v) => !v)}
             aria-expanded={filtersOpen}
             aria-controls="users-filter-controls"
-            aria-label={filtersOpen ? "Hide filters" : "Show filters"}
+            aria-label={filtersOpen ? t("admin.filter.hideFilters") : t("admin.filter.showFilters")}
             className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-ink-muted transition hover:bg-slate-50 hover:text-ink lg:hidden"
           >
             <Icon
@@ -156,32 +173,32 @@ export default function AdminUsersPage() {
           className={`${filtersOpen ? "flex" : "hidden"} flex-col gap-3 lg:contents`}
         >
           <FilterSelect
-            ariaLabel="Status"
+            ariaLabel={t("admin.filter.statusLabel")}
             value={statusFilter}
             onChange={(v) => setStatusFilter(v as StatusFilter)}
             options={[
-              { value: "all", label: "Any status" },
-              { value: "active", label: "Active" },
-              { value: "disabled", label: "Disabled" }
+              { value: "all", label: t("admin.filter.anyStatus") },
+              { value: "active", label: t("admin.status.active") },
+              { value: "disabled", label: t("admin.status.disabled") }
             ]}
           />
           <FilterSelect
-            ariaLabel="Role"
+            ariaLabel={t("admin.filter.roleLabel")}
             value={roleFilter}
             onChange={(v) => setRoleFilter(v as RoleFilter)}
             options={[
-              { value: "all", label: "Any role" },
-              { value: "user", label: "User" },
-              { value: "admin", label: "Admin" }
+              { value: "all", label: t("admin.filter.anyRole") },
+              { value: "user", label: t("admin.role.user") },
+              { value: "admin", label: t("admin.role.admin") }
             ]}
           />
           <DateRangePicker
             from={dateFrom}
             to={dateTo}
-            placeholder="Any created date"
-            onChange={(f, t) => {
+            placeholder={t("admin.filter.anyCreatedDate")}
+            onChange={(f, to) => {
               setDateFrom(f);
-              setDateTo(t);
+              setDateTo(to);
             }}
           />
         </div>
@@ -192,7 +209,7 @@ export default function AdminUsersPage() {
           className="btn-primary justify-center"
         >
           <Icon name="plus" className="h-4 w-4" />
-          Add user
+          {t("admin.users.addUser")}
         </button>
       </div>
 
@@ -201,19 +218,19 @@ export default function AdminUsersPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-ink-soft">
             <tr>
-              <th className="px-4 py-3 font-semibold">User</th>
-              <th className="px-4 py-3 font-semibold">Phone</th>
-              <th className="px-4 py-3 font-semibold">Role</th>
-              <th className="px-4 py-3 font-semibold">Status</th>
-              <th className="px-4 py-3 font-semibold">Listings</th>
-              <th className="px-4 py-3 text-right font-semibold">Actions</th>
+              <th className="px-4 py-3 font-semibold">{t("admin.users.col.user")}</th>
+              <th className="px-4 py-3 font-semibold">{t("admin.users.col.phone")}</th>
+              <th className="px-4 py-3 font-semibold">{t("admin.users.col.role")}</th>
+              <th className="px-4 py-3 font-semibold">{t("admin.users.col.status")}</th>
+              <th className="px-4 py-3 font-semibold">{t("admin.users.col.listings")}</th>
+              <th className="px-4 py-3 text-right font-semibold">{t("admin.users.col.actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center text-sm text-ink-muted">
-                  No users match this search.
+                  {t("admin.users.empty")}
                 </td>
               </tr>
             ) : (
@@ -241,10 +258,10 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3">
                     {u.role === "admin" ? (
                       <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
-                        Admin
+                        {t("admin.role.admin")}
                       </span>
                     ) : (
-                      <span className="text-xs text-ink-muted">User</span>
+                      <span className="text-xs text-ink-muted">{t("admin.role.user")}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -256,8 +273,13 @@ export default function AdminUsersPage() {
                       user={u}
                       onView={() => router.push(`/user/admin/users/${u.uid}`)}
                       onEdit={() => setEditing(u)}
-                      onToggle={() => toggleAdminUserStatus(u.uid)}
+                      onToggle={() => handleToggleStatus(u)}
                       onDelete={() => setConfirmDelete(u)}
+                      onSend={() =>
+                        router.push(
+                          `/user/admin/notifications?tab=send&to=${encodeURIComponent(u.uid)}`
+                        )
+                      }
                     />
                   </td>
                 </tr>
@@ -271,7 +293,7 @@ export default function AdminUsersPage() {
       <ul className="space-y-2 md:hidden">
         {filtered.length === 0 ? (
           <li className="card px-4 py-10 text-center text-sm text-ink-muted">
-            No users match this search.
+            {t("admin.users.empty")}
           </li>
         ) : (
           filtered.map((u) => (
@@ -301,18 +323,23 @@ export default function AdminUsersPage() {
                   user={u}
                   onView={() => (window.location.href = `/user/admin/users/${u.uid}`)}
                   onEdit={() => setEditing(u)}
-                  onToggle={() => toggleAdminUserStatus(u.uid)}
+                  onToggle={() => handleToggleStatus(u)}
                   onDelete={() => setConfirmDelete(u)}
+                  onSend={() =>
+                    router.push(
+                      `/user/admin/notifications?tab=send&to=${encodeURIComponent(u.uid)}`
+                    )
+                  }
                 />
               </div>
               <div className="mt-2 flex items-center gap-2 text-[11px]">
                 <StatusPill status={u.status} />
                 {u.role === "admin" ? (
                   <span className="rounded-full bg-brand/10 px-2 py-0.5 font-semibold text-brand">
-                    Admin
+                    {t("admin.role.admin")}
                   </span>
                 ) : null}
-                <span className="text-ink-muted">{listingsByUid.get(u.uid) ?? 0} listings</span>
+                <span className="text-ink-muted">{t("admin.users.listingsCount", { n: listingsByUid.get(u.uid) ?? 0 })}</span>
               </div>
             </li>
           ))
@@ -336,13 +363,19 @@ export default function AdminUsersPage() {
         />
       ) : null}
 
-      {confirmDelete ? (
-        <ConfirmDeleteModal
-          user={confirmDelete}
-          onCancel={() => setConfirmDelete(null)}
-          onConfirm={handleDelete}
-        />
-      ) : null}
+      <ConfirmModal
+        open={!!confirmDelete}
+        title={t("admin.users.delete.title")}
+        body={
+          confirmDelete ? (
+            <>
+              {t("admin.users.delete.body.prefix")}<b>{confirmDelete.username}</b>{t("admin.users.delete.body.suffix")}
+            </>
+          ) : null
+        }
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
@@ -459,18 +492,19 @@ function StatCard({
 }
 
 function StatusPill({ status }: { status: AdminUser["status"] }) {
+  const t = useT();
   if (status === "active") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        Active
+        {t("admin.status.active")}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
       <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-      Disabled
+      {t("admin.status.disabled")}
     </span>
   );
 }
@@ -480,15 +514,18 @@ function RowActions({
   onView,
   onEdit,
   onToggle,
-  onDelete
+  onDelete,
+  onSend
 }: {
   user: AdminUser;
   onView: () => void;
   onEdit: () => void;
   onToggle: () => void;
   onDelete: () => void;
+  onSend: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   return (
     <div className="relative">
       <button
@@ -496,23 +533,24 @@ function RowActions({
         onClick={() => setOpen((v) => !v)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-100 hover:text-ink"
-        aria-label="Row actions"
+        aria-label={t("admin.rowActions.aria")}
       >
         <Icon name="more-vertical" className="h-4 w-4" />
       </button>
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-30 mt-1.5 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-cardHover"
+          className="absolute right-0 top-full z-30 mt-1.5 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-cardHover"
         >
-          <MenuItem icon="user" label="View profile" onClick={onView} />
-          <MenuItem icon="pencil" label="Edit" onClick={onEdit} />
+          <MenuItem icon="user" label={t("admin.users.action.viewProfile")} onClick={onView} />
+          <MenuItem icon="message" label={t("admin.users.action.sendNotification")} onClick={onSend} />
+          <MenuItem icon="pencil" label={t("admin.users.action.edit")} onClick={onEdit} />
           <MenuItem
             icon="shield"
-            label={user.status === "active" ? "Disable" : "Enable"}
+            label={user.status === "active" ? t("admin.users.action.disable") : t("admin.users.action.enable")}
             onClick={onToggle}
           />
-          <MenuItem icon="trash" label="Delete" danger onClick={onDelete} />
+          <MenuItem icon="trash" label={t("admin.users.action.delete")} danger onClick={onDelete} />
         </div>
       ) : null}
     </div>
@@ -525,7 +563,7 @@ function MenuItem({
   onClick,
   danger
 }: {
-  icon: "user" | "pencil" | "shield" | "trash";
+  icon: "user" | "pencil" | "shield" | "trash" | "message";
   label: string;
   onClick: () => void;
   danger?: boolean;
@@ -548,43 +586,3 @@ function MenuItem({
   );
 }
 
-function ConfirmDeleteModal({
-  user,
-  onCancel,
-  onConfirm
-}: {
-  user: AdminUser;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/40 px-4"
-      onClick={onCancel}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-cardHover"
-      >
-        <div className="mb-2 flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-700">
-            <Icon name="trash" className="h-4 w-4" />
-          </span>
-          <h3 className="text-base font-bold">Delete user?</h3>
-        </div>
-        <p className="text-sm text-ink-muted">
-          This removes <b>{user.username}</b> from the admin user list. Their listings stay in
-          place but become unowned. This can&apos;t be undone in the mock data.
-        </p>
-        <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className="btn-ghost">
-            Cancel
-          </button>
-          <button type="button" onClick={onConfirm} className="btn-danger">
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
