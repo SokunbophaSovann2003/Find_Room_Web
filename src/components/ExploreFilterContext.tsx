@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { LocationValue } from "./LocationPicker";
 import type { Room, PropertyType } from "@/lib/types";
 
@@ -19,8 +20,41 @@ const Ctx = createContext<{
   setFilter: (next: ExploreFilter) => void;
 }>({ filter: empty, setFilter: () => {} });
 
+// Filters live in the URL so back-navigation from a room detail page restores
+// the filtered view and links can be shared. The provider derives state from
+// useSearchParams() and writes via router.replace().
 export function ExploreFilterProvider({ children }: { children: ReactNode }) {
-  const [filter, setFilter] = useState<ExploreFilter>(empty);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const filter = useMemo<ExploreFilter>(
+    () => ({
+      location: {
+        province: searchParams?.get("province") ?? undefined,
+        district: searchParams?.get("district") ?? undefined,
+        area: searchParams?.get("area") ?? undefined
+      },
+      type: (searchParams?.get("type") as PropertyType | null) ?? "",
+      sort: (searchParams?.get("sort") as SortOrder | null) ?? ""
+    }),
+    [searchParams]
+  );
+
+  const setFilter = useCallback(
+    (next: ExploreFilter) => {
+      const params = new URLSearchParams();
+      if (next.location.province) params.set("province", next.location.province);
+      if (next.location.district) params.set("district", next.location.district);
+      if (next.location.area) params.set("area", next.location.area);
+      if (next.type) params.set("type", next.type);
+      if (next.sort) params.set("sort", next.sort);
+      const qs = params.toString();
+      router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    },
+    [router, pathname]
+  );
+
   return <Ctx.Provider value={{ filter, setFilter }}>{children}</Ctx.Provider>;
 }
 

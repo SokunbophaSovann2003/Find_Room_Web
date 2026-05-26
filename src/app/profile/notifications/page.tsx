@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import Icon from "@/components/Icon";
 import { useSession } from "@/lib/session";
@@ -14,10 +14,23 @@ import {
 } from "@/lib/admin";
 
 export default function UserNotificationsPage() {
+  const router = useRouter();
   const session = useSession();
   const t = useT();
   const notifications = useUserNotifications(session);
   const unread = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+
+  function handleBack() {
+    // Browser history is the source of truth: send the user back to wherever
+    // they came from. Fall back to /profile when there's no in-app history
+    // (e.g. notification opened from an external link, or the tab landed here
+    // directly), since /profile is the canonical parent for this view.
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/profile");
+    }
+  }
 
   function handleMarkAll() {
     if (!session) return;
@@ -36,16 +49,19 @@ export default function UserNotificationsPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
-      <div className="mb-4 flex items-center gap-2">
-        <Link
-          href="/profile"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-ink-muted transition hover:text-ink"
-          aria-label={t("userNotif.back.aria")}
-        >
-          <Icon name="chevron-left" className="h-4 w-4" />
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t("userNotif.title")}</h1>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={handleBack}
+            style={{ touchAction: "manipulation" }}
+            className="mb-1 -ml-2 inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-sm font-medium text-ink-muted transition hover:bg-slate-100 hover:text-brand active:scale-[0.98]"
+            aria-label={t("userNotif.back.aria")}
+          >
+            <Icon name="arrow-right" className="h-4 w-4 rotate-180" />
+            {t("common.back")}
+          </button>
+          <h1 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-3xl">{t("userNotif.title")}</h1>
           <p className="mt-1 text-sm text-ink-muted">
             {t("userNotif.subtitle")}
           </p>
@@ -54,7 +70,7 @@ export default function UserNotificationsPage() {
           type="button"
           onClick={handleMarkAll}
           disabled={unread === 0}
-          className="btn-secondary disabled:opacity-50"
+          className="btn-primary w-full justify-center sm:w-auto"
         >
           <Icon name="check" className="h-4 w-4" />
           {t("common.markAllRead")}

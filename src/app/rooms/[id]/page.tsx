@@ -7,11 +7,10 @@ import ImageGallery from "@/components/ImageGallery";
 import RoomCard from "@/components/RoomCard";
 import Icon, { amenityIcon, type IconName } from "@/components/Icon";
 import ConfirmModal from "@/components/ConfirmModal";
-import ListingEditModal, { type ListingEditValues } from "@/components/admin/ListingEditModal";
 import { findRoomById, similarRooms } from "@/lib/mock-data";
 import { deleteLocalRoom, getLocalRoomById, updateLocalRoom } from "@/lib/local-rooms";
 import { useSession } from "@/lib/session";
-import { isAdmin, pushIncomingNotification, useAdminUsers } from "@/lib/admin";
+import { isAdmin, pushIncomingNotification } from "@/lib/admin";
 import { useViewMode } from "@/lib/view-mode";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
@@ -32,7 +31,6 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const session = useSession();
   const viewMode = useViewMode();
-  const adminUsers = useAdminUsers();
   const t = useT();
   const [room, setRoom] = useState<RoomState>(() => findRoomById(params.id) ?? "loading");
   const [trackedId, setTrackedId] = useState(params.id);
@@ -42,7 +40,6 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const [reportReason, setReportReason] = useState<ReportReason | null>(null);
   const [reportDetails, setReportDetails] = useState("");
   const [reportSent, setReportSent] = useState(false);
-  const [adminEditOpen, setAdminEditOpen] = useState(false);
   const [adminDeleteOpen, setAdminDeleteOpen] = useState(false);
   // Defer the Google Maps embed until the user explicitly asks for it. The
   // embed pulls www.google.com which is blocked by the dev preview tool, and
@@ -189,24 +186,31 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           {t("room.host.listedBy")}
         </p>
         <p className="truncate font-semibold text-ink">{room.owner.name}</p>
+        {!adminViewActive ? (
+          <p className="mt-0.5 truncate text-[11px] font-medium text-brand">
+            {t("room.host.viewProfile")}
+          </p>
+        ) : null}
       </div>
     </>
   );
+
+  // Profile-link target: admins land in the moderation detail page, everyone
+  // else (including signed-out renters) lands on the public host profile.
+  const ownerProfileHref = adminViewActive
+    ? `/user/admin/users/${room.owner.id}`
+    : `/users/${room.owner.id}`;
 
   const hostCard = (
     <section>
       <h2 className="mb-3 text-base font-bold lg:hidden">{t("room.section.host")}</h2>
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-        {adminViewActive ? (
-          <Link
-            href={`/user/admin/users/${room.owner.id}`}
-            className="-m-1 flex items-center gap-3 rounded-xl p-1 transition hover:bg-slate-50"
-          >
-            {ownerIdentity}
-          </Link>
-        ) : (
-          <div className="flex items-center gap-3">{ownerIdentity}</div>
-        )}
+        <Link
+          href={ownerProfileHref}
+          className="-m-1 flex items-center gap-3 rounded-xl p-1 transition hover:bg-slate-50"
+        >
+          {ownerIdentity}
+        </Link>
 
         <ul className="mt-4 space-y-2">
           {phoneNumbers.map((p) => (
@@ -429,12 +433,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           className="pointer-events-none fixed inset-x-0 bottom-0 z-[1050] flex justify-center sm:px-3"
           style={{ paddingBottom: "env(safe-area-inset-bottom)", touchAction: "manipulation" }}
         >
-          <div className="pointer-events-auto grid w-full max-w-md grid-cols-3 items-start gap-1 border-t border-slate-200 bg-white/95 px-2 pb-2 pt-2 backdrop-blur sm:items-center sm:rounded-2xl sm:border sm:px-2 sm:py-2 sm:shadow-cardHover sm:mb-3">
-            <AdminActionButton
-              icon="pencil"
-              label={t("admin.rooms.action.edit")}
-              onClick={() => setAdminEditOpen(true)}
-            />
+          <div className="pointer-events-auto grid w-full max-w-md grid-cols-2 items-start gap-1 border-t border-slate-200 bg-white/95 px-2 pb-2 pt-2 backdrop-blur sm:items-center sm:rounded-2xl sm:border sm:px-2 sm:py-2 sm:shadow-cardHover sm:mb-3">
             <AdminActionButton
               icon="shield"
               tone={room.isOccupied ? "amber" : "emerald"}
@@ -492,33 +491,6 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
         </div>
       )}
 
-      {adminEditOpen ? (
-        <ListingEditModal
-          room={room as Room}
-          users={adminUsers}
-          onCancel={() => setAdminEditOpen(false)}
-          onSubmit={async (values: ListingEditValues) => {
-            const ownerName =
-              adminUsers.find((u) => u.uid === values.ownerUid)?.username ??
-              (room as Room).owner.name;
-            const patch: Partial<Room> = {
-              title: values.title,
-              price: values.price,
-              isOccupied: values.isOccupied,
-              owner: {
-                ...(room as Room).owner,
-                id: values.ownerUid,
-                name: ownerName
-              }
-            };
-            updateLocalRoom((room as Room).id, patch);
-            setRoom({ ...(room as Room), ...patch });
-            setAdminEditOpen(false);
-            toast.success(t("toast.admin.listingUpdated"));
-          }}
-        />
-      ) : null}
-
       <ConfirmModal
         open={adminDeleteOpen}
         title={t("admin.rooms.delete.title")}
@@ -543,7 +515,11 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
         onClose={() => setContactOpen(false)}
       >
         <div className="overflow-y-auto p-4">
-          <div className="flex items-center gap-3">
+          <Link
+            href={ownerProfileHref}
+            onClick={() => setContactOpen(false)}
+            className="-m-2 flex items-center gap-3 rounded-xl p-2 transition hover:bg-slate-50"
+          >
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-slate-200 ring-2 ring-brand/20">
               {room.owner.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -558,11 +534,15 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
                 </span>
               )}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-[11px] uppercase tracking-wide text-ink-soft">{t("room.host.listedBy")}</p>
               <p className="truncate font-semibold text-ink">{room.owner.name}</p>
+              <p className="mt-0.5 truncate text-[11px] font-medium text-brand">
+                {t("room.host.viewProfile")}
+              </p>
             </div>
-          </div>
+            <Icon name="chevron-right" className="h-4 w-4 shrink-0 text-ink-soft" />
+          </Link>
           <ul className="mt-4 space-y-2">
             {phoneNumbers.map((p) => (
               <ContactRow

@@ -3,19 +3,21 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import RoomCard from "@/components/RoomCard";
-import Icon, { propertyIcon } from "@/components/Icon";
+import Icon from "@/components/Icon";
 import ConfirmModal from "@/components/ConfirmModal";
 import UserFormModal, { type UserFormValues } from "@/components/admin/UserFormModal";
+import AdminRoomsList from "@/components/admin/AdminRoomsList";
 import {
   deleteAdminUser,
   toggleAdminUserStatus,
   updateAdminUser,
-  useAdminUsers
+  useAdminUsers,
+  type AdminUser
 } from "@/lib/admin";
-import { useLocalRooms } from "@/lib/local-rooms";
+import { deleteLocalRoom, updateLocalRoom, useLocalRooms } from "@/lib/local-rooms";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
+import type { Room } from "@/lib/types";
 
 export default function AdminUserDetailPage() {
   const router = useRouter();
@@ -26,12 +28,19 @@ export default function AdminUserDetailPage() {
   const t = useT();
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDeleteRoom, setConfirmDeleteRoom] = useState<Room | null>(null);
 
   const user = useMemo(() => users.find((u) => u.uid === uid), [users, uid]);
   const listings = useMemo(
     () => allRooms.filter((r) => r.owner.id === uid),
     [allRooms, uid]
   );
+  // Same shape AdminRoomsList expects so the Owner column avatar resolves.
+  const usersByUid = useMemo(() => {
+    const m = new Map<string, AdminUser>();
+    for (const u of users) m.set(u.uid, u);
+    return m;
+  }, [users]);
 
   if (!user) {
     return (
@@ -66,12 +75,40 @@ export default function AdminUserDetailPage() {
 
   function handleToggleStatus() {
     if (!user) return;
+    const wasActive = user.status === "active";
     toggleAdminUserStatus(user.uid);
     toast.success(
-      user.status === "active"
+      wasActive
         ? t("toast.admin.user.disabled", { name: user.username })
         : t("toast.admin.user.enabled", { name: user.username })
     );
+    // Mirror the auto-occupy behaviour from the users index page so disabling
+    // from either location yields the same result.
+    if (wasActive) {
+      const toHide = listings.filter((r) => !r.isOccupied);
+      for (const r of toHide) updateLocalRoom(r.id, { isOccupied: true });
+      if (toHide.length > 0) {
+        toast.info(t("toast.admin.user.listingsHidden", { n: toHide.length }));
+      }
+    }
+  }
+
+  function handleToggleRoomOccupied(room: Room) {
+    const nextOccupied = !room.isOccupied;
+    updateLocalRoom(room.id, { isOccupied: nextOccupied });
+    toast.success(
+      nextOccupied
+        ? t("toast.admin.listing.occupied", { title: room.title })
+        : t("toast.admin.listing.available", { title: room.title })
+    );
+  }
+
+  function handleDeleteRoom() {
+    if (!confirmDeleteRoom) return;
+    const title = confirmDeleteRoom.title;
+    deleteLocalRoom(confirmDeleteRoom.id);
+    setConfirmDeleteRoom(null);
+    toast.success(t("toast.admin.listing.deleted", { title }));
   }
 
   const initial = user.username.trim().charAt(0).toUpperCase() || "?";
@@ -227,46 +264,14 @@ export default function AdminUserDetailPage() {
             </p>
           </div>
         ) : (
-          <>
-            <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card sm:hidden">
-              {listings.map((room) => (
-                <li key={room.id}>
-                  <Link
-                    href={`/rooms/${room.id}`}
-                    className="flex items-center gap-3 p-3 transition hover:bg-slate-50"
-                  >
-                    <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
-                      {room.images[0] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={room.images[0]} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <Icon name={propertyIcon(room.type)} className="h-7 w-7 text-slate-300" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-ink">{room.title}</p>
-                      <p className="truncate text-xs text-ink-muted">
-                        {room.district ? `${room.district}, ` : ""}
-                        {room.city}
-                      </p>
-                      <p className="mt-0.5 text-sm font-bold text-brand">
-                        ${room.price}
-                        <span className="ml-0.5 text-[11px] font-medium text-ink-muted">
-                          {t("room.suffix.monthly")}
-                        </span>
-                      </p>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-
-            <div className="hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3">
-              {listings.map((room) => (
-                <RoomCard key={room.id} room={room} />
-              ))}
-            </div>
-          </>
+          <AdminRoomsList
+            rooms={listings}
+            usersByUid={usersByUid}
+            emptyMessage={t("admin.rooms.empty")}
+            onToggleOccupied={handleToggleRoomOccupied}
+            onDelete={setConfirmDeleteRoom}
+            hideOwnerColumn
+          />
         )}
       </section>
 
@@ -289,6 +294,20 @@ export default function AdminUserDetailPage() {
         }
         onCancel={() => setConfirmDelete(false)}
         onConfirm={handleDelete}
+      />
+
+      <ConfirmModal
+        open={!!confirmDeleteRoom}
+        title={t("admin.rooms.delete.title")}
+        body={
+          confirmDeleteRoom ? (
+            <>
+              <b>{confirmDeleteRoom.title}</b>{t("admin.rooms.delete.body.suffix")}
+            </>
+          ) : null
+        }
+        onCancel={() => setConfirmDeleteRoom(null)}
+        onConfirm={handleDeleteRoom}
       />
     </div>
   );

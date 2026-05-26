@@ -40,7 +40,7 @@ export default function RoomCard({ room }: { room: Room }) {
       </div>
 
       <div className="p-3 sm:p-4">
-        <h3 className="line-clamp-1 font-semibold text-ink">{room.title}</h3>
+        <h3 className="line-clamp-2 min-h-[2.75em] font-semibold text-ink">{room.title}</h3>
 
         <p className="mt-1 flex items-center gap-1 text-sm text-ink-muted">
           <Icon name="map-pin" className="h-4 w-4 shrink-0" />

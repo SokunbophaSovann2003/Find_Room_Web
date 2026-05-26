@@ -54,6 +54,14 @@ export default function ListingActionMenu({
     setConfirmDeleteOpen(true);
   }
 
+  function handleEdit(e: React.MouseEvent) {
+    stop(e);
+    setOpen(false);
+    router.push(
+      `/profile/list-room?type=${room.type}&editing=${encodeURIComponent(room.id)}`
+    );
+  }
+
   function handleCopy(e: React.MouseEvent) {
     stop(e);
     setOpen(false);
@@ -102,6 +110,7 @@ export default function ListingActionMenu({
             label={t(room.isOccupied ? "listing.menu.markAvailable" : "listing.menu.markOccupied")}
             onClick={handleToggleOccupied}
           />
+          <MenuItem icon="pencil" label={t("common.edit")} onClick={handleEdit} />
           <MenuItem icon="copy" label={t("common.copy")} onClick={handleCopy} />
           <MenuItem icon="trash" label={t("common.delete")} onClick={handleDelete} danger />
         </div>

@@ -7,7 +7,7 @@ import Icon, { amenityIcon } from "@/components/Icon";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import ContactListEditor from "@/components/ContactListEditor";
 import { useSession } from "@/lib/session";
-import { addLocalRoom, getLocalRoomById } from "@/lib/local-rooms";
+import { addLocalRoom, getLocalRoomById, updateLocalRoom } from "@/lib/local-rooms";
 import { findRoomById } from "@/lib/mock-data";
 import { downscalePhoto } from "@/lib/image";
 import { loadOverrides } from "@/lib/profile-overrides";
@@ -90,6 +90,8 @@ export default function ListRoomPage() {
   const session = useSession();
   const t = useT();
   const searchParams = useSearchParams();
+  const editingId = searchParams?.get("editing") ?? null;
+  const isEditing = !!editingId;
   // Read admin-configured defaults once per mount — settings changes
   // mid-edit shouldn't snap the user's typed values.
   const settingsRef = useRef(getAdminSettings());
@@ -221,6 +223,68 @@ export default function ListRoomPage() {
     }
   }, [searchParams]);
 
+  // Editing an existing listing: hydrate every field from the source room
+  // (no title prefix, photos preserved as URLs). Mirrors the copy flow but
+  // keeps the listing's id and createdAt on submit.
+  const editAppliedRef = useRef(false);
+  useEffect(() => {
+    if (editAppliedRef.current) return;
+    if (!editingId) return;
+    const source = getLocalRoomById(editingId) ?? findRoomById(editingId);
+    if (!source) return;
+    editAppliedRef.current = true;
+
+    setTitle(source.title);
+    setDescription(source.description);
+    setType(source.type);
+    setBedrooms(source.bedrooms);
+    setFloor(source.floor ?? 1);
+    setAreaSqm(source.areaSqm ? String(source.areaSqm) : "");
+    setLocation({
+      province: source.city,
+      district: source.district,
+      area: source.area
+    });
+    if (typeof source.lat === "number" && typeof source.lng === "number") {
+      setPin({ lat: source.lat, lng: source.lng, name: source.address });
+    }
+    setSelected(new Set(source.amenities ?? []));
+    setRentPeriod(source.pricePeriod ?? "monthly");
+    setExistingImages(source.images ?? []);
+
+    const nextFees: FeeRow[] = [
+      { id: newId(), type: "rent", price: String(source.price) }
+    ];
+    if (source.deposit !== undefined)
+      nextFees.push({ id: newId(), type: "deposit", price: String(source.deposit) });
+    if (source.electricityPrice !== undefined)
+      nextFees.push({ id: newId(), type: "electricity", price: String(source.electricityPrice) });
+    if (source.waterPrice !== undefined)
+      nextFees.push({ id: newId(), type: "water", price: String(source.waterPrice) });
+    if (source.wifiPrice !== undefined)
+      nextFees.push({ id: newId(), type: "wifi", price: String(source.wifiPrice) });
+    if (source.otherFees) {
+      for (const f of source.otherFees) {
+        const m = /^\$?([\d.]+)\s*(.*)$/.exec(f.amount.trim());
+        nextFees.push({
+          id: newId(),
+          type: "other",
+          price: m ? m[1] : "",
+          customLabel: f.label,
+          customUnit: m && m[2] ? m[2].trim() : undefined
+        });
+      }
+    }
+    setFees(nextFees);
+
+    if (source.owner.phoneNumbers.length) {
+      setContactPhones(source.owner.phoneNumbers);
+    }
+    if (source.owner.telegramPhones?.length) {
+      setTelegramPhones(source.owner.telegramPhones);
+    }
+  }, [editingId]);
+
   // Hydrate the persisted "things that don't change per listing" fields
   // (location, fees, amenities, contacts…) from the user's last publish.
   // Skipped when copying from an existing listing — the copy flow already
@@ -230,6 +294,7 @@ export default function ListRoomPage() {
     if (prefsAppliedRef.current) return;
     if (!session?.uid) return;
     if (searchParams?.get("copyFrom")) return;
+    if (editingId) return;
     const prefs = loadListRoomPrefs(session.uid);
     if (!prefs) return;
     prefsAppliedRef.current = true;
@@ -268,6 +333,10 @@ export default function ListRoomPage() {
     ];
   });
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  // Photos already attached to the room being edited. We keep these as URL
+  // strings (not File objects) because we can't reconstitute Files from URLs.
+  // On submit they're concatenated with newly-uploaded photos.
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const errorRef = useRef<HTMLParagraphElement | null>(null);
@@ -298,7 +367,9 @@ export default function ListRoomPage() {
       file,
       url: URL.createObjectURL(file)
     }));
-    setPhotos((prev) => [...prev, ...items].slice(0, MAX_PHOTOS));
+    setPhotos((prev) =>
+      [...prev, ...items].slice(0, Math.max(0, MAX_PHOTOS - existingImages.length))
+    );
   }
   function removePhoto(id: number) {
     setPhotos((prev) => {
@@ -388,9 +459,10 @@ export default function ListRoomPage() {
 
     setSubmitting(true);
     try {
-      const images = await Promise.all(
-        photos.slice(0, MAX_PHOTOS).map((p) => downscalePhoto(p.file))
+      const newImages = await Promise.all(
+        photos.slice(0, Math.max(0, MAX_PHOTOS - existingImages.length)).map((p) => downscalePhoto(p.file))
       );
+      const images = [...existingImages, ...newImages];
 
       const num = (val: string) => {
         const n = Number(val);
@@ -399,6 +471,61 @@ export default function ListRoomPage() {
       const feeBy = (key: string) => fees.find((f) => f.type === key);
       const ownerPhones = contactPhones.map((p) => p.trim()).filter(Boolean);
       const ownerTelegrams = telegramPhones.map((t) => t.trim()).filter(Boolean);
+
+      const otherFees = fees
+        .filter((f) => !["rent", "deposit", "electricity", "water", "wifi"].includes(f.type) && f.price.trim())
+        .map((f) => {
+          const fallbackUnit = FEE_TYPES.find((t) => t.value === f.type)?.unit ?? "";
+          const unit = f.type === "other" ? (f.customUnit?.trim() ?? "") : fallbackUnit;
+          return {
+            label:
+              f.type === "other"
+                ? f.customLabel?.trim() || "Other"
+                : FEE_TYPES.find((t) => t.value === f.type)?.label ?? f.type,
+            amount: `$${f.price}${unit ? ` ${unit}` : ""}`.trim()
+          };
+        });
+
+      if (editingId) {
+        const existing = getLocalRoomById(editingId);
+        const patch: Partial<Room> = {
+          title: title.trim(),
+          description: description.trim(),
+          price: rentValue,
+          pricePeriod: rentPeriod,
+          deposit: num(feeBy("deposit")?.price ?? ""),
+          electricityPrice: num(feeBy("electricity")?.price ?? ""),
+          waterPrice: num(feeBy("water")?.price ?? ""),
+          wifiPrice: num(feeBy("wifi")?.price ?? ""),
+          otherFees,
+          type,
+          address: pin?.name ?? "",
+          city: location.province,
+          district: location.district,
+          area: location.area,
+          lat: pin?.lat,
+          lng: pin?.lng,
+          bedrooms,
+          areaSqm: num(areaSqm),
+          floor,
+          amenities: Array.from(selected),
+          images,
+          owner: {
+            ...(existing?.owner ?? {
+              id: session.uid,
+              name: savedUsername ?? session.username ?? "Joul user",
+              memberSince: new Date().toISOString().slice(0, 10),
+              listingsCount: 1
+            }),
+            phoneNumbers: ownerPhones,
+            telegramPhones: ownerTelegrams.length ? ownerTelegrams : undefined
+          }
+        };
+        updateLocalRoom(editingId, patch);
+        toast.success(t("toast.listing.updated", { title: patch.title ?? "" }));
+        router.replace("/profile");
+        return;
+      }
 
       const room: Room = {
         id: `local-${Date.now()}`,
@@ -411,19 +538,7 @@ export default function ListRoomPage() {
         electricityPrice: num(feeBy("electricity")?.price ?? ""),
         waterPrice: num(feeBy("water")?.price ?? ""),
         wifiPrice: num(feeBy("wifi")?.price ?? ""),
-        otherFees: fees
-          .filter((f) => !["rent", "deposit", "electricity", "water", "wifi"].includes(f.type) && f.price.trim())
-          .map((f) => {
-            const fallbackUnit = FEE_TYPES.find((t) => t.value === f.type)?.unit ?? "";
-            const unit = f.type === "other" ? (f.customUnit?.trim() ?? "") : fallbackUnit;
-            return {
-              label:
-                f.type === "other"
-                  ? f.customLabel?.trim() || "Other"
-                  : FEE_TYPES.find((t) => t.value === f.type)?.label ?? f.type,
-              amount: `$${f.price}${unit ? ` ${unit}` : ""}`.trim()
-            };
-          }),
+        otherFees,
         type,
         address: pin?.name ?? "",
         city: location.province,
@@ -512,13 +627,13 @@ export default function ListRoomPage() {
 
         <header className="mb-5">
           <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">
-            {t("listRoom.title.template")}{" "}
+            {t(isEditing ? "listRoom.editTitle.template" : "listRoom.title.template")}{" "}
             <span className="text-brand">
               {t(`type.${type}`) || t("listRoom.title.highlight.fallback")}
             </span>
           </h1>
           <p className="mt-1 text-sm text-ink-muted">
-            {t("listRoom.subtitle")}
+            {t(isEditing ? "listRoom.editSubtitle" : "listRoom.subtitle")}
           </p>
         </header>
 
@@ -527,12 +642,14 @@ export default function ListRoomPage() {
           <section>
             <h2 className="mb-2 text-base font-bold">{t("listRoom.photos.heading")}</h2>
             <ul className="grid grid-cols-5 gap-2 sm:grid-cols-6">
-              {photos.length < MAX_PHOTOS ? (
+              {existingImages.length + photos.length < MAX_PHOTOS ? (
                 <li>
                   <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 bg-white text-ink-muted transition hover:border-brand hover:bg-brand/5 hover:text-brand">
                     <Icon name="plus" className="h-5 w-5" />
                     <span className="text-[10px] font-semibold">
-                      {photos.length === 0 ? t("listRoom.photos.add") : t("listRoom.photos.more")}
+                      {existingImages.length + photos.length === 0
+                        ? t("listRoom.photos.add")
+                        : t("listRoom.photos.more")}
                     </span>
                     <input
                       type="file"
@@ -547,6 +664,25 @@ export default function ListRoomPage() {
                   </label>
                 </li>
               ) : null}
+              {existingImages.map((src, i) => (
+                <li
+                  key={`existing-${i}`}
+                  className="group relative aspect-square overflow-hidden rounded-xl bg-slate-100"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt="" className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExistingImages((prev) => prev.filter((_, idx) => idx !== i))
+                    }
+                    aria-label={t("listRoom.photos.remove.aria")}
+                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-ink shadow transition hover:bg-white"
+                  >
+                    <Icon name="x" className="h-3 w-3" />
+                  </button>
+                </li>
+              ))}
               {photos.map((p) => (
                 <li
                   key={p.id}
@@ -893,7 +1029,9 @@ export default function ListRoomPage() {
             disabled={submitting}
             className="btn-primary h-11 flex-1 justify-center"
           >
-            {submitting ? t("listRoom.bottomBar.creating") : t("listRoom.bottomBar.create")}
+            {submitting
+              ? t(isEditing ? "common.saving" : "listRoom.bottomBar.creating")
+              : t(isEditing ? "common.save" : "listRoom.bottomBar.create")}
             {submitting ? null : <Icon name="arrow-right" className="h-4 w-4" />}
           </button>
         </div>

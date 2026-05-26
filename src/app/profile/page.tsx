@@ -20,6 +20,38 @@ import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
 import type { PropertyType } from "@/lib/types";
 
+// Clipboard helper with a legacy fallback: navigator.clipboard.writeText
+// can reject when the document isn't focused (preview iframes, some in-app
+// browsers) or when permissions are denied. The hidden-textarea +
+// execCommand("copy") path still works in those environments.
+async function copyToClipboard(text: string): Promise<boolean> {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // fall through to legacy path
+    }
+  }
+  if (typeof document === "undefined") return false;
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "0";
+    ta.style.left = "0";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 const PROPERTY_TYPE_CHOICES: { value: PropertyType; labelKey: string; hintKey: string }[] = [
   { value: "room", labelKey: "type.room", hintKey: "pick.type.room.hint" },
   { value: "apartment", labelKey: "type.apartment", hintKey: "pick.type.apartment.hint" },
@@ -38,6 +70,20 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState<"profile" | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [pickTypeOpen, setPickTypeOpen] = useState(false);
+  const [listingsView, setListingsView] = useState<"grid" | "list">("grid");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("findroom.profile.listings-view");
+    if (saved === "list" || saved === "grid") setListingsView(saved);
+  }, []);
+
+  function changeListingsView(next: "grid" | "list") {
+    setListingsView(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("findroom.profile.listings-view", next);
+    }
+  }
 
   useEffect(() => {
     if (!session) return;
@@ -73,12 +119,68 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleShareProfile() {
+    if (!session) return;
+    const url = `${window.location.origin}/users/${session.uid}`;
+    const title = t("profile.share.title", { name: username });
+    const text = t("profile.share.text", { name: username });
+    // Copy/paste payload: description on one line, blank line, then the
+    // URL. Chat apps (Telegram, Messages, WhatsApp) auto-linkify the URL
+    // when it sits on its own line so the recipient gets context plus a
+    // clickable link instead of a bare URL with no explanation.
+    const pasteable = `${text}\n\n${url}`;
+    const shareData = { title, text, url };
+    // Mobile + secure-context browsers: native share sheet (Telegram, Messages,
+    // etc.). canShare check avoids a runtime error in browsers that expose
+    // navigator.share but reject our payload (e.g. desktop Firefox).
+    if (
+      typeof navigator !== "undefined" &&
+      navigator.share &&
+      (!navigator.canShare || navigator.canShare(shareData))
+    ) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        // User dismissed the share sheet — don't fall back to clipboard,
+        // they explicitly cancelled.
+        if (err instanceof Error && err.name === "AbortError") return;
+        // Any other error (permissions, etc.) → fall through to clipboard.
+      }
+    }
+    if (await copyToClipboard(pasteable)) {
+      toast.success(t("toast.profile.messageCopied"));
+    } else {
+      toast.error(t("toast.profile.shareFailed"));
+    }
+  }
+
+  function handleBack() {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/explore");
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
+      <button
+        type="button"
+        onClick={handleBack}
+        style={{ touchAction: "manipulation" }}
+        className="mb-3 -ml-2 inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-sm font-medium text-ink-muted transition hover:bg-slate-100 hover:text-brand active:scale-[0.98]"
+        aria-label={t("common.back")}
+      >
+        <Icon name="arrow-right" className="h-4 w-4 rotate-180" />
+        {t("common.back")}
+      </button>
+
       <section className="relative rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-6">
         <div className="absolute right-3 top-3 sm:hidden">
           <ProfileActionsMenu
             onEdit={() => setEditing("profile")}
+            onShare={handleShareProfile}
             onLogout={handleLogout}
             signingOut={signingOut}
           />
@@ -137,6 +239,14 @@ export default function ProfilePage() {
           <div className="flex shrink-0 gap-2">
             <button
               type="button"
+              onClick={handleShareProfile}
+              className="btn-secondary"
+            >
+              <Icon name="share" className="h-4 w-4" />
+              {t("profile.share")}
+            </button>
+            <button
+              type="button"
               onClick={() => setEditing("profile")}
               className="btn-secondary"
             >
@@ -164,14 +274,36 @@ export default function ProfilePage() {
               {listings.length}
             </span>
           </h2>
-          <button
-            type="button"
-            onClick={() => setPickTypeOpen(true)}
-            className="btn-primary"
-          >
-            <Icon name="plus" className="h-4 w-4" />
-            {t("profile.listARoom")}
-          </button>
+          <div className="flex items-center gap-3">
+            {listings.length > 0 ? (
+              <div
+                role="tablist"
+                aria-label={t("profile.myListings")}
+                className="hidden gap-1 self-stretch rounded-full border border-slate-200 bg-white p-1 sm:flex"
+              >
+                <ListingsViewTab
+                  active={listingsView === "grid"}
+                  onClick={() => changeListingsView("grid")}
+                  icon="grid"
+                  label={t("profile.view.grid")}
+                />
+                <ListingsViewTab
+                  active={listingsView === "list"}
+                  onClick={() => changeListingsView("list")}
+                  icon="list"
+                  label={t("profile.view.list")}
+                />
+              </div>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setPickTypeOpen(true)}
+              className="btn-primary"
+            >
+              <Icon name="plus" className="h-4 w-4" />
+              {t("profile.listARoom")}
+            </button>
+          </div>
         </div>
 
         {listings.length === 0 ? (
@@ -217,16 +349,16 @@ export default function ProfilePage() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-1.5">
-                        <span className="truncate text-sm font-semibold text-ink">
+                      <div className="flex items-start gap-1.5">
+                        <span className="line-clamp-2 flex-1 text-sm font-semibold text-ink">
                           {room.title}
                         </span>
                         {room.isOccupied ? (
-                          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                          <span className="mt-0.5 shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
                             {t("profile.occupied")}
                           </span>
                         ) : null}
-                      </p>
+                      </div>
                       <p className="truncate text-xs text-ink-muted">
                         {room.district ? `${room.district}, ` : ""}
                         {room.city}
@@ -246,21 +378,106 @@ export default function ProfilePage() {
               ))}
             </ul>
 
-            <div className="hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3">
-              {listings.map((room) => (
-                <div key={room.id} className="relative">
-                  <RoomCard room={room} />
-                  {room.isOccupied ? (
-                    <span className="pointer-events-none absolute left-3 top-12 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow">
-                      {t("profile.occupied")}
-                    </span>
-                  ) : null}
-                  <div className="absolute right-2 top-2">
-                    <ListingActionMenu room={room} />
+            {listingsView === "grid" ? (
+              <div className="hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3">
+                {listings.map((room) => (
+                  <div key={room.id} className="relative">
+                    <RoomCard room={room} />
+                    {room.isOccupied ? (
+                      <span className="pointer-events-none absolute left-3 top-12 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow">
+                        {t("profile.occupied")}
+                      </span>
+                    ) : null}
+                    <div className="absolute right-2 top-2">
+                      <ListingActionMenu room={room} />
+                    </div>
                   </div>
+                ))}
+              </div>
+            ) : (
+              <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card sm:block">
+                <div className="grid grid-cols-[88px_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-4 border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+                  <span aria-hidden />
+                  <span>{t("profile.list.col.title")}</span>
+                  <span>{t("profile.list.col.type")}</span>
+                  <span>{t("profile.list.col.details")}</span>
+                  <span className="text-right">{t("profile.list.col.price")}</span>
+                  <span aria-hidden />
                 </div>
-              ))}
-            </div>
+                <ul className="divide-y divide-slate-100">
+                  {listings.map((room) => (
+                    <li
+                      key={room.id}
+                      className="relative has-[[aria-expanded='true']]:z-30"
+                    >
+                      <Link
+                        href={`/rooms/${room.id}`}
+                        className="grid grid-cols-[88px_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-4 px-4 py-3 transition hover:bg-slate-50"
+                      >
+                        <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                          {room.images[0] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={room.images[0]}
+                              alt={room.title}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Icon
+                              name={propertyIcon(room.type)}
+                              className="h-7 w-7 text-slate-300"
+                              strokeWidth={1.4}
+                            />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-sm font-semibold text-ink">
+                              {room.title}
+                            </span>
+                            {room.isOccupied ? (
+                              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                                {t("profile.occupied")}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-ink-muted">
+                            <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">
+                              {room.district ? `${room.district}, ` : ""}
+                              {room.city}
+                            </span>
+                          </p>
+                        </div>
+                        <div className="text-xs font-medium text-ink-muted">
+                          {t(`type.${room.type}`)}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-ink-muted">
+                          <span className="inline-flex items-center gap-1">
+                            <Icon name="bed" className="h-3.5 w-3.5" /> {room.bedrooms}
+                          </span>
+                          {room.areaSqm ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Icon name="ruler" className="h-3.5 w-3.5" /> {room.areaSqm}m²
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-brand">${room.price}</span>
+                          <span className="ml-0.5 text-[11px] text-ink-muted">
+                            {t("profile.month")}
+                          </span>
+                        </div>
+                        <span aria-hidden />
+                      </Link>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <ListingActionMenu room={room} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </>
         )}
       </section>
@@ -302,6 +519,33 @@ export default function ProfilePage() {
         }}
       />
     </div>
+  );
+}
+
+function ListingsViewTab({
+  active,
+  onClick,
+  icon,
+  label
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: "grid" | "list";
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${
+        active ? "bg-brand text-white shadow" : "text-ink-muted hover:text-ink"
+      }`}
+    >
+      <Icon name={icon} className="h-4 w-4" />
+      {label}
+    </button>
   );
 }
 
@@ -572,10 +816,12 @@ function EditProfileModal({
 
 function ProfileActionsMenu({
   onEdit,
+  onShare,
   onLogout,
   signingOut
 }: {
   onEdit: () => void;
+  onShare: () => void;
   onLogout: () => void;
   signingOut: boolean;
 }) {
@@ -629,6 +875,18 @@ function ProfileActionsMenu({
           >
             <Icon name="pencil" className="h-4 w-4 shrink-0" />
             {t("profile.editProfile")}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onShare();
+            }}
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium text-ink transition hover:bg-slate-50"
+          >
+            <Icon name="share" className="h-4 w-4 shrink-0" />
+            {t("profile.share")}
           </button>
           <button
             type="button"

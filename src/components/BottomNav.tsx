@@ -18,6 +18,7 @@ const LIST_ROOM_PATH = "/profile/list-room";
 function shouldHide(pathname: string | null): boolean {
   if (!pathname) return false;
   if (pathname === LIST_ROOM_PATH) return true; // Publish bar
+  if (pathname === "/profile/notifications") return true; // Dedicated notifications view
   if (pathname.startsWith("/rooms/")) return true; // Contact bar
   if (pathname.startsWith("/user/admin")) return true; // Admin owns its own nav
   return false;

@@ -15,7 +15,7 @@ import {
   useAdminUsers,
   type AdminUser
 } from "@/lib/admin";
-import { useLocalRooms } from "@/lib/local-rooms";
+import { updateLocalRoom, useLocalRooms } from "@/lib/local-rooms";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
 
@@ -93,12 +93,25 @@ export default function AdminUsersPage() {
   }
 
   function handleToggleStatus(u: AdminUser) {
+    const wasActive = u.status === "active";
     toggleAdminUserStatus(u.uid);
     toast.success(
-      u.status === "active"
+      wasActive
         ? t("toast.admin.user.disabled", { name: u.username })
         : t("toast.admin.user.enabled", { name: u.username })
     );
+    // When an admin disables a user, hide their listings from explore by
+    // flipping each available room to occupied. We don't auto-restore on
+    // re-enable: any room marked occupied while the user was disabled may
+    // also have been legitimately occupied, so we leave the call to the
+    // owner once they're active again.
+    if (wasActive) {
+      const toHide = rooms.filter((r) => r.owner.id === u.uid && !r.isOccupied);
+      for (const r of toHide) updateLocalRoom(r.id, { isOccupied: true });
+      if (toHide.length > 0) {
+        toast.info(t("toast.admin.user.listingsHidden", { n: toHide.length }));
+      }
+    }
   }
 
   return (
