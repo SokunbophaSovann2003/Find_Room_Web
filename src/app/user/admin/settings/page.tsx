@@ -51,7 +51,8 @@ function settingsEqual(a: AdminSettings, b: AdminSettings): boolean {
     a.defaultWifiPrice === b.defaultWifiPrice &&
     a.exchangeRateKhrPerUsd === b.exchangeRateKhrPerUsd &&
     a.activePropertyTypes.join("|") === b.activePropertyTypes.join("|") &&
-    a.amenities.join("|") === b.amenities.join("|")
+    a.amenities.join("|") === b.amenities.join("|") &&
+    a.autoOccupyDays === b.autoOccupyDays
   );
 }
 
@@ -244,6 +245,25 @@ export default function AdminSettingsPage() {
             on={draft.emailAlertsOnReports}
             onChange={(v) => setDraft({ ...draft, emailAlertsOnReports: v })}
           />
+        </div>
+        <div>
+          <label className="block">
+            <span className="label">{t("admin.settings.autoOccupy.label")}</span>
+            <input
+              className="input mt-1"
+              type="number"
+              min={7}
+              step={1}
+              value={Number.isFinite(draft.autoOccupyDays) ? draft.autoOccupyDays : 30}
+              onChange={(e) => {
+                const raw = Math.round(Number(e.target.value));
+                setDraft({ ...draft, autoOccupyDays: Number.isFinite(raw) ? Math.max(7, raw) : 30 });
+              }}
+            />
+          </label>
+          <p className="mt-1.5 text-xs text-ink-muted">
+            {t("admin.settings.autoOccupy.hint")}
+          </p>
         </div>
       </Section>
 

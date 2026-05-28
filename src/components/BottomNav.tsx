@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import Icon from "./Icon";
 import AuthModal from "./AuthModal";
+import PropertyTypePicker from "./PropertyTypePicker";
 import { useSession } from "@/lib/session";
 import { useKeyboardOpen } from "@/lib/use-keyboard-open";
 import { isAdmin } from "@/lib/admin";
@@ -32,6 +33,7 @@ export default function BottomNav() {
   // When an unauthenticated user taps the FAB or Profile, remember where to
   // send them after sign-in so the action they tried isn't lost.
   const [authNext, setAuthNext] = useState<string | null>(null);
+  const [typePickerOpen, setTypePickerOpen] = useState(false);
   const keyboardOpen = useKeyboardOpen();
   const viewMode = useViewMode();
   const t = useT();
@@ -46,7 +48,7 @@ export default function BottomNav() {
 
   function handleListRoom() {
     if (session) {
-      router.push(LIST_ROOM_PATH);
+      setTypePickerOpen(true);
     } else {
       setAuthNext(LIST_ROOM_PATH);
       setAuthOpen(true);
@@ -124,7 +126,22 @@ export default function BottomNav() {
           setAuthOpen(false);
           const next = authNext;
           setAuthNext(null);
-          if (next) router.push(next);
+          // After sign-in via "List room", open the type picker (same as
+          // the signed-in path) rather than navigating without a type.
+          if (next === LIST_ROOM_PATH) {
+            setTypePickerOpen(true);
+          } else if (next) {
+            router.push(next);
+          }
+        }}
+      />
+
+      <PropertyTypePicker
+        open={typePickerOpen}
+        onClose={() => setTypePickerOpen(false)}
+        onPick={(type) => {
+          setTypePickerOpen(false);
+          router.push(`${LIST_ROOM_PATH}?type=${type}`);
         }}
       />
     </>

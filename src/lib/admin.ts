@@ -836,6 +836,9 @@ export interface AdminSettings {
   defaultElectricityPrice: number; // $ / kWh
   defaultWifiPrice: number; // $ / month
   exchangeRateKhrPerUsd: number;
+  // Auto-occupy: number of days of inactivity after which an Available
+  // listing is automatically treated as Occupied. Min 7.
+  autoOccupyDays: number;
 }
 
 export const ALL_PROPERTY_TYPES: PropertyType[] = [
@@ -874,7 +877,8 @@ const DEFAULT_SETTINGS: AdminSettings = {
   defaultWaterPrice: 0.5,
   defaultElectricityPrice: 0.25,
   defaultWifiPrice: 15,
-  exchangeRateKhrPerUsd: 4100
+  exchangeRateKhrPerUsd: 4100,
+  autoOccupyDays: 30
 };
 
 const SETTINGS_KEY = "findroom.admin-settings";

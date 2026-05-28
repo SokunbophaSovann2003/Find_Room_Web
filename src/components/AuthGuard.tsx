@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSession, subscribeSession, type Session } from "@/lib/session";
 import AuthModal from "./AuthModal";
+import { useT } from "@/lib/language";
 
 type Status = "checking" | "authenticated" | "unauthenticated";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const t = useT();
   const [status, setStatus] = useState<Status>("checking");
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-[60vh] items-center justify-center px-4 text-center">
           <div className="flex flex-col items-center gap-3 text-ink-muted">
             <span className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-            <p className="text-sm">Checking your session…</p>
+            <p className="text-sm">{t("auth.checking")}</p>
           </div>
         </div>
       ) : (
@@ -37,7 +39,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       <AuthModal
         open={status === "unauthenticated"}
         dismissible
-        onClose={() => router.replace("/explore")}
+        onClose={() => {
+          if (typeof window !== "undefined" && window.history.length > 1) {
+            router.back();
+          } else {
+            router.replace("/explore");
+          }
+        }}
         onSuccess={() => setStatus("authenticated")}
       />
     </>

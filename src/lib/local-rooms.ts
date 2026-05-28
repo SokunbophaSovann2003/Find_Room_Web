@@ -11,7 +11,15 @@ export function getLocalRooms(): Room[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Room[]) : [];
+    if (!raw) return [];
+    const rooms = JSON.parse(raw) as Room[];
+    // Back-fill lastActivityAt for rooms created before this field existed.
+    // We use createdAt (same moment as creation) so they don't instantly expire.
+    return rooms.map((r) =>
+      r.lastActivityAt !== undefined
+        ? r
+        : { ...r, lastActivityAt: r.createdAt ?? Date.now() }
+    );
   } catch {
     return [];
   }
@@ -19,14 +27,23 @@ export function getLocalRooms(): Room[] {
 
 export function addLocalRoom(room: Room) {
   if (typeof window === "undefined") return;
-  const rooms = [room, ...getLocalRooms()];
+  // Guarantee the activity timestamp is always set so auto-occupy math works.
+  const stamped: Room = { ...room, lastActivityAt: room.lastActivityAt ?? Date.now() };
+  const rooms = [stamped, ...getLocalRooms()];
   window.localStorage.setItem(KEY, JSON.stringify(rooms));
   window.dispatchEvent(new Event(EVENT));
 }
 
 export function updateLocalRoom(id: string, patch: Partial<Room>) {
   if (typeof window === "undefined") return;
-  const rooms = getLocalRooms().map((r) => (r.id === id ? { ...r, ...patch } : r));
+  // Any edit (title, price, photos, status toggle, etc.) counts as activity
+  // and resets the auto-occupy clock. Callers may pass lastActivityAt explicitly
+  // (e.g. "Mark Available") to override the default stamp.
+  const rooms = getLocalRooms().map((r) =>
+    r.id === id
+      ? { ...r, ...patch, lastActivityAt: patch.lastActivityAt ?? Date.now() }
+      : r
+  );
   window.localStorage.setItem(KEY, JSON.stringify(rooms));
   window.dispatchEvent(new Event(EVENT));
 }
@@ -56,7 +73,7 @@ export function seedSampleListings(session: {
 
   const owner: Owner = {
     id: session.uid,
-    name: session.username ?? "Joul user",
+    name: session.username ?? "Host",
     phoneNumbers: session.phoneNumber ? [session.phoneNumber] : [],
     telegramPhones: session.phoneNumber ? [session.phoneNumber] : [],
     memberSince: new Date().toISOString().slice(0, 10),
@@ -67,7 +84,7 @@ export function seedSampleListings(session: {
   const samples: Room[] = [
     {
       id: `sample-${session.uid}-1`,
-      title: "Cozy studio near Riverside",
+      title: "My studio near Riverside",
       description:
         "Modern fully-furnished studio just 5 minutes walk to the Riverside. Quiet building, fast Wi-Fi, 24/7 security and covered parking.",
       price: 250,
@@ -154,7 +171,6 @@ export function seedSampleListings(session: {
       floor: 2,
       amenities: ["Wi-Fi", "Air conditioning", "Parking", "Security", "Kitchen", "Laundry", "Balcony"],
       availableFrom: "2026-07-01",
-      isOccupied: true,
       owner,
       createdAt: now - 1000 * 60 * 60 * 24
     }

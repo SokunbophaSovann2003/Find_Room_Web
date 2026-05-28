@@ -70,6 +70,9 @@ export function applyFilter(rooms: Room[], filter: ExploreFilter): Room[] {
   if (filter.location.district) {
     out = out.filter((r) => r.district === filter.location.district);
   }
+  if (filter.location.area) {
+    out = out.filter((r) => r.area === filter.location.area);
+  }
   if (filter.type) {
     out = out.filter((r) => r.type === filter.type);
   }

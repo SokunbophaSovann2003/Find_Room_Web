@@ -8,6 +8,8 @@ import Icon from "@/components/Icon";
 import { MOCK_ROOMS } from "@/lib/mock-data";
 import { useLocalRooms } from "@/lib/local-rooms";
 import { useT } from "@/lib/language";
+import { toast } from "@/lib/toast";
+import { copyToClipboard } from "@/lib/clipboard";
 import type { Owner, Room } from "@/lib/types";
 
 export default function HostProfilePage() {
@@ -70,6 +72,30 @@ export default function HostProfilePage() {
   const initial = owner.name.trim().charAt(0).toUpperCase() || "?";
   const occupiedCount = ownerRooms.length - availableRooms.length;
 
+  async function handleShare() {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const title = owner!.name;
+    const text = t("host.summary.available.many", { n: availableRooms.length });
+    const shareData = { title, text, url };
+    try {
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.share &&
+        (!navigator.canShare || navigator.canShare(shareData))
+      ) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === "AbortError") return;
+    }
+    if (await copyToClipboard(url)) {
+      toast.success(t("toast.profile.linkCopied"));
+    } else {
+      toast.error(t("toast.profile.shareFailed"));
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <button
@@ -102,7 +128,7 @@ export default function HostProfilePage() {
               <span>{initial}</span>
             )}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
               {owner.name}
             </h1>
@@ -115,6 +141,14 @@ export default function HostProfilePage() {
               )}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={handleShare}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-ink-muted shadow-sm transition hover:border-brand hover:text-brand active:scale-95"
+          >
+            <Icon name="share" className="h-4 w-4" />
+            {t("profile.share")}
+          </button>
         </div>
       </section>
 

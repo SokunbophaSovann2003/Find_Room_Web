@@ -21,15 +21,10 @@ export default function UserNotificationsPage() {
   const unread = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
   function handleBack() {
-    // Browser history is the source of truth: send the user back to wherever
-    // they came from. Fall back to /profile when there's no in-app history
-    // (e.g. notification opened from an external link, or the tab landed here
-    // directly), since /profile is the canonical parent for this view.
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push("/profile");
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("findroom.nav-from-listroom");
     }
+    router.push("/explore");
   }
 
   function handleMarkAll() {

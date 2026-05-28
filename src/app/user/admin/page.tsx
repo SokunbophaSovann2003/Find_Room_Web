@@ -8,7 +8,8 @@ import DateRangePicker from "@/components/DateRangePicker";
 import PriceRangePicker from "@/components/PriceRangePicker";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import AdminRoomsList from "@/components/admin/AdminRoomsList";
-import { ALL_PROPERTY_TYPES, useAdminUsers, type AdminUser } from "@/lib/admin";
+import { ALL_PROPERTY_TYPES, useAdminSettings, useAdminUsers, type AdminUser } from "@/lib/admin";
+import { isAutoOccupied } from "@/lib/auto-occupy";
 import {
   deleteLocalRoom,
   updateLocalRoom,
@@ -26,6 +27,7 @@ const ADD_ROOM_PATH = "/profile/list-room";
 export default function AdminRoomsPage() {
   const rooms = useLocalRooms();
   const users = useAdminUsers();
+  const { autoOccupyDays } = useAdminSettings();
   const t = useT();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -46,11 +48,11 @@ export default function AdminRoomsPage() {
   }, [users]);
 
   const stats = useMemo(() => {
-    const occupied = rooms.filter((r) => r.isOccupied).length;
+    const occupied = rooms.filter((r) => r.isOccupied || isAutoOccupied(r, autoOccupyDays)).length;
     const available = rooms.length - occupied;
     const types = new Set(rooms.map((r) => r.type)).size;
     return { total: rooms.length, available, occupied, types };
-  }, [rooms]);
+  }, [rooms, autoOccupyDays]);
 
   const locationLabel =
     locationFilter.area ?? locationFilter.district ?? locationFilter.province ?? "";
@@ -62,8 +64,9 @@ export default function AdminRoomsPage() {
     const minP = priceMin ? Number(priceMin) : null;
     const maxP = priceMax ? Number(priceMax) : null;
     return rooms.filter((r) => {
-      if (statusFilter === "available" && r.isOccupied) return false;
-      if (statusFilter === "occupied" && !r.isOccupied) return false;
+      const effectivelyOccupied = r.isOccupied || isAutoOccupied(r, autoOccupyDays);
+      if (statusFilter === "available" && effectivelyOccupied) return false;
+      if (statusFilter === "occupied" && !effectivelyOccupied) return false;
       if (typeFilter !== "all" && r.type !== typeFilter) return false;
       if (locationFilter.province && r.city !== locationFilter.province) return false;
       if (locationFilter.district && r.district !== locationFilter.district) return false;
@@ -80,7 +83,7 @@ export default function AdminRoomsPage() {
         (r.district?.toLowerCase().includes(q) ?? false)
       );
     });
-  }, [rooms, query, statusFilter, typeFilter, locationFilter, dateFrom, dateTo, priceMin, priceMax]);
+  }, [rooms, query, statusFilter, typeFilter, locationFilter, dateFrom, dateTo, priceMin, priceMax, autoOccupyDays]);
 
   function handleToggleOccupied(room: Room) {
     const nextOccupied = !room.isOccupied;

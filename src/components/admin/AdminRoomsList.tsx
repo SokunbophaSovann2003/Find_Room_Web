@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Icon, { propertyIcon } from "@/components/Icon";
-import type { AdminUser } from "@/lib/admin";
+import { useAdminSettings, type AdminUser } from "@/lib/admin";
+import { isAutoOccupied, daysSinceActivity } from "@/lib/auto-occupy";
 import type { Room } from "@/lib/types";
 import { useT } from "@/lib/language";
 
@@ -30,7 +31,42 @@ export default function AdminRoomsList({
 }) {
   const t = useT();
   const router = useRouter();
-  const colCount = hideOwnerColumn ? 5 : 6;
+  const { autoOccupyDays } = useAdminSettings();
+  const [sortDays, setSortDays] = useState<"asc" | "desc" | null>(null);
+
+  function cycleSortDays() {
+    setSortDays((cur) => (cur === null ? "desc" : cur === "desc" ? "asc" : null));
+  }
+
+  const sortedRooms = useMemo(() => {
+    if (!sortDays) return rooms;
+    return [...rooms].sort((a, b) => {
+      const aOcc = a.isOccupied || isAutoOccupied(a, autoOccupyDays);
+      const bOcc = b.isOccupied || isAutoOccupied(b, autoOccupyDays);
+      if (aOcc && bOcc) return 0;
+      if (aOcc) return 1;
+      if (bOcc) return -1;
+      const diff = daysSinceActivity(a) - daysSinceActivity(b);
+      return sortDays === "desc" ? -diff : diff;
+    });
+  }, [rooms, sortDays, autoOccupyDays]);
+
+  // Hide the Days Available column when every visible room is occupied —
+  // e.g. when the status filter is set to "Occupied".
+  const hasAvailableRooms = useMemo(
+    () => sortedRooms.some((r) => !(r.isOccupied || isAutoOccupied(r, autoOccupyDays))),
+    [sortedRooms, autoOccupyDays]
+  );
+
+  // Reset sort when the Days Available column is hidden (e.g. filter changed to
+  // "Occupied") so stale sort state doesn't persist when the column reappears.
+  useEffect(() => {
+    if (!hasAvailableRooms) setSortDays(null);
+  }, [hasAvailableRooms]);
+
+  // Listing + Location + Price + Status + Actions = 5 base cols
+  // +1 if Owner column shown, +1 if Days Available column shown
+  const colCount = (hideOwnerColumn ? 5 : 6) + (hasAvailableRooms ? 1 : 0);
 
   // Click anywhere on the row goes to the room detail UNLESS the click target
   // is already an interactive element (owner link, maps link, action menu).
@@ -65,6 +101,25 @@ export default function AdminRoomsList({
               <th className="px-4 py-3 font-semibold">{t("admin.rooms.col.location")}</th>
               <th className="px-4 py-3 font-semibold">{t("admin.rooms.col.price")}</th>
               <th className="px-4 py-3 font-semibold">{t("admin.rooms.col.status")}</th>
+              {hasAvailableRooms ? (
+                <th className="px-4 py-3 font-semibold">
+                  <button
+                    type="button"
+                    onClick={cycleSortDays}
+                    className={`inline-flex items-center gap-1 rounded transition hover:text-ink ${sortDays ? "text-brand" : "text-ink-soft hover:text-ink"}`}
+                    title={sortDays === "desc" ? "Sorted: large → small" : sortDays === "asc" ? "Sorted: small → large" : "Sort by days available"}
+                  >
+                    {t("admin.rooms.col.daysAvailable")}
+                    {sortDays === "desc" ? (
+                      <Icon name="chevron-down" className="h-3.5 w-3.5" />
+                    ) : sortDays === "asc" ? (
+                      <Icon name="chevron-down" className="h-3.5 w-3.5 rotate-180" />
+                    ) : (
+                      <Icon name="arrows-up-down" className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </th>
+              ) : null}
               <th className="px-4 py-3 text-right font-semibold">{t("admin.rooms.col.actions")}</th>
             </tr>
           </thead>
@@ -76,7 +131,9 @@ export default function AdminRoomsList({
                 </td>
               </tr>
             ) : (
-              rooms.map((room) => (
+              sortedRooms.map((room) => {
+                const effectivelyOccupied = room.isOccupied || isAutoOccupied(room, autoOccupyDays);
+                return (
                 <tr
                   key={room.id}
                   onClick={rowClickHandler(room.id)}
@@ -129,17 +186,29 @@ export default function AdminRoomsList({
                   </td>
                   <td className="px-4 py-3 font-semibold text-brand">${room.price}</td>
                   <td className="px-4 py-3">
-                    <StatusPill occupied={!!room.isOccupied} />
+                    <StatusPill occupied={effectivelyOccupied} />
                   </td>
+                  {hasAvailableRooms ? (
+                    <td className="px-4 py-3">
+                      {!effectivelyOccupied ? (
+                        <span className="text-sm tabular-nums text-ink">
+                          {daysSinceActivity(room)}
+                          <span className="ml-0.5 text-xs text-ink-muted">d</span>
+                        </span>
+                      ) : null}
+                    </td>
+                  ) : null}
                   <td className="px-4 py-3">
                     <RowActions
                       room={room}
+                      effectivelyOccupied={effectivelyOccupied}
                       onToggle={() => onToggleOccupied(room)}
                       onDelete={() => onDelete(room)}
                     />
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
@@ -152,7 +221,9 @@ export default function AdminRoomsList({
             {emptyMessage}
           </li>
         ) : (
-          rooms.map((room) => (
+          sortedRooms.map((room) => {
+            const effectivelyOccupied = room.isOccupied || isAutoOccupied(room, autoOccupyDays);
+            return (
             <li
               key={room.id}
               onClick={rowClickHandler(room.id)}
@@ -197,17 +268,24 @@ export default function AdminRoomsList({
                         {t("room.suffix.monthly")}
                       </span>
                     </p>
-                    <StatusPill occupied={!!room.isOccupied} />
+                    <StatusPill occupied={effectivelyOccupied} />
+                    {!effectivelyOccupied ? (
+                      <span className="text-[11px] text-ink-muted">
+                        {daysSinceActivity(room)}d
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <RowActions
                   room={room}
+                  effectivelyOccupied={effectivelyOccupied}
                   onToggle={() => onToggleOccupied(room)}
                   onDelete={() => onDelete(room)}
                 />
               </div>
             </li>
-          ))
+            );
+          })
         )}
       </ul>
     </>
@@ -248,10 +326,12 @@ function StatusPill({ occupied }: { occupied: boolean }) {
 
 function RowActions({
   room,
+  effectivelyOccupied,
   onToggle,
   onDelete
 }: {
   room: Room;
+  effectivelyOccupied: boolean;
   onToggle: () => void;
   onDelete: () => void;
 }) {
@@ -275,7 +355,7 @@ function RowActions({
         >
           <MenuItem
             icon="shield"
-            label={room.isOccupied ? t("admin.rooms.action.markAvailable") : t("admin.rooms.action.markOccupied")}
+            label={effectivelyOccupied ? t("admin.rooms.action.markAvailable") : t("admin.rooms.action.markOccupied")}
             onClick={() => {
               setOpen(false);
               onToggle();

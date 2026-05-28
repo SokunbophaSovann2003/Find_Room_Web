@@ -8,6 +8,8 @@ import {
   deleteLocalRoom,
   updateLocalRoom
 } from "@/lib/local-rooms";
+import { useAdminSettings } from "@/lib/admin";
+import { isAutoOccupied } from "@/lib/auto-occupy";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
 import type { Room } from "@/lib/types";
@@ -21,6 +23,11 @@ export default function ListingActionMenu({
 }) {
   const router = useRouter();
   const t = useT();
+  const { autoOccupyDays } = useAdminSettings();
+  // A room is "effectively occupied" if manually marked OR auto-occupied by
+  // inactivity. The menu label and toggle action must match this combined state.
+  const autoOccupied = isAutoOccupied(room, autoOccupyDays);
+  const effectivelyOccupied = room.isOccupied || autoOccupied;
   const [open, setOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -73,14 +80,22 @@ export default function ListingActionMenu({
   function handleToggleOccupied(e: React.MouseEvent) {
     stop(e);
     setOpen(false);
-    const nextOccupied = !room.isOccupied;
-    updateLocalRoom(room.id, { isOccupied: nextOccupied });
-    toast.success(
-      t(
-        nextOccupied ? "toast.listing.occupied" : "toast.listing.available",
-        { title: room.title }
-      )
-    );
+    if (autoOccupied) {
+      // Room is auto-occupied (isOccupied is false in storage but the clock
+      // expired). "Mark Available" means resetting lastActivityAt so the room
+      // becomes visible on Explore again — not flipping isOccupied.
+      updateLocalRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() });
+      toast.success(t("toast.listing.available", { title: room.title }));
+    } else {
+      const nextOccupied = !room.isOccupied;
+      updateLocalRoom(room.id, { isOccupied: nextOccupied });
+      toast.success(
+        t(
+          nextOccupied ? "toast.listing.occupied" : "toast.listing.available",
+          { title: room.title }
+        )
+      );
+    }
   }
 
   return (
@@ -106,8 +121,8 @@ export default function ListingActionMenu({
           }`}
         >
           <MenuItem
-            icon={room.isOccupied ? "check" : "home"}
-            label={t(room.isOccupied ? "listing.menu.markAvailable" : "listing.menu.markOccupied")}
+            icon={effectivelyOccupied ? "check" : "home"}
+            label={t(effectivelyOccupied ? "listing.menu.markAvailable" : "listing.menu.markOccupied")}
             onClick={handleToggleOccupied}
           />
           <MenuItem icon="pencil" label={t("common.edit")} onClick={handleEdit} />

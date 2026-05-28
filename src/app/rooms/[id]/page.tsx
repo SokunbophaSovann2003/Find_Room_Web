@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ImageGallery from "@/components/ImageGallery";
-import RoomCard from "@/components/RoomCard";
 import Icon, { amenityIcon, type IconName } from "@/components/Icon";
 import ConfirmModal from "@/components/ConfirmModal";
-import { findRoomById, similarRooms } from "@/lib/mock-data";
+import AuthModal from "@/components/AuthModal";
+import { findRoomById } from "@/lib/mock-data";
 import { deleteLocalRoom, getLocalRoomById, updateLocalRoom } from "@/lib/local-rooms";
 import { useSession } from "@/lib/session";
 import { isAdmin, pushIncomingNotification } from "@/lib/admin";
@@ -37,6 +37,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const [contactOpen, setContactOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const [reportReason, setReportReason] = useState<ReportReason | null>(null);
   const [reportDetails, setReportDetails] = useState("");
   const [reportSent, setReportSent] = useState(false);
@@ -106,7 +107,6 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   // actions in place of the renter-facing CTAs (Contact / Location), hide the
   // marketing footer, and drop the Similar Rooms strip.
   const adminViewActive = viewMode === "admin" && isAdmin(session);
-  const similar = isOwner || adminViewActive ? [] : similarRooms(room);
   const mapQuery =
     room.lat != null && room.lng != null
       ? `${room.lat},${room.lng}`
@@ -241,6 +241,12 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             <button
               type="button"
               onClick={() => {
+                if (!session) {
+                  // Require sign-in before reporting — prevents spam from
+                  // anonymous users and ties reports to an identity.
+                  setAuthOpen(true);
+                  return;
+                }
                 setReportReason(null);
                 setReportDetails("");
                 setReportSent(false);
@@ -403,16 +409,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           </aside>
         </div>
 
-        {similar.length > 0 ? (
-          <section className="mt-12">
-            <h2 className="mb-4 text-lg font-bold">{t("room.section.similar")}</h2>
-            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
-              {similar.map((r) => (
-                <RoomCard key={r.id} room={r} />
-              ))}
-            </div>
-          </section>
-        ) : null}
+
       </div>
 
       {/*
@@ -490,6 +487,18 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           </div>
         </div>
       )}
+
+      <AuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        onSuccess={() => {
+          setAuthOpen(false);
+          setReportReason(null);
+          setReportDetails("");
+          setReportSent(false);
+          setReportOpen(true);
+        }}
+      />
 
       <ConfirmModal
         open={adminDeleteOpen}

@@ -88,6 +88,33 @@ export async function signOut() {
   setViewMode("user");
 }
 
+// Returns true if a demo account exists for the given phone number.
+// Used by the Forgot Password flow to gate the new-password step.
+export function checkPhoneAccountExists(phoneNumber: string): boolean {
+  return !!findAdminUserByPhone(phoneNumber);
+}
+
+// Reset password for a demo-mode account. Verifies the account exists in the
+// admin user store, then signs the user in with the new password (in demo
+// mode any password is accepted, so "reset" is essentially a re-login).
+// Throws an error if: Firebase mode is active (no phone-based reset there),
+// the account is not found, or the new password is too short.
+export async function resetDemoPassword(phoneNumber: string, newPassword: string): Promise<void> {
+  if (isFirebaseConfigured && auth) {
+    throw new Error("Password reset is not supported in Firebase mode. Please contact support.");
+  }
+  if (newPassword.length < 8) {
+    throw new Error("Password must be at least 8 characters.");
+  }
+  const adminEntry = findAdminUserByPhone(phoneNumber);
+  if (!adminEntry) {
+    throw new Error("No account found for this phone number.");
+  }
+  // Demo mode accepts any credentials — signing in with the new password is
+  // sufficient to "reset" it.
+  await loginWithPhone(phoneNumber, newPassword);
+}
+
 // Change the phone the user signs in with. The uid stays stable (so existing
 // listings keep their owner.id reference); only the auth identity is updated.
 // In Firebase mode, may throw `auth/requires-recent-login` — caller should

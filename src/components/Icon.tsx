@@ -31,6 +31,7 @@ export type IconName =
   | "x"
   | "arrow-right"
   | "log-out"
+  | "log-in"
   | "check"
   | "plus"
   | "pencil"
@@ -44,7 +45,10 @@ export type IconName =
   | "twitter"
   | "telegram"
   | "wechat"
-  | "email";
+  | "email"
+  | "eye"
+  | "eye-off"
+  | "arrows-up-down";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V10.5Z" />,
@@ -205,6 +209,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="m16 17 5-5-5-5M21 12H9" />
     </>
   ),
+  "log-in": (
+    <>
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <path d="m10 17 5-5-5-5M3 12h12" />
+    </>
+  ),
   check: <path d="m5 12 5 5L20 7" />,
   plus: <path d="M12 5v14M5 12h14" />,
   pencil: (
@@ -254,6 +264,23 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="m3 7 9 7 9-7" />
     </>
+  ),
+  eye: (
+    <>
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  "eye-off": (
+    <>
+      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+      <line x1="2" y1="2" x2="22" y2="22" />
+    </>
+  ),
+  "arrows-up-down": (
+    <path d="M3 7.5 7.5 3m0 0 4.5 4.5M7.5 3v13.5m13.5 0L16.5 21m0 0-4.5-4.5m4.5 4.5V3" />
   )
 };
 

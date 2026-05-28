@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Icon from "./Icon";
 import AuthModal from "./AuthModal";
 import LanguageToggle from "./LanguageToggle";
+import PropertyTypePicker from "./PropertyTypePicker";
 import { useSession } from "@/lib/session";
 import { loadOverrides, subscribeOverrides } from "@/lib/profile-overrides";
 import { isAdmin, useUserNotifications } from "@/lib/admin";
@@ -13,6 +14,10 @@ import { setViewMode, useViewMode } from "@/lib/view-mode";
 import { useT } from "@/lib/language";
 
 const LIST_ROOM_PATH = "/profile/list-room";
+// When the user navigates away from the create/edit room flow via the Navbar,
+// we flag it so back buttons on the destination page can skip list-room in the
+// history stack and send the user to /explore instead.
+const FROM_LIST_ROOM_KEY = "findroom.nav-from-listroom";
 
 export default function Navbar() {
   const router = useRouter();
@@ -24,6 +29,7 @@ export default function Navbar() {
   // sign-in success to drop them on the list-room screen — not just close the
   // modal. `authNext` carries that intent. null = plain Log in (just close).
   const [authNext, setAuthNext] = useState<string | null>(null);
+  const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [overrideUsername, setOverrideUsername] = useState<string | undefined>(undefined);
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
   useEffect(() => {
@@ -46,7 +52,7 @@ export default function Navbar() {
 
   function handleListRoom() {
     if (session) {
-      router.push(LIST_ROOM_PATH);
+      setTypePickerOpen(true);
     } else {
       setAuthNext(LIST_ROOM_PATH);
       setAuthOpen(true);
@@ -93,6 +99,10 @@ export default function Navbar() {
               <Link
                 href="/profile"
                 aria-label={t("nav.profile")}
+                onClick={() => {
+                  if (pathname === LIST_ROOM_PATH)
+                    sessionStorage.setItem(FROM_LIST_ROOM_KEY, "1");
+                }}
                 className="hidden h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 transition hover:ring-2 hover:ring-brand/30 sm:block"
               >
                 {avatarUrl ? (
@@ -120,7 +130,7 @@ export default function Navbar() {
                   setAuthNext(null);
                   setAuthOpen(true);
                 }}
-                className="btn-primary hidden px-4 py-2 text-sm sm:inline-flex"
+                className="btn-primary inline-flex px-4 py-2 text-sm"
               >
                 {t("nav.logIn")}
               </button>
@@ -129,7 +139,7 @@ export default function Navbar() {
             {/* Desktop-only: on mobile the bottom nav owns this action. Sits
                 last so it reads as the primary call-to-action after the user's
                 identity affordances. */}
-            {onAdmin ? null : (
+            {onAdmin || pathname === LIST_ROOM_PATH ? null : (
               <button
                 type="button"
                 onClick={handleListRoom}
@@ -154,7 +164,16 @@ export default function Navbar() {
           setAuthOpen(false);
           const next = authNext;
           setAuthNext(null);
-          if (next) router.push(next);
+          if (next) setTypePickerOpen(true);
+        }}
+      />
+
+      <PropertyTypePicker
+        open={typePickerOpen}
+        onClose={() => setTypePickerOpen(false)}
+        onPick={(type) => {
+          setTypePickerOpen(false);
+          router.push(`${LIST_ROOM_PATH}?type=${type}`);
         }}
       />
     </>
@@ -166,6 +185,7 @@ function NotificationBell() {
   const notifications = useUserNotifications(session);
   const unread = notifications.filter((n) => !n.read).length;
   const t = useT();
+  const pathname = usePathname();
   return (
     <Link
       href="/profile/notifications"
@@ -174,6 +194,10 @@ function NotificationBell() {
           ? t("nav.notifications.ariaWithCount", { n: unread })
           : t("nav.notifications.aria")
       }
+      onClick={() => {
+        if (pathname === LIST_ROOM_PATH)
+          sessionStorage.setItem(FROM_LIST_ROOM_KEY, "1");
+      }}
       className="relative flex h-10 w-10 shrink-0 items-center justify-center text-ink-muted transition hover:text-ink"
     >
       <Icon name="bell" className="h-6 w-6" />

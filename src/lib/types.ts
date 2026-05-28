@@ -49,6 +49,10 @@ export interface Room {
   amenities: string[];
   availableFrom?: string; // ISO date
   isOccupied?: boolean;
+  // Tracks the last time this listing was created, edited, or had its
+  // availability toggled. Used by the auto-occupy feature to determine
+  // whether an Available room has gone stale.
+  lastActivityAt?: number; // ms epoch
   owner: Owner;
   createdAt: number;
 }

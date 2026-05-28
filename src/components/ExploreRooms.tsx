@@ -7,6 +7,8 @@ import Icon from "./Icon";
 import ErrorBoundary from "./ErrorBoundary";
 import { useLocalRooms } from "@/lib/local-rooms";
 import { useT } from "@/lib/language";
+import { useAdminSettings } from "@/lib/admin";
+import { isAutoOccupied } from "@/lib/auto-occupy";
 import { applyFilter, useExploreFilter } from "./ExploreFilterContext";
 import { getLocationFocus } from "@/lib/locations";
 import type { Bounds } from "./ExploreMap";
@@ -35,6 +37,7 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
   const [view, setView] = useState<View>("list");
   const localRooms = useLocalRooms();
   const { filter } = useExploreFilter();
+  const { autoOccupyDays } = useAdminSettings();
   const allRooms = useMemo(() => {
     // Admin seeding copies MOCK_ROOMS into local-rooms with a "mock-" id
     // prefix, so the same listing can show up in both arrays. Collapse them
@@ -47,8 +50,10 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
       seen.add(key);
       return true;
     });
-    return applyFilter(merged, filter);
-  }, [localRooms, rooms, filter]);
+    // applyFilter already strips manually-occupied rooms; additionally remove
+    // listings that have gone stale and should be auto-occupied.
+    return applyFilter(merged, filter).filter((r) => !isAutoOccupied(r, autoOccupyDays));
+  }, [localRooms, rooms, filter, autoOccupyDays]);
   const [bounds, setBounds] = useState<Bounds | null>(null);
 
   const focus = useMemo(() => getLocationFocus(filter.location), [filter.location]);

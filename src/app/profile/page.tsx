@@ -8,64 +8,28 @@ import Icon, { propertyIcon } from "@/components/Icon";
 import ListingActionMenu from "@/components/ListingActionMenu";
 import { signOut, updateLoginPhone } from "@/lib/auth";
 import { useSession } from "@/lib/session";
-import { seedSampleListings, useLocalRooms } from "@/lib/local-rooms";
+import { seedSampleListings, updateLocalRoom, useLocalRooms } from "@/lib/local-rooms";
 import { downscalePhoto } from "@/lib/image";
 import {
   loadOverrides,
   saveOverrides,
   type ProfileOverrides
 } from "@/lib/profile-overrides";
-import { getAdminSettings } from "@/lib/admin";
+import { getAdminSettings, useAdminSettings } from "@/lib/admin";
+import { isAutoOccupied, daysSinceActivity } from "@/lib/auto-occupy";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
+import { copyToClipboard } from "@/lib/clipboard";
 import type { PropertyType } from "@/lib/types";
+import PropertyTypePicker from "@/components/PropertyTypePicker";
 
-// Clipboard helper with a legacy fallback: navigator.clipboard.writeText
-// can reject when the document isn't focused (preview iframes, some in-app
-// browsers) or when permissions are denied. The hidden-textarea +
-// execCommand("copy") path still works in those environments.
-async function copyToClipboard(text: string): Promise<boolean> {
-  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      // fall through to legacy path
-    }
-  }
-  if (typeof document === "undefined") return false;
-  try {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.setAttribute("readonly", "");
-    ta.style.position = "fixed";
-    ta.style.top = "0";
-    ta.style.left = "0";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.select();
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return ok;
-  } catch {
-    return false;
-  }
-}
-
-const PROPERTY_TYPE_CHOICES: { value: PropertyType; labelKey: string; hintKey: string }[] = [
-  { value: "room", labelKey: "type.room", hintKey: "pick.type.room.hint" },
-  { value: "apartment", labelKey: "type.apartment", hintKey: "pick.type.apartment.hint" },
-  { value: "condo", labelKey: "type.condo", hintKey: "pick.type.condo.hint" },
-  { value: "flat", labelKey: "type.flat", hintKey: "pick.type.flat.hint" },
-  { value: "house", labelKey: "type.house", hintKey: "pick.type.house.hint" },
-  { value: "villa", labelKey: "type.villa", hintKey: "pick.type.villa.hint" }
-];
 
 export default function ProfilePage() {
   const router = useRouter();
   const session = useSession();
   const t = useT();
   const allLocalRooms = useLocalRooms();
+  const { autoOccupyDays } = useAdminSettings();
   const [overrides, setOverrides] = useState<ProfileOverrides>({});
   const [editing, setEditing] = useState<"profile" | null>(null);
   const [signingOut, setSigningOut] = useState(false);
@@ -156,11 +120,10 @@ export default function ProfilePage() {
   }
 
   function handleBack() {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push("/explore");
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("findroom.nav-from-listroom");
     }
+    router.push("/explore");
   }
 
   return (
@@ -326,73 +289,109 @@ export default function ProfilePage() {
         ) : (
           <>
             <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card sm:hidden">
-              {listings.map((room) => (
-                <li key={room.id} className="relative">
-                  <Link
-                    href={`/rooms/${room.id}`}
-                    className="flex items-center gap-3 p-3 pr-12 transition hover:bg-slate-50"
-                  >
-                    <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
-                      {room.images[0] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={room.images[0]}
-                          alt={room.title}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <Icon
-                          name={propertyIcon(room.type)}
-                          className="h-7 w-7 text-slate-300"
-                          strokeWidth={1.4}
-                        />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start gap-1.5">
-                        <span className="line-clamp-2 flex-1 text-sm font-semibold text-ink">
-                          {room.title}
-                        </span>
-                        {room.isOccupied ? (
-                          <span className="mt-0.5 shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                            {t("profile.occupied")}
-                          </span>
-                        ) : null}
+              {listings.map((room) => {
+                const autoOccupied = isAutoOccupied(room, autoOccupyDays);
+                const days = daysSinceActivity(room);
+                return (
+                  <li key={room.id} className="relative">
+                    <Link
+                      href={`/rooms/${room.id}`}
+                      className="flex items-center gap-3 p-3 pr-12 transition hover:bg-slate-50"
+                    >
+                      <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                        {room.images[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={room.images[0]}
+                            alt={room.title}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Icon
+                            name={propertyIcon(room.type)}
+                            className="h-7 w-7 text-slate-300"
+                            strokeWidth={1.4}
+                          />
+                        )}
                       </div>
-                      <p className="truncate text-xs text-ink-muted">
-                        {room.district ? `${room.district}, ` : ""}
-                        {room.city}
-                      </p>
-                      <p className="mt-0.5 text-sm font-bold text-brand">
-                        ${room.price}
-                        <span className="ml-0.5 text-[11px] font-medium text-ink-muted">
-                          {t("profile.month")}
-                        </span>
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start gap-1.5">
+                          <span className="line-clamp-2 flex-1 text-sm font-semibold text-ink">
+                            {room.title}
+                          </span>
+                          {room.isOccupied || autoOccupied ? (
+                            <span className="mt-0.5 shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                              {t("profile.occupied")}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="truncate text-xs text-ink-muted">
+                          {room.district ? `${room.district}, ` : ""}
+                          {room.city}
+                        </p>
+                        <p className="mt-0.5 text-sm font-bold text-brand">
+                          ${room.price}
+                          <span className="ml-0.5 text-[11px] font-medium text-ink-muted">
+                            {t("profile.month")}
+                          </span>
+                        </p>
+                      </div>
+                    </Link>
+                    {autoOccupied ? (
+                      <div className="flex items-center justify-between gap-3 border-t border-amber-100 bg-amber-50 px-3 py-2 pr-12">
+                        <p className="text-[11px] leading-snug text-amber-700">
+                          {t("profile.autoOccupied.note", { days: String(days) })}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => updateLocalRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() })}
+                          className="shrink-0 rounded-full bg-brand px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-brand/90"
+                        >
+                          {t("profile.autoOccupied.markAvailable")}
+                        </button>
+                      </div>
+                    ) : null}
+                    <div className="absolute right-2 top-4 flex items-center">
+                      <ListingActionMenu room={room} />
                     </div>
-                  </Link>
-                  <div className="absolute inset-y-0 right-2 flex items-center">
-                    <ListingActionMenu room={room} />
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
 
             {listingsView === "grid" ? (
               <div className="hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3">
-                {listings.map((room) => (
-                  <div key={room.id} className="relative">
-                    <RoomCard room={room} />
-                    {room.isOccupied ? (
-                      <span className="pointer-events-none absolute left-3 top-12 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow">
-                        {t("profile.occupied")}
-                      </span>
-                    ) : null}
-                    <div className="absolute right-2 top-2">
-                      <ListingActionMenu room={room} />
+                {listings.map((room) => {
+                  const autoOccupied = isAutoOccupied(room, autoOccupyDays);
+                  const days = daysSinceActivity(room);
+                  return (
+                    <div key={room.id} className="relative flex flex-col">
+                      <RoomCard room={room} />
+                      {room.isOccupied || autoOccupied ? (
+                        <span className="pointer-events-none absolute left-3 top-12 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow">
+                          {t("profile.occupied")}
+                        </span>
+                      ) : null}
+                      <div className="absolute right-2 top-2">
+                        <ListingActionMenu room={room} />
+                      </div>
+                      {autoOccupied ? (
+                        <div className="mt-2 flex items-start justify-between gap-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5">
+                          <p className="text-[11px] leading-snug text-amber-700">
+                            {t("profile.autoOccupied.note", { days: String(days) })}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => updateLocalRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() })}
+                            className="shrink-0 rounded-full bg-brand px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-brand/90"
+                          >
+                            {t("profile.autoOccupied.markAvailable")}
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card sm:block">
@@ -405,76 +404,94 @@ export default function ProfilePage() {
                   <span aria-hidden />
                 </div>
                 <ul className="divide-y divide-slate-100">
-                  {listings.map((room) => (
-                    <li
-                      key={room.id}
-                      className="relative has-[[aria-expanded='true']]:z-30"
-                    >
-                      <Link
-                        href={`/rooms/${room.id}`}
-                        className="grid grid-cols-[88px_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-4 px-4 py-3 transition hover:bg-slate-50"
+                  {listings.map((room) => {
+                    const autoOccupied = isAutoOccupied(room, autoOccupyDays);
+                    const days = daysSinceActivity(room);
+                    return (
+                      <li
+                        key={room.id}
+                        className="relative has-[[aria-expanded='true']]:z-30"
                       >
-                        <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
-                          {room.images[0] ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={room.images[0]}
-                              alt={room.title}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <Icon
-                              name={propertyIcon(room.type)}
-                              className="h-7 w-7 text-slate-300"
-                              strokeWidth={1.4}
-                            />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="truncate text-sm font-semibold text-ink">
-                              {room.title}
+                        <Link
+                          href={`/rooms/${room.id}`}
+                          className="grid grid-cols-[88px_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-4 px-4 py-3 transition hover:bg-slate-50"
+                        >
+                          <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                            {room.images[0] ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={room.images[0]}
+                                alt={room.title}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Icon
+                                name={propertyIcon(room.type)}
+                                className="h-7 w-7 text-slate-300"
+                                strokeWidth={1.4}
+                              />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-sm font-semibold text-ink">
+                                {room.title}
+                              </span>
+                              {room.isOccupied || autoOccupied ? (
+                                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                                  {t("profile.occupied")}
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-ink-muted">
+                              <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">
+                                {room.district ? `${room.district}, ` : ""}
+                                {room.city}
+                              </span>
+                            </p>
+                          </div>
+                          <div className="text-xs font-medium text-ink-muted">
+                            {t(`type.${room.type}`)}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-ink-muted">
+                            <span className="inline-flex items-center gap-1">
+                              <Icon name="bed" className="h-3.5 w-3.5" /> {room.bedrooms}
                             </span>
-                            {room.isOccupied ? (
-                              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                                {t("profile.occupied")}
+                            {room.areaSqm ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Icon name="ruler" className="h-3.5 w-3.5" /> {room.areaSqm}m²
                               </span>
                             ) : null}
                           </div>
-                          <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-ink-muted">
-                            <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">
-                              {room.district ? `${room.district}, ` : ""}
-                              {room.city}
+                          <div className="text-right">
+                            <span className="text-sm font-bold text-brand">${room.price}</span>
+                            <span className="ml-0.5 text-[11px] text-ink-muted">
+                              {t("profile.month")}
                             </span>
-                          </p>
+                          </div>
+                          <span aria-hidden />
+                        </Link>
+                        {autoOccupied ? (
+                          <div className="flex items-center justify-between gap-3 border-t border-amber-100 bg-amber-50 px-4 py-2">
+                            <p className="text-[11px] text-amber-700">
+                              {t("profile.autoOccupied.note", { days: String(days) })}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => updateLocalRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() })}
+                              className="shrink-0 rounded-full bg-brand px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-brand/90"
+                            >
+                              {t("profile.autoOccupied.markAvailable")}
+                            </button>
+                          </div>
+                        ) : null}
+                        <div className="absolute right-3 top-4">
+                          <ListingActionMenu room={room} />
                         </div>
-                        <div className="text-xs font-medium text-ink-muted">
-                          {t(`type.${room.type}`)}
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-ink-muted">
-                          <span className="inline-flex items-center gap-1">
-                            <Icon name="bed" className="h-3.5 w-3.5" /> {room.bedrooms}
-                          </span>
-                          {room.areaSqm ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Icon name="ruler" className="h-3.5 w-3.5" /> {room.areaSqm}m²
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-brand">${room.price}</span>
-                          <span className="ml-0.5 text-[11px] text-ink-muted">
-                            {t("profile.month")}
-                          </span>
-                        </div>
-                        <span aria-hidden />
-                      </Link>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <ListingActionMenu room={room} />
-                      </div>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
@@ -549,88 +566,6 @@ function ListingsViewTab({
   );
 }
 
-function PropertyTypePicker({
-  open,
-  onClose,
-  onPick
-}: {
-  open: boolean;
-  onClose: () => void;
-  onPick: (type: PropertyType) => void;
-}) {
-  const t = useT();
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  // Hide property types the admin has disabled in Settings → Listing taxonomy.
-  const active = new Set(getAdminSettings().activePropertyTypes);
-  const choices = PROPERTY_TYPE_CHOICES.filter((p) => active.has(p.value));
-
-  return (
-    <div
-      className="fixed inset-0 z-[1100] flex items-end justify-center sm:items-center sm:px-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t("pick.type.aria")}
-    >
-      <div className="absolute inset-0 bg-ink/50" onClick={onClose} aria-hidden />
-      <div className="relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-cardHover sm:max-h-[80vh] sm:max-w-md sm:rounded-3xl">
-        <div className="grid grid-cols-[40px_1fr_40px] items-center border-b border-slate-100 px-2 py-3">
-          <span aria-hidden />
-          <h3 className="text-center text-base font-semibold text-ink">
-            {t("pick.type.title")}
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t("common.close")}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:bg-slate-100 hover:text-ink"
-          >
-            <Icon name="x" className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="overflow-y-auto p-4 sm:p-5">
-          <ul className="grid grid-cols-2 gap-3">
-            {choices.map((p) => (
-              <li key={p.value}>
-                <button
-                  type="button"
-                  onClick={() => onPick(p.value)}
-                  className="flex h-full w-full flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-brand hover:bg-brand/5"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
-                    <Icon name={propertyIcon(p.value)} className="h-5 w-5" />
-                  </span>
-                  <span className="text-sm font-bold text-ink">{t(p.labelKey)}</span>
-                  <span className="text-xs leading-snug text-ink-muted">
-                    {t(p.hintKey)}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function EditProfileModal({
   initial,

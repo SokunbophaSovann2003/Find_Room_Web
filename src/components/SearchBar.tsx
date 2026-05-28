@@ -51,7 +51,7 @@ export default function SearchBar() {
   return (
     <form
       className="flex w-full flex-col gap-2 rounded-2xl bg-white p-2 shadow-card lg:flex-row lg:items-center lg:rounded-full"
-      onSubmit={(e) => e.preventDefault()}
+      onSubmit={(e) => { e.preventDefault(); setPickerOpen(null); }}
     >
       <div className="relative min-w-0 flex-1">
         <button

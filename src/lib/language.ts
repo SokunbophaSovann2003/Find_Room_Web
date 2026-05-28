@@ -68,6 +68,7 @@ const DICT: Dict = {
   "common.copy": { km: "ចម្លង", en: "Copy" },
   "common.close": { km: "បិទ", en: "Close" },
   "common.back": { km: "ត្រឡប់ក្រោយ", en: "Back" },
+  "common.continue": { km: "បន្ត", en: "Continue" },
   "common.next": { km: "បន្ទាប់", en: "Next" },
   "common.previous": { km: "មុន", en: "Previous" },
   "common.confirm": { km: "បញ្ជាក់", en: "Confirm" },
@@ -95,6 +96,8 @@ const DICT: Dict = {
   "common.hoursAgo": { km: "{n} ម៉ោងមុន", en: "{n}h ago" },
   "common.daysAgo": { km: "{n} ថ្ងៃមុន", en: "{n}d ago" },
   "common.unread": { km: "មិនទាន់អាន", en: "Unread" },
+  "auth.checking": { km: "កំពុងពិនិត្យ session…", en: "Checking your session…" },
+  "common.anonymousUser": { km: "អ្នកប្រើប្រាស់", en: "User" },
 
   // Navbar
   "nav.profile": { km: "ប្រវត្តិរូបរបស់អ្នក", en: "Your profile" },
@@ -115,6 +118,7 @@ const DICT: Dict = {
   // Bottom nav
   "bottomNav.home": { km: "ទំព័រដើម", en: "Home" },
   "bottomNav.profile": { km: "ប្រវត្តិរូប", en: "Profile" },
+  "bottomNav.login": { km: "ចូល", en: "Login" },
   "bottomNav.listRoom.aria": { km: "ផ្សាយបន្ទប់របស់អ្នក", en: "List your room" },
   "bottomNav.primary.aria": { km: "ការរុករកសំខាន់", en: "Primary" },
 
@@ -149,6 +153,22 @@ const DICT: Dict = {
   "auth.error.name.required": { km: "បញ្ចូលឈ្មោះរបស់អ្នក។", en: "Enter your name." },
   "auth.error.signInFailed": { km: "មិនអាចចូលបាន", en: "Unable to sign in" },
   "auth.error.signUpFailed": { km: "មិនអាចបង្កើតគណនីបាន", en: "Unable to create account" },
+  "auth.field.phone.digitHint": { km: "{n} ខ្ទង់ — ត្រូវការ ៨ ឬ ៩", en: "{n} digits — need 8 or 9" },
+  "auth.field.password.show": { km: "បង្ហាញពាក្យសម្ងាត់", en: "Show password" },
+  "auth.field.password.hide": { km: "លាក់ពាក្យសម្ងាត់", en: "Hide password" },
+  "auth.forgot.link": { km: "ភ្លេចពាក្យសម្ងាត់?", en: "Forgot password?" },
+  "auth.forgot.title": { km: "កំណត់ពាក្យសម្ងាត់ម្ដងទៀត", en: "Reset password" },
+  "auth.forgot.subtitle": { km: "បញ្ចូលលេខទូរស័ព្ទរបស់អ្នក ហើយយើងនឹងជួយអ្នក។", en: "Enter your phone number and we'll help you get back in." },
+  "auth.forgot.findAccount": { km: "ស្វែងរកគណនី", en: "Find account" },
+  "auth.forgot.finding": { km: "កំពុងស្វែងរក…", en: "Searching…" },
+  "auth.forgot.newPassword": { km: "ពាក្យសម្ងាត់ថ្មី", en: "New password" },
+  "auth.forgot.setPassword": { km: "កំណត់ពាក្យសម្ងាត់", en: "Set password" },
+  "auth.forgot.setting": { km: "កំពុងរក្សាទុក…", en: "Saving…" },
+  "auth.forgot.success.title": { km: "ចូលប្រើបានរួចរាល់!", en: "You're back in!" },
+  "auth.forgot.success.body": { km: "ពាក្យសម្ងាត់ថ្មីត្រូវបានកំណត់ ហើយអ្នកបានចូលប្រើគណនីរបស់អ្នករួចហើយ។", en: "Your new password is set and you're now signed in." },
+  "auth.forgot.back": { km: "ត្រឡប់ទៅចូលប្រើ", en: "Back to sign in" },
+  "auth.forgot.notFound": { km: "រកមិនឃើញគណនីសម្រាប់លេខទូរស័ព្ទនេះ។", en: "No account found for this phone number." },
+  "auth.forgot.noSupport": { km: "ការកំណត់ពាក្យសម្ងាត់ម្ដងទៀតមិនត្រូវបានគាំទ្រ។ សូមទាក់ទងផ្នែកជំនួយ។", en: "Password reset is not supported in this mode. Please contact support." },
 
   // Profile page
   "profile.editProfile": { km: "កែប្រែប្រវត្តិរូប", en: "Edit profile" },
@@ -164,6 +184,11 @@ const DICT: Dict = {
   "profile.empty.cta": { km: "បង្កើតបន្ទប់ដំបូងរបស់អ្នក", en: "Create your first listing" },
   "profile.menu.aria": { km: "ជម្រើសប្រវត្តិរូប", en: "Profile options" },
   "profile.occupied": { km: "មានអ្នកជួល", en: "Occupied" },
+  "profile.autoOccupied.note": {
+    km: "បិទដោយស្វ័យប្រវត្តិ — គ្មានសកម្មភាពក្នុងរយៈពេល {days} ថ្ងៃ។ ចុចដើម្បីកំណត់ជាអាចជួលបានម្តងទៀត។",
+    en: "Auto-marked Occupied — no activity for {days} days. Tap to mark Available again."
+  },
+  "profile.autoOccupied.markAvailable": { km: "សម្គាល់ជាអាចជួលបាន", en: "Mark Available" },
   "profile.month": { km: "/ ខែ", en: "/ month" },
   "profile.view.grid": { km: "ក្រឡា", en: "Grid" },
   "profile.view.list": { km: "បញ្ជី", en: "List" },
@@ -240,7 +265,7 @@ const DICT: Dict = {
   "host.listings.heading": { km: "បន្ទប់ផ្សេងទៀតពីម្ចាស់នេះ", en: "More rooms from this host" },
   "host.empty.title": { km: "មិនមានបន្ទប់ផ្សាយឥឡូវនេះ", en: "No rooms available right now" },
   "host.empty.body": { km: "ម្ចាស់ផ្ទះនេះមិនទាន់មានបញ្ជីដែលនៅទំនេរ។", en: "This host doesn't have any open listings yet." },
-  "host.empty.allOccupied.one": { km: "បន្ទប់ {n} ដែលពួកគេមាន ត្រូវបានជួលរួចទាំងអស់។", en: "Their {n} listing is currently rented out." },
+  "host.empty.allOccupied.one": { km: "បន្ទប់ {n} របស់ពួកគេ ត្រូវបានជួលរួចហើយ។", en: "Their {n} listing is currently rented out." },
   "host.empty.allOccupied.many": { km: "បន្ទប់ទាំង {n} របស់ពួកគេ ត្រូវបានជួលរួចទាំងអស់។", en: "All {n} of their listings are currently rented out." },
   "room.contactLabel.phone": { km: "ទូរស័ព្ទ", en: "Phone" },
   "room.contactLabel.telegram": { km: "តេឡេក្រាម", en: "Telegram" },
@@ -449,6 +474,7 @@ const DICT: Dict = {
   "admin.rooms.col.location": { km: "ទីតាំង", en: "Location" },
   "admin.rooms.col.price": { km: "តម្លៃ", en: "Price" },
   "admin.rooms.col.status": { km: "ស្ថានភាព", en: "Status" },
+  "admin.rooms.col.daysAvailable": { km: "ចំនួនថ្ងៃទំនេរ", en: "Days available" },
   "admin.rooms.col.actions": { km: "សកម្មភាព", en: "Actions" },
   "admin.rooms.action.viewOnSite": { km: "មើលលើគេហទំព័រ", en: "View on site" },
   "admin.rooms.action.edit": { km: "កែប្រែ", en: "Edit" },
@@ -568,6 +594,14 @@ const DICT: Dict = {
   "admin.settings.moderation.phoneVerification.hint": { km: "អ្នកជួលត្រូវផ្ទៀងផ្ទាត់តាម SMS មុនពេលទាក់ទងម្ចាស់ផ្ទះ។", en: "Renters must verify by SMS before contacting hosts." },
   "admin.settings.moderation.emailAlerts": { km: "ផ្ញើការជូនដំណឹងតាមអ៊ីមែលសម្រាប់របាយការណ៍", en: "Send email alerts for reports" },
   "admin.settings.moderation.emailAlerts.hint": { km: "ជូនដំណឹងអ្នកគ្រប់គ្រងតាមអ៊ីមែលនៅពេលដែលបញ្ជីត្រូវបានរាយការណ៍។", en: "Notify admins by email when a listing is flagged." },
+  "admin.settings.autoOccupy.label": {
+    km: "បិទបញ្ជីដោយស្វ័យប្រវត្តិបន្ទាប់ពីគ្មានសកម្មភាពរយៈពេល (ថ្ងៃ)",
+    en: "Auto-occupy listings after this many days of inactivity"
+  },
+  "admin.settings.autoOccupy.hint": {
+    km: "បញ្ជីដែលអាចជួលបាន ប៉ុន្តែគ្មានការកែប្រែ ឬប្ដូរស្ថានភាពក្នុងរយៈពេលនេះ នឹងត្រូវបិទដោយស្វ័យប្រវត្តិ។ យ៉ាងតិច ៧ ថ្ងៃ។",
+    en: "Available listings with no edits or status changes within this period are automatically marked Occupied. Minimum 7 days."
+  },
   "admin.settings.access.title": { km: "ការគ្រប់គ្រងសិទ្ធិចូលប្រើ", en: "Access control" },
   "admin.settings.access.desc": { km: "អ្នកណាដែលអាចចូលដល់ផ្ទាំងអ្នកគ្រប់គ្រង។ បញ្ជីអនុញ្ញាតដំបូងដំណើរការទោះបីបញ្ជីអ្នកប្រើប្រាស់ទទេក៏ដោយ។", en: "Who can reach the admin console. The bootstrap allowlist works even if the user directory is empty." },
   "admin.settings.access.currentAdmins": { km: "អ្នកគ្រប់គ្រងបច្ចុប្បន្ន", en: "Current admins" },

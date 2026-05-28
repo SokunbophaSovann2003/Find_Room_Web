@@ -513,7 +513,7 @@ export default function ListRoomPage() {
           owner: {
             ...(existing?.owner ?? {
               id: session.uid,
-              name: savedUsername ?? session.username ?? "Joul user",
+              name: savedUsername ?? session.username ?? t("common.anonymousUser"),
               memberSince: new Date().toISOString().slice(0, 10),
               listingsCount: 1
             }),
@@ -559,7 +559,8 @@ export default function ListRoomPage() {
           memberSince: new Date().toISOString().slice(0, 10),
           listingsCount: 1
         },
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        lastActivityAt: Date.now()
       };
 
       addLocalRoom(room);
@@ -618,7 +619,7 @@ export default function ListRoomPage() {
           <button
             type="button"
             onClick={() => router.push("/profile")}
-            className="-ml-2 inline-flex h-9 items-center gap-1.5 rounded-full px-2 font-medium text-ink-muted transition hover:bg-slate-100 hover:text-brand"
+            className="-ml-2 hidden h-9 items-center gap-1.5 rounded-full px-2 font-medium text-ink-muted transition hover:bg-slate-100 hover:text-brand sm:inline-flex"
           >
             <Icon name="arrow-right" className="h-4 w-4 rotate-180" />
             {t("listRoom.nav.profile")}
@@ -994,11 +995,24 @@ export default function ListRoomPage() {
         host always has Create/Cancel/Clear in reach — replaces the global
         BottomNav / AdminFloatingNav (both hide on this route).
       */}
+      {/* Mobile: full-width bar pinned to bottom edge.
+          Desktop: floating bar matching the form's max-w-2xl width. */}
       <div
-        className="fixed inset-x-0 bottom-0 z-[1050] border-t border-slate-200 bg-white/95 backdrop-blur"
+        className="fixed inset-x-0 bottom-0 z-[1050] sm:bottom-6 bg-transparent"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-3 sm:px-6
+          border-t border-slate-200 bg-white/95 backdrop-blur
+          sm:border sm:rounded-2xl sm:shadow-cardHover sm:bg-white/95">
+          <button
+            type="button"
+            onClick={resetForm}
+            disabled={submitting}
+            className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-ink-muted transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            <Icon name="trash" className="h-4 w-4" />
+            {t("listRoom.bottomBar.clear")}
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -1009,19 +1023,10 @@ export default function ListRoomPage() {
               }
             }}
             disabled={submitting}
-            className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-ink-muted transition hover:bg-slate-50 disabled:opacity-50"
+            className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-ink-muted transition hover:bg-slate-50 disabled:opacity-50"
           >
             <Icon name="x" className="h-4 w-4" />
             {t("listRoom.bottomBar.cancel")}
-          </button>
-          <button
-            type="button"
-            onClick={resetForm}
-            disabled={submitting}
-            className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-ink-muted transition hover:bg-slate-50 disabled:opacity-50"
-          >
-            <Icon name="trash" className="h-4 w-4" />
-            {t("listRoom.bottomBar.clear")}
           </button>
           <button
             type="submit"
