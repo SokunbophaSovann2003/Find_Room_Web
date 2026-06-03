@@ -7,6 +7,8 @@ import RoomCard from "@/components/RoomCard";
 import Icon from "@/components/Icon";
 import { MOCK_ROOMS } from "@/lib/mock-data";
 import { useLocalRooms } from "@/lib/local-rooms";
+import { useAdminSettings } from "@/lib/admin";
+import { isAutoOccupied } from "@/lib/auto-occupy";
 import { useT } from "@/lib/language";
 import { toast } from "@/lib/toast";
 import { copyToClipboard } from "@/lib/clipboard";
@@ -18,6 +20,7 @@ export default function HostProfilePage() {
   const uid = decodeURIComponent(params.uid ?? "");
   const t = useT();
   const localRooms = useLocalRooms();
+  const { autoOccupyDays } = useAdminSettings();
 
   // Merge mock + local rooms the same way ExploreRooms does so admin-edited
   // listings (which live in localRooms under a "mock-" prefix) win over their
@@ -41,8 +44,8 @@ export default function HostProfilePage() {
     [allRooms, uid]
   );
   const availableRooms = useMemo(
-    () => ownerRooms.filter((r) => !r.isOccupied),
-    [ownerRooms]
+    () => ownerRooms.filter((r) => !(r.isOccupied || isAutoOccupied(r, autoOccupyDays))),
+    [ownerRooms, autoOccupyDays]
   );
 
   // Pick the most recently-created listing's owner snapshot for the header —

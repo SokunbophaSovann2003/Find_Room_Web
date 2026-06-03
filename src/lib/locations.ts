@@ -312,6 +312,384 @@ export const districtsOf = (province: string) =>
 export const areasOf = (province: string, district: string) =>
   province && district ? LOCATIONS[province]?.[district] ?? [] : [];
 
+export const LOCATION_NAMES_KM: Record<string, string> = {
+  // Provinces / Cities
+  "Phnom Penh": "ភ្នំពេញ",
+  "Preah Sihanouk": "ព្រះសីហនុ",
+  "Kampong Cham": "កំពង់ចាម",
+  "Siem Reap": "សៀមរាប",
+  "Battambang": "បាត់ដំបង",
+  "Kandal": "កណ្ដាល",
+  "Banteay Meanchey": "បន្ទាយមានជ័យ",
+  "Kampong Chhnang": "កំពង់ឆ្នាំង",
+  "Kampong Speu": "កំពង់ស្ពឺ",
+  "Kampong Thom": "កំពង់ធំ",
+  "Kampot": "កំពត",
+  "Kep": "កែប",
+  "Koh Kong": "កោះកុង",
+  "Kratie": "ក្រចេះ",
+  "Mondulkiri": "មណ្ឌលគីរី",
+  "Oddar Meanchey": "អូដ្ឌរមានជ័យ",
+  "Pailin": "ប៉ៃលិន",
+  "Preah Vihear": "ព្រះវិហារ",
+  "Prey Veng": "ព្រៃវែង",
+  "Pursat": "ពោធិ៍សាត់",
+  "Ratanakiri": "រតនគីរី",
+  "Stung Treng": "ស្ទឹងត្រែង",
+  "Svay Rieng": "ស្វាយរៀង",
+  "Takeo": "តាកែវ",
+  "Tboung Khmum": "ត្បូងឃ្មុំ",
+
+  // Phnom Penh districts
+  "Boeng Keng Kang": "បឹងកេងកង",
+  "Chamkar Mon": "ចំការមន",
+  "Chbar Ampov": "ច្បារអំពៅ",
+  "Chroy Changvar": "ជ្រោយចង្វារ",
+  "Dangkao": "ដងកោ",
+  "Doun Penh": "ដូនពេញ",
+  "Kamboul": "កំបូល",
+  "Mean Chey": "មានជ័យ",
+  "Por Senchey": "ពោធ៍សែនជ័យ",
+  "Prampir Meakkakra": "ប្រាំពីរមករា",
+  "Preaek Pnov": "ព្រែកព្នៅ",
+  "Russey Keo": "រស្សីកែវ",
+  "Sen Sok": "សែនសុខ",
+  "Tuol Kouk": "ទួលគោក",
+
+  // Phnom Penh sangkats — Boeng Keng Kang
+  "Boeng Keng Kang Muoy": "បឹងកេងកង១",
+  "Boeng Keng Kang Pir": "បឹងកេងកង២",
+  "Boeng Keng Kang Bei": "បឹងកេងកង៣",
+  "Olympic": "អូឡាំពិក",
+  "Tumnob Tuek": "ទំនប់ទឹក",
+  "Tuol Svay Prey Muoy": "ទួលស្វាយព្រៃ១",
+  "Tuol Svay Prey Pir": "ទួលស្វាយព្រៃ២",
+
+  // Chamkar Mon
+  "Boeng Trabaek": "បឹងត្របែក",
+  "Phsar Daeum Kor": "ផ្សារដើមគរ",
+  "Phsar Daeum Thkov": "ផ្សារដើមថ្កូវ",
+  "Tonle Bassac": "ទន្លេបាសាក់",
+  "Tuol Tom Poung Muoy": "ទួលទំពូង១",
+  "Tuol Tom Poung Pir": "ទួលទំពូង២",
+
+  // Chbar Ampov
+  "Chbar Ampov Muoy": "ច្បារអំពៅ១",
+  "Chbar Ampov Pir": "ច្បារអំពៅ២",
+  "Nirouth": "និរោត",
+  "Preaek Pra": "ព្រែកព្រ",
+  "Preaek Aeng": "ព្រែកអែង",
+
+  // Chroy Changvar sangkats (same name as district)
+  "Bak Kaeng": "បាក់កែង",
+  "Preaek Lieb": "ព្រែកលៀប",
+  "Preaek Tasek": "ព្រែកតាសេក",
+
+  // Dangkao
+  "Cheung Aek": "ជើងអែក",
+  "Krang Pongro": "ក្រាំងពង្រ",
+  "Pong Tuek": "ពងទឹក",
+  "Roluos": "រលួស",
+
+  // Doun Penh
+  "Chakto Mukh": "ចក្រមុខ",
+  "Chey Chumneah": "ជ័យជំនះ",
+  "Phsar Chas": "ផ្សារចាស់",
+  "Phsar Kandal Muoy": "ផ្សារកណ្ដាល១",
+  "Phsar Kandal Pir": "ផ្សារកណ្ដាល២",
+  "Phsar Thmei Muoy": "ផ្សារថ្មី១",
+  "Phsar Thmei Pir": "ផ្សារថ្មី២",
+  "Phsar Thmei Bei": "ផ្សារថ្មី៣",
+  "Srah Chak": "ស្រះចក",
+  "Voat Phnum": "វត្តភ្នំ",
+
+  // Kamboul
+  "Kantaok": "កន្ទោក",
+  "Ovlaok": "អូវ្លោក",
+  "Phleung Chheh Roteh": "ភ្លើងឆេះរទេះ",
+
+  // Mean Chey
+  "Boeng Tumpun": "បឹងទំពុន",
+  "Chak Angrae Kraom": "ចាក់អង្រែក្រោម",
+  "Chak Angrae Leu": "ចាក់អង្រែលើ",
+  "Stueng Mean Chey": "ស្ទឹងមានជ័យ",
+
+  // Por Senchey
+  "Choam Chao": "ចោមចៅ",
+  "Kakab": "កកាប",
+  "Krang Thnong": "ក្រាំងធ្នង់",
+  "Phlov Lvea Aem": "ផ្លូវល្វែអែម",
+  "Snao": "ស្នោ",
+  "Trapeang Krasang": "ត្រពាំងក្រសាំង",
+
+  // Prampir Meakkakra
+  "Boeng Prolit": "បឹងប្រ័ល",
+  "Mittakpheap": "មិត្តភាព",
+  "Monourom": "មនោរម្យ",
+  "Ou Ruessei Muoy": "អូររស្សី១",
+  "Ou Ruessei Pir": "អូររស្សី២",
+  "Ou Ruessei Bei": "អូររស្សី៣",
+  "Ou Ruessei Buon": "អូររស្សី៤",
+  "Veal Vong": "វាលវង់",
+
+  // Preaek Pnov
+  "Kouk Roka": "គោករកា",
+  "Ponhea Pon": "បញ្ញាពន",
+  "Samraong": "សំរោង",
+
+  // Russey Keo
+  "Chrang Chamreh Muoy": "ឈ្រាំងចំរើហ១",
+  "Chrang Chamreh Pir": "ឈ្រាំងចំរើហ២",
+  "Kilomaetr Lekh Prammuoy": "គីឡូម៉ែត្រលេខប្រាំមួយ",
+  "Tuol Sangkae": "ទួលសង្កែ",
+
+  // Sen Sok
+  "Khmuonh": "ឃ្មួញ",
+  "Phnom Penh Thmei": "ភ្នំពេញថ្មី",
+  "Tuek Thla": "ទឹកថ្លា",
+  "Ou Baek K'am": "អូបែកក្អម",
+
+  // Tuol Kouk
+  "Boeng Kak Muoy": "បឹងកក់១",
+  "Boeng Kak Pir": "បឹងកក់២",
+  "Boeng Salang": "បឹងសាឡាង",
+  "Toek L'ak Muoy": "ទឹកល្អក់១",
+  "Toek L'ak Pir": "ទឹកល្អក់២",
+  "Toek L'ak Bei": "ទឹកល្អក់៣",
+
+  // Preah Sihanouk districts
+  "Sihanoukville": "ក្រុងព្រះសីហនុ",
+  "Stueng Hav": "ស្ទឹងហាវ",
+  "Prey Nob": "ព្រៃនប",
+  "Kampong Seila": "កំពង់សីឡា",
+
+  // Preah Sihanouk sangkats
+  "Sangkat Muoy": "សង្កាត់មួយ",
+  "Sangkat Pir": "សង្កាត់ពីរ",
+  "Sangkat Bei": "សង្កាត់បី",
+  "Sangkat Buon": "សង្កាត់បួន",
+
+  // Kampong Cham districts
+  "Batheay": "បាធាយ",
+  "Cheung Prey": "ជើងព្រៃ",
+  "Kang Meas": "កាំងមាស",
+  "Koh Sotin": "កោះសូទិន",
+  "Prey Chhor": "ព្រៃឈរ",
+  "Srey Santhor": "ស្រីសន្ធរ",
+  "Stueng Trang": "ស្ទឹងត្រង់",
+
+  // Kampong Cham sangkats
+  "Sambour Meas": "សំបូរមាស",
+  "Boeng Kok": "បឹងកក់",
+
+  // Siem Reap districts
+  "Angkor Thom": "អង្គរធំ",
+  "Banteay Srei": "បន្ទាយស្រី",
+  "Chi Kraeng": "ជីក្រែង",
+  "Kralanh": "ក្រឡាញ់",
+  "Prasat Bakong": "ប្រាសាទបាគង",
+  "Pouk": "ពោក",
+  "Soutr Nikom": "សូត្រនិគម",
+  "Srei Snam": "ស្រីស្នាម",
+  "Svay Leu": "ស្វាយលើ",
+  "Varin": "វ៉ារីន",
+
+  // Siem Reap sangkats
+  "Sala Kamraeuk": "សាលាកំរើក",
+  "Svay Dangkum": "ស្វាយដង្គំ",
+  "Sla Kram": "ស្លក្រាម",
+  "Chreav": "ជ្រាវ",
+  "Nokor Thum": "នគរធំ",
+
+  // Battambang districts
+  "Banan": "បាណន",
+  "Bavel": "បាវិល",
+  "Ek Phnom": "ឯកភ្នំ",
+  "Kamrieng": "កំរៀង",
+  "Koas Krala": "គោះក្រឡ",
+  "Mong Ruessei": "មង្គលរស្សី",
+  "Phnum Proek": "ភ្នំព្រឹក",
+  "Rotonak Mondol": "រតនៈមណ្ឌល",
+  "Sampov Loun": "សំពៅលូន",
+  "Sangkae": "សង្កែ",
+  "Thma Koul": "ថ្មគោល",
+
+  // Battambang sangkats
+  "Svay Por": "ស្វាយប៉ោ",
+  "Ratanak": "រតនៈ",
+  "Tuol Ta Ek": "ទួលតា​ឯក",
+  "Chamkar Samraong": "ចំការសំរោង",
+
+  // Kandal districts
+  "Ta Khmau": "តាខ្មៅ",
+  "Kandal Stueng": "កណ្ដាលស្ទឹង",
+  "Kien Svay": "គៀនស្វាយ",
+  "Khsach Kandal": "ខ្សាច់កណ្ដាល",
+  "Koh Thom": "កោះធំ",
+  "Leuk Daek": "លើកដែក",
+  "Lvea Aem": "ល្វាអែម",
+  "Mukh Kampul": "មុខកំពូល",
+  "Ponhea Lueu": "បញ្ញាលើ",
+  "Sa'ang": "ស្អាង",
+
+  // Banteay Meanchey districts
+  "Serei Saophoan": "សិរីសោភ័ណ",
+  "Poipet": "ប៉ោយប៉ែត",
+  "Mongkol Borei": "មង្គលបូរី",
+  "O Chrov": "អូរជ្រូវ",
+  "Phnum Srok": "ភ្នំស្រក",
+  "Preah Netr Preah": "ព្រះនេត្រព្រះ",
+  "Svay Chek": "ស្វាយជេក",
+  "Thma Puok": "ថ្មពួក",
+
+  // Kampong Chhnang districts
+  "Baribour": "បារីបូរ",
+  "Chol Kiri": "ជ្រៃគីរី",
+  "Kampong Leaeng": "កំពង់ឡាំង",
+  "Kampong Tralach": "កំពង់ត្រឡាច",
+  "Rolea Bier": "រលាបៀរ",
+  "Sameakki Mean Chey": "សាមគ្គីមានជ័យ",
+  "Tuek Phos": "ទឹកផុស",
+
+  // Kampong Speu districts
+  "Chbar Mon": "ច្បារមន",
+  "Basedth": "បាសែត",
+  "Kong Pisei": "គងពិសី",
+  "Phnum Sruoch": "ភ្នំស្រូច",
+  "Samraong Tong": "សំរោងទង",
+  "Thpong": "ថ្ពង",
+  "Aoral": "អូរ៉ាល",
+  "Borseth": "បូរសែត",
+
+  // Kampong Thom districts
+  "Stueng Saen": "ស្ទឹងសែន",
+  "Baray": "បារាយណ៍",
+  "Kampong Svay": "កំពង់ស្វាយ",
+  "Prasat Balangk": "ប្រាសាទបាឡង់",
+  "Prasat Sambour": "ប្រាសាទសំបូរ",
+  "Sandan": "សណ្ដាន",
+  "Santuk": "សន្ទុក",
+  "Stoung": "ស្ទោង",
+
+  // Kampot districts
+  "Angkor Chey": "អង្គរជ័យ",
+  "Banteay Meas": "បន្ទាយមាស",
+  "Chhuk": "ឈូក",
+  "Chum Kiri": "ជំគីរី",
+  "Dang Tong": "ដំទង",
+  "Kampong Trach": "កំពង់ត្រាច",
+  "Tuek Chhou": "ទឹកឈូ",
+
+  // Kep districts
+  "Damnak Chang'aeur": "ដំណាក់ចង្អែរ",
+
+  // Koh Kong districts
+  "Khemarak Phoumin": "ខេមរភូមិន្ទ",
+  "Botum Sakor": "បូតុំសាគរ",
+  "Kiri Sakor": "គីរីស្មរ",
+  "Mondol Seima": "មណ្ឌលសីមា",
+  "Smach Mean Chey": "ស្មាច់មានជ័យ",
+  "Srae Ambel": "ស្រែអំបិល",
+  "Thma Bang": "ថ្មបាំង",
+
+  // Kratie districts
+  "Chhloung": "ឆ្លូង",
+  "Preaek Prasab": "ព្រែកព្រសប",
+  "Sambour": "សំបូរ",
+  "Snuol": "ស្នួល",
+
+  // Mondulkiri districts
+  "Saen Monourom": "សែនមនោរម្យ",
+  "Kaev Seima": "កែវស៊ីម៉ា",
+  "Kaoh Nheaek": "កោះណ្ហែក",
+  "Ou Reang": "អូររាំង",
+  "Pech Chreada": "ពេជ្រជ្រាដ",
+
+  // Oddar Meanchey districts
+  "Anlong Veaeng": "អន្លង់វែង",
+  "Banteay Ampil": "បន្ទាយអំពិល",
+  "Chong Kal": "ជោងកាល",
+  "Trapeang Prasat": "ត្រពាំងប្រាសាទ",
+
+  // Pailin districts
+  "Sala Krau": "សាលាក្រៅ",
+
+  // Preah Vihear districts
+  "Tbeng Meanchey": "ត្បែងមានជ័យ",
+  "Chey Saen": "ជ័យសែន",
+  "Chhaeb": "ឆែប",
+  "Kuleaen": "គូឡែន",
+  "Rovieng": "រវៀង",
+  "Sangkum Thmei": "សង្គមថ្មី",
+  "Choam Ksant": "ជោងខ្សាំ",
+
+  // Prey Veng districts
+  "Ba Phnum": "បាភ្នំ",
+  "Kamchay Mear": "កំចាយមារ",
+  "Kampong Trabaek": "កំពង់ត្របែក",
+  "Mesang": "មេស្អាង",
+  "Peam Chor": "ពាមជរ",
+  "Peam Ro": "ពាមរោ",
+  "Pea Reang": "ពាររាំង",
+
+  // Pursat districts
+  "Bakan": "បាកាន",
+  "Kandieng": "កណ្ដៀង",
+  "Krakor": "ក្រករ",
+  "Phnum Kravanh": "ភ្នំក្រវាញ",
+  "Veal Veaeng": "វាលវែង",
+
+  // Ratanakiri districts
+  "Banlung": "បានលូង",
+  "Andoung Meas": "អណ្ដូងមាស",
+  "Ban Lung": "បានលូង",
+  "Bar Kaev": "បាក្រប",
+  "Koun Mom": "គួនម៉ំ",
+  "Lumphat": "លំផត",
+  "Ou Chum": "អូរជុំ",
+  "Ou Ya Dav": "អូរយ៉ាដាវ",
+  "Ta Veaeng": "តាវែង",
+  "Veun Sai": "វើនស៊ាយ",
+
+  // Stung Treng districts
+  "Sesan": "សេសាន",
+  "Siem Bouk": "សៀមបូក",
+  "Siem Pang": "សៀមប៉ាង",
+  "Thala Barivat": "ថាឡាបរីវ៉ាត",
+
+  // Svay Rieng districts
+  "Bavet": "បាវែត",
+  "Chantrea": "ចន្ទ្រា",
+  "Kampong Rou": "កំពង់រោ",
+  "Romeas Haek": "រមាសហែក",
+  "Rumduol": "រំដួល",
+  "Svay Chrum": "ស្វាយជ្រំ",
+
+  // Takeo districts
+  "Doun Kaev": "ដូនកែវ",
+  "Angkor Borei": "អង្គរបុរី",
+  "Bati": "បាទី",
+  "Borei Cholsar": "បូរីជ្រោះ",
+  "Kiri Vong": "គីរីវង្ស",
+  "Koh Andaet": "កោះអណ្ដែត",
+  "Prey Kabbas": "ព្រៃកប្បាស",
+  "Tram Kak": "ត្រាំកក",
+  "Treang": "ត្រាំង",
+
+  // Tboung Khmum districts
+  "Suong": "ស្ទោ",
+  "Dambae": "ដំបែ",
+  "Krouch Chhmar": "ក្រូចឆ្មារ",
+  "Memot": "មេមត",
+  "Ou Reang Ov": "អូររាំងអូវ",
+  "Ponhea Kraek": "បញ្ញាក្រែក"
+};
+
+export function locationDisplayName(key: string, lang: "km" | "en"): string {
+  if (lang === "km") return LOCATION_NAMES_KM[key] ?? key;
+  return key;
+}
+
 const PROVINCE_COORDS: Record<string, { center: [number, number]; zoom: number }> = {
   "Phnom Penh": { center: [11.5564, 104.9282], zoom: 12 },
   "Preah Sihanouk": { center: [10.6276, 103.5223], zoom: 11 },

@@ -10,7 +10,8 @@ import AuthModal from "@/components/AuthModal";
 import { findRoomById } from "@/lib/mock-data";
 import { deleteLocalRoom, getLocalRoomById, updateLocalRoom } from "@/lib/local-rooms";
 import { useSession } from "@/lib/session";
-import { isAdmin, pushIncomingNotification } from "@/lib/admin";
+import { isAdmin, pushIncomingNotification, useAdminSettings } from "@/lib/admin";
+import { isAutoOccupied } from "@/lib/auto-occupy";
 import { useViewMode } from "@/lib/view-mode";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
@@ -46,6 +47,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   // embed pulls www.google.com which is blocked by the dev preview tool, and
   // the iframe is heavy on initial load anyway.
   const [mapLoaded, setMapLoaded] = useState(false);
+  const { autoOccupyDays } = useAdminSettings();
 
   // Reset state synchronously when the route param changes so we never
   // render the previous room under a new id.
@@ -107,6 +109,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   // actions in place of the renter-facing CTAs (Contact / Location), hide the
   // marketing footer, and drop the Similar Rooms strip.
   const adminViewActive = viewMode === "admin" && isAdmin(session);
+  const effectivelyOccupied = room.isOccupied || isAutoOccupied(room, autoOccupyDays);
   const mapQuery =
     room.lat != null && room.lng != null
       ? `${room.lat},${room.lng}`
@@ -320,7 +323,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
                   <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl lg:text-3xl">
                     {room.title}
                   </h1>
-                  {adminViewActive ? <AdminStatusPill occupied={!!room.isOccupied} /> : null}
+                  {adminViewActive ? <AdminStatusPill occupied={effectivelyOccupied} /> : null}
                 </div>
                 <p className="mt-1 inline-flex items-center gap-1 text-sm text-ink-muted">
                   <Icon name="map-pin" className="h-4 w-4" />
@@ -433,21 +436,33 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           <div className="pointer-events-auto grid w-full max-w-md grid-cols-2 items-start gap-1 border-t border-slate-200 bg-white/95 px-2 pb-2 pt-2 backdrop-blur sm:items-center sm:rounded-2xl sm:border sm:px-2 sm:py-2 sm:shadow-cardHover sm:mb-3">
             <AdminActionButton
               icon="shield"
-              tone={room.isOccupied ? "amber" : "emerald"}
+              tone={effectivelyOccupied ? "amber" : "emerald"}
               label={t(
-                room.isOccupied
+                effectivelyOccupied
                   ? "admin.rooms.action.markAvailable"
                   : "admin.rooms.action.markOccupied"
               )}
               onClick={() => {
-                const next = !room.isOccupied;
-                updateLocalRoom(room.id, { isOccupied: next });
-                setRoom({ ...(room as Room), isOccupied: next });
-                toast.success(
-                  next
-                    ? t("toast.admin.listing.occupied", { title: room.title })
-                    : t("toast.admin.listing.available", { title: room.title })
-                );
+                if (isAutoOccupied(room, autoOccupyDays)) {
+                  // Auto-occupied: reset the clock rather than flipping isOccupied
+                  updateLocalRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() });
+                  setRoom({ ...(room as Room), isOccupied: false, lastActivityAt: Date.now() });
+                  toast.success(t("toast.admin.listing.available", { title: room.title }));
+                } else {
+                  const next = !room.isOccupied;
+                  // When marking occupied by admin, preserve lastActivityAt so the
+                  // auto-occupy clock is not reset to now.
+                  updateLocalRoom(room.id, {
+                    isOccupied: next,
+                    ...(next ? { lastActivityAt: room.lastActivityAt ?? room.createdAt ?? Date.now() } : {})
+                  });
+                  setRoom({ ...(room as Room), isOccupied: next });
+                  toast.success(
+                    next
+                      ? t("toast.admin.listing.occupied", { title: room.title })
+                      : t("toast.admin.listing.available", { title: room.title })
+                  );
+                }
               }}
             />
             <AdminActionButton

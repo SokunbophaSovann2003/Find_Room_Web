@@ -107,7 +107,7 @@ export default function AdminRoomsList({
                     type="button"
                     onClick={cycleSortDays}
                     className={`inline-flex items-center gap-1 rounded transition hover:text-ink ${sortDays ? "text-brand" : "text-ink-soft hover:text-ink"}`}
-                    title={sortDays === "desc" ? "Sorted: large → small" : sortDays === "asc" ? "Sorted: small → large" : "Sort by days available"}
+                    title={sortDays === "desc" ? t("admin.rooms.col.daysAvailable.sort.desc") : sortDays === "asc" ? t("admin.rooms.col.daysAvailable.sort.asc") : t("admin.rooms.col.daysAvailable.sort.none")}
                   >
                     {t("admin.rooms.col.daysAvailable")}
                     {sortDays === "desc" ? (

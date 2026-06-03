@@ -132,6 +132,8 @@ export default function BottomNav() {
             setTypePickerOpen(true);
           } else if (next) {
             router.push(next);
+          } else {
+            router.push("/profile");
           }
         }}
       />

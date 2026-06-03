@@ -509,6 +509,53 @@ const TEMPLATES_SEEDED_FLAG = "findroom.admin-outbound-templates-seeded";
 
 const CAMPAIGNS_KEY = "findroom.admin-outbound-campaigns";
 const CAMPAIGNS_EVENT = "findroom:admin-outbound-campaigns-change";
+const CAMPAIGNS_SEEDED_FLAG = "findroom.admin-outbound-campaigns-seeded";
+
+function seedCampaigns(): AdminOutboundCampaign[] {
+  const now = Date.now();
+  const min = 60_000;
+  const hr = 60 * min;
+  const day = 24 * hr;
+  const ADMIN_UID = "demo-85512000000";
+  return [
+    {
+      id: "camp-seed-welcome",
+      title: "Welcome to Joul!",
+      body: "Hi {{username}}, your account is all set. Start exploring hundreds of verified listings across Cambodia — or post your own room for free.",
+      audience: { kind: "specific", uids: [ADMIN_UID] },
+      recipientCount: 1,
+      recipientSummary: "Admin (you) (1)",
+      sentAt: now - 2 * day
+    },
+    {
+      id: "camp-seed-listing-live",
+      title: "Your listing is now live",
+      body: "Hi {{username}}, your room listing has passed our review and is now visible to renters. You can manage it anytime from your profile.",
+      audience: { kind: "specific", uids: [ADMIN_UID] },
+      recipientCount: 1,
+      recipientSummary: "Admin (you) (1)",
+      sentAt: now - day - 3 * hr
+    },
+    {
+      id: "camp-seed-bkk1",
+      title: "New rooms added in BKK1",
+      body: "Hi {{username}}, 8 new verified listings just dropped in Boeng Keng Kang. Prices start at $150/month. Tap to explore them now.",
+      audience: { kind: "all" },
+      recipientCount: 8,
+      recipientSummary: "Everyone (8)",
+      sentAt: now - 5 * hr
+    },
+    {
+      id: "camp-seed-maintenance",
+      title: "Scheduled maintenance notice",
+      body: "Hi {{username}}, Joul will be briefly unavailable on Sunday from 1–3 AM (ICT) for routine maintenance. We apologise for any inconvenience.",
+      audience: { kind: "all" },
+      recipientCount: 8,
+      recipientSummary: "Everyone (8)",
+      sentAt: now - 45 * min
+    }
+  ];
+}
 
 function seedTemplates(): AdminOutboundTemplate[] {
   const now = Date.now();
@@ -613,6 +660,12 @@ export function useOutboundTemplates(): AdminOutboundTemplate[] {
 export function getOutboundCampaigns(): AdminOutboundCampaign[] {
   if (typeof window === "undefined") return [];
   try {
+    if (!window.localStorage.getItem(CAMPAIGNS_SEEDED_FLAG)) {
+      const initial = seedCampaigns();
+      window.localStorage.setItem(CAMPAIGNS_KEY, JSON.stringify(initial));
+      window.localStorage.setItem(CAMPAIGNS_SEEDED_FLAG, "1");
+      return initial;
+    }
     const raw = window.localStorage.getItem(CAMPAIGNS_KEY);
     return raw ? (JSON.parse(raw) as AdminOutboundCampaign[]) : [];
   } catch {
@@ -933,6 +986,7 @@ export function resetAllLocalData() {
     TEMPLATES_KEY,
     TEMPLATES_SEEDED_FLAG,
     CAMPAIGNS_KEY,
+    CAMPAIGNS_SEEDED_FLAG,
     SETTINGS_KEY
   ];
   for (const k of keysToClear) window.localStorage.removeItem(k);

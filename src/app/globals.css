@@ -9,7 +9,15 @@
 
 html {
   scroll-behavior: smooth;
-  font-size: 17px;
+  font-size: 15px;       /* mobile  < 640px  */
+}
+
+@media (min-width: 640px) {
+  html { font-size: 16px; }   /* tablet  640px+  */
+}
+
+@media (min-width: 1024px) {
+  html { font-size: 17px; }   /* desktop 1024px+ */
 }
 
 html, body {

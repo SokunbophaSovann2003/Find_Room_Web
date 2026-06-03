@@ -78,7 +78,7 @@ export default function ListingEditModal({
         ownerUid
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("admin.listingEdit.error.saveFailed"));
+      setError(err instanceof Error ? t(err.message) : t("admin.listingEdit.error.saveFailed"));
       setSaving(false);
     }
   }

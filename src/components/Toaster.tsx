@@ -32,38 +32,49 @@ export default function Toaster() {
   if (toasts.length === 0) return null;
 
   return (
-    <div
-      aria-live="polite"
-      aria-atomic="true"
-      className="pointer-events-none fixed inset-x-0 top-3 z-[1200] flex flex-col items-center gap-2 px-3 sm:top-auto sm:bottom-6 sm:right-6 sm:left-auto sm:items-end sm:px-0"
-    >
-      {toasts.map((item) => {
-        const s = KIND_STYLES[item.kind];
-        return (
-          <div
-            key={item.id}
-            role={item.kind === "error" ? "alert" : "status"}
-            className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl ${s.bg} px-3.5 py-3 shadow-cardHover ring-1 ${s.ring} sm:w-auto sm:min-w-[260px]`}
-          >
-            <span
-              className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${s.iconColor}`}
+    <>
+      <style>{`
+        @keyframes toast-slide-down {
+          from { opacity: 0; transform: translateY(-16px) scale(0.96); }
+          to   { opacity: 1; transform: translateY(0)     scale(1);    }
+        }
+        .toast-enter {
+          animation: toast-slide-down 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+      `}</style>
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        className="pointer-events-none fixed inset-x-0 top-4 z-[1200] flex flex-col items-center gap-2 px-3"
+      >
+        {toasts.map((item) => {
+          const s = KIND_STYLES[item.kind];
+          return (
+            <div
+              key={item.id}
+              role={item.kind === "error" ? "alert" : "status"}
+              className={`toast-enter pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl ${s.bg} px-3.5 py-3 shadow-cardHover ring-1 ${s.ring}`}
             >
-              <Icon name={s.icon} className="h-4 w-4" />
-            </span>
-            <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-ink">
-              {item.message}
-            </p>
-            <button
-              type="button"
-              onClick={() => dismissToast(item.id)}
-              aria-label={t("toast.dismiss.aria")}
-              className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-100 hover:text-ink"
-            >
-              <Icon name="x" className="h-4 w-4" />
-            </button>
-          </div>
-        );
-      })}
-    </div>
+              <span
+                className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${s.iconColor}`}
+              >
+                <Icon name={s.icon} className="h-4 w-4" />
+              </span>
+              <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-ink">
+                {item.message}
+              </p>
+              <button
+                type="button"
+                onClick={() => dismissToast(item.id)}
+                aria-label={t("toast.dismiss.aria")}
+                className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-100 hover:text-ink"
+              >
+                <Icon name="x" className="h-4 w-4" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }

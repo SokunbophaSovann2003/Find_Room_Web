@@ -29,6 +29,7 @@ export default function ListingActionMenu({
   const autoOccupied = isAutoOccupied(room, autoOccupyDays);
   const effectivelyOccupied = room.isOccupied || autoOccupied;
   const [open, setOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +105,11 @@ export default function ListingActionMenu({
         type="button"
         onClick={(e) => {
           stop(e);
+          if (!open && wrapRef.current) {
+            const rect = wrapRef.current.getBoundingClientRect();
+            // ~176px = 4 menu items × ~44px each + ~64px bottom nav
+            setOpenUpward(window.innerHeight - rect.bottom < 240);
+          }
           setOpen((cur) => !cur);
         }}
         aria-label={t("listing.menu.aria")}
@@ -116,9 +122,9 @@ export default function ListingActionMenu({
       {open ? (
         <div
           role="menu"
-          className={`absolute top-full z-30 mt-1.5 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-cardHover ${
-            align === "right" ? "right-0" : "left-0"
-          }`}
+          className={`absolute z-30 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-cardHover ${
+            openUpward ? "bottom-full mb-1.5" : "top-full mt-1.5"
+          } ${align === "right" ? "right-0" : "left-0"}`}
         >
           <MenuItem
             icon={effectivelyOccupied ? "check" : "home"}

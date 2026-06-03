@@ -315,26 +315,26 @@ export default function ProfilePage() {
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-start gap-1.5">
-                          <span className="line-clamp-2 flex-1 text-sm font-semibold text-ink">
-                            {room.title}
-                          </span>
-                          {room.isOccupied || autoOccupied ? (
-                            <span className="mt-0.5 shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                              {t("profile.occupied")}
-                            </span>
-                          ) : null}
-                        </div>
+                        <span className="line-clamp-2 text-sm font-semibold text-ink">
+                          {room.title}
+                        </span>
                         <p className="truncate text-xs text-ink-muted">
                           {room.district ? `${room.district}, ` : ""}
                           {room.city}
                         </p>
-                        <p className="mt-0.5 text-sm font-bold text-brand">
-                          ${room.price}
-                          <span className="ml-0.5 text-[11px] font-medium text-ink-muted">
-                            {t("profile.month")}
-                          </span>
-                        </p>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          <p className="text-sm font-bold text-brand">
+                            ${room.price}
+                            <span className="ml-0.5 text-[11px] font-medium text-ink-muted">
+                              {t("profile.month")}
+                            </span>
+                          </p>
+                          {room.isOccupied || autoOccupied ? (
+                            <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                              {t("profile.occupied")}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </Link>
                     {autoOccupied ? (
@@ -395,9 +395,10 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card sm:block">
-                <div className="grid grid-cols-[88px_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-4 border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+                <div className="grid grid-cols-[88px_minmax(0,2.5fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-4 border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ink-muted">
                   <span aria-hidden />
                   <span>{t("profile.list.col.title")}</span>
+                  <span>{t("profile.list.col.status")}</span>
                   <span>{t("profile.list.col.type")}</span>
                   <span>{t("profile.list.col.details")}</span>
                   <span className="text-right">{t("profile.list.col.price")}</span>
@@ -414,7 +415,7 @@ export default function ProfilePage() {
                       >
                         <Link
                           href={`/rooms/${room.id}`}
-                          className="grid grid-cols-[88px_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-4 px-4 py-3 transition hover:bg-slate-50"
+                          className="grid grid-cols-[88px_minmax(0,2.5fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-4 px-4 py-3 transition hover:bg-slate-50"
                         >
                           <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
                             {room.images[0] ? (
@@ -433,16 +434,9 @@ export default function ProfilePage() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="truncate text-sm font-semibold text-ink">
-                                {room.title}
-                              </span>
-                              {room.isOccupied || autoOccupied ? (
-                                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                                  {t("profile.occupied")}
-                                </span>
-                              ) : null}
-                            </div>
+                            <span className="truncate text-sm font-semibold text-ink">
+                              {room.title}
+                            </span>
                             <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-ink-muted">
                               <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
                               <span className="truncate">
@@ -451,10 +445,21 @@ export default function ProfilePage() {
                               </span>
                             </p>
                           </div>
-                          <div className="text-xs font-medium text-ink-muted">
+                          <div>
+                            {room.isOccupied || autoOccupied ? (
+                              <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                                {t("profile.occupied")}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                {t("profile.available")}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm font-medium text-ink-muted">
                             {t(`type.${room.type}`)}
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-ink-muted">
+                          <div className="flex items-center gap-3 text-sm text-ink-muted">
                             <span className="inline-flex items-center gap-1">
                               <Icon name="bed" className="h-3.5 w-3.5" /> {room.bedrooms}
                             </span>
@@ -466,7 +471,7 @@ export default function ProfilePage() {
                           </div>
                           <div className="text-right">
                             <span className="text-sm font-bold text-brand">${room.price}</span>
-                            <span className="ml-0.5 text-[11px] text-ink-muted">
+                            <span className="ml-0.5 text-xs text-ink-muted">
                               {t("profile.month")}
                             </span>
                           </div>
@@ -627,7 +632,7 @@ function EditProfileModal({
         avatarUrl: avatarUrl.trim()
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("profile.edit.error.saveFailed"));
+      setError(err instanceof Error ? t(err.message) : t("profile.edit.error.saveFailed"));
       setSaving(false);
     }
   }

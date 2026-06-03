@@ -60,7 +60,7 @@ export default function UserFormModal({
         status
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("admin.userForm.error.saveFailed"));
+      setError(err instanceof Error ? t(err.message) : t("admin.userForm.error.saveFailed"));
       setSaving(false);
     }
   }

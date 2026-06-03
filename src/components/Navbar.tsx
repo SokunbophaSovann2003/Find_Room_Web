@@ -164,7 +164,11 @@ export default function Navbar() {
           setAuthOpen(false);
           const next = authNext;
           setAuthNext(null);
-          if (next) setTypePickerOpen(true);
+          if (next) {
+            setTypePickerOpen(true);
+          } else {
+            router.push("/profile");
+          }
         }}
       />
 

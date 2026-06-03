@@ -212,7 +212,7 @@ function LoginForm({
       await loginWithPhone(`+855${digits}`, password);
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("auth.error.signInFailed"));
+      setError(err instanceof Error ? t(err.message) : t("auth.error.signInFailed"));
     } finally {
       setLoading(false);
     }
@@ -280,6 +280,7 @@ function RegisterForm({
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -298,13 +299,17 @@ function RegisterForm({
       setError(t("auth.error.password.tooShort"));
       return;
     }
+    if (password !== confirmPassword) {
+      setError(t("auth.error.confirmPassword.mismatch"));
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       await registerWithPhone({ username: username.trim(), phoneNumber: `+855${digits}`, password });
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("auth.error.signUpFailed"));
+      setError(err instanceof Error ? t(err.message) : t("auth.error.signUpFailed"));
     } finally {
       setLoading(false);
     }
@@ -334,6 +339,14 @@ function RegisterForm({
           placeholder={t("auth.field.password.placeholder.short")}
           value={password}
           onChange={setPassword}
+          minLength={8}
+        />
+
+        <PasswordField
+          label={t("auth.field.confirmPassword")}
+          placeholder={t("auth.field.password.placeholder.short")}
+          value={confirmPassword}
+          onChange={setConfirmPassword}
           minLength={8}
         />
 
@@ -393,7 +406,7 @@ function ForgotPasswordForm({
       if (!checkPhoneAccountExists(`+855${digits}`)) throw new Error(t("auth.forgot.notFound"));
       setStep("newPassword");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("auth.forgot.notFound"));
+      setError(err instanceof Error ? t(err.message) : t("auth.forgot.notFound"));
     } finally {
       setLoading(false);
     }
@@ -412,7 +425,7 @@ function ForgotPasswordForm({
       await resetDemoPassword(`+855${digits}`, newPassword);
       setStep("done");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("auth.forgot.noSupport"));
+      setError(err instanceof Error ? t(err.message) : t("auth.forgot.noSupport"));
     } finally {
       setLoading(false);
     }

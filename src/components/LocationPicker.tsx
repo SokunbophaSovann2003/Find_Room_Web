@@ -5,9 +5,10 @@ import Icon from "./Icon";
 import {
   PROVINCES,
   districtsOf,
-  areasOf
+  areasOf,
+  locationDisplayName
 } from "@/lib/locations";
-import { useT } from "@/lib/language";
+import { useT, useLanguage } from "@/lib/language";
 
 export interface LocationValue {
   province?: string;
@@ -36,15 +37,17 @@ export default function LocationPicker({
   intent?: "browse" | "select";
 }) {
   const t = useT();
+  const { language } = useLanguage();
+  const dn = (key: string) => locationDisplayName(key, language);
   const allLabel = intent === "select" ? t("locationPicker.allLabel.select") : t("locationPicker.allLabel.browse");
   const provinceLabel = (province: string) =>
     intent === "select"
-      ? t("locationPicker.use", { name: province })
-      : t("locationPicker.showAllIn", { name: province });
+      ? t("locationPicker.use", { name: dn(province) })
+      : t("locationPicker.showAllIn", { name: dn(province) });
   const districtLabel = (district: string) =>
     intent === "select"
-      ? t("locationPicker.use", { name: district })
-      : t("locationPicker.showAllIn", { name: district });
+      ? t("locationPicker.use", { name: dn(district) })
+      : t("locationPicker.showAllIn", { name: dn(district) });
   const [view, setView] = useState<View>("province");
   const [draft, setDraft] = useState<{ province?: string; district?: string }>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -191,7 +194,7 @@ export default function LocationPicker({
             <RowAction onClick={clearAll} label={allLabel} />
           ) : null}
           {PROVINCES.map((p) => (
-            <Row key={p} onClick={() => pickProvince(p)} label={p} hasMore={districtsOf(p).length > 0} />
+            <Row key={p} onClick={() => pickProvince(p)} label={dn(p)} hasMore={districtsOf(p).length > 0} />
           ))}
         </>
       ) : null}
@@ -203,7 +206,7 @@ export default function LocationPicker({
             <Row
               key={d}
               onClick={() => pickDistrict(d)}
-              label={d}
+              label={dn(d)}
               hasMore={areasOf(draft.province!, d).length > 0}
             />
           ))}
@@ -214,7 +217,7 @@ export default function LocationPicker({
         <>
           <RowAction onClick={pickAllInDistrict} label={districtLabel(draft.district)} />
           {areasOf(draft.province, draft.district).map((a) => (
-            <Row key={a} onClick={() => pickArea(a)} label={a} />
+            <Row key={a} onClick={() => pickArea(a)} label={dn(a)} />
           ))}
         </>
       ) : null}

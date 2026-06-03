@@ -6,7 +6,8 @@ import LocationPicker, { type LocationValue } from "./LocationPicker";
 import OptionPicker from "./OptionPicker";
 import { useExploreFilter, type SortOrder } from "./ExploreFilterContext";
 import { useDesktop } from "@/lib/use-desktop";
-import { useT } from "@/lib/language";
+import { useT, useLanguage } from "@/lib/language";
+import { locationDisplayName } from "@/lib/locations";
 import type { PropertyType } from "@/lib/types";
 
 const PROPERTY_TYPE_KEYS: { value: PropertyType | ""; key: string }[] = [
@@ -25,13 +26,16 @@ const SORT_KEYS: { value: SortOrder; key: string }[] = [
   { value: "price-desc", key: "search.sort.desc" }
 ];
 
-function formatLocation(loc: LocationValue): string {
-  const parts = [loc.province, loc.district, loc.area].filter(Boolean);
+function formatLocation(loc: LocationValue, lang: "km" | "en"): string {
+  const parts = [loc.province, loc.district, loc.area]
+    .filter(Boolean)
+    .map((k) => locationDisplayName(k!, lang));
   return parts.length ? parts.join(", ") : "";
 }
 
 export default function SearchBar() {
   const t = useT();
+  const { language } = useLanguage();
   const { filter, setFilter } = useExploreFilter();
   const [pickerOpen, setPickerOpen] = useState<"location" | "type" | "sort" | null>(null);
   const isDesktop = useDesktop();
@@ -40,7 +44,7 @@ export default function SearchBar() {
   const propertyTypeOptions = PROPERTY_TYPE_KEYS.map((o) => ({ value: o.value, label: t(o.key) }));
   const sortOptions = SORT_KEYS.map((o) => ({ value: o.value, label: t(o.key) }));
 
-  const locationLabel = formatLocation(filter.location);
+  const locationLabel = formatLocation(filter.location, language);
   const typeLabel = propertyTypeOptions.find((o) => o.value === filter.type)?.label ?? "";
   const sortLabel = sortOptions.find((o) => o.value === filter.sort)?.label ?? "";
 
@@ -96,7 +100,18 @@ export default function SearchBar() {
           <span className={`flex-1 truncate capitalize ${filter.type ? "text-ink" : "text-ink-soft"}`}>
             {typeLabel}
           </span>
+          {filter.type ? <span className="h-6 w-6 shrink-0" aria-hidden /> : null}
         </button>
+        {filter.type ? (
+          <button
+            type="button"
+            aria-label={t("search.clearType")}
+            onClick={() => setFilter({ ...filter, type: "" })}
+            className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-slate-200 hover:text-ink lg:right-4"
+          >
+            <Icon name="x" className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
         <OptionPicker<PropertyType | "">
           open={pickerOpen === "type"}
           onClose={() => setPickerOpen(null)}
@@ -120,7 +135,18 @@ export default function SearchBar() {
           <span className={`flex-1 truncate ${filter.sort ? "text-ink" : "text-ink-soft"}`}>
             {sortLabel}
           </span>
+          {filter.sort ? <span className="h-6 w-6 shrink-0" aria-hidden /> : null}
         </button>
+        {filter.sort ? (
+          <button
+            type="button"
+            aria-label={t("search.clearSort")}
+            onClick={() => setFilter({ ...filter, sort: "" })}
+            className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-slate-200 hover:text-ink lg:right-4"
+          >
+            <Icon name="x" className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
         <OptionPicker<SortOrder>
           open={pickerOpen === "sort"}
           onClose={() => setPickerOpen(null)}

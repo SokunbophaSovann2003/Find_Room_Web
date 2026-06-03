@@ -86,7 +86,15 @@ export default function AdminUserDetailPage() {
     // from either location yields the same result.
     if (wasActive) {
       const toHide = listings.filter((r) => !r.isOccupied);
-      for (const r of toHide) updateLocalRoom(r.id, { isOccupied: true });
+      // Preserve lastActivityAt so admin forcing isOccupied:true doesn't reset
+      // the auto-occupy clock — the stale counter should reflect the landlord's
+      // last genuine edit, not this admin action.
+      for (const r of toHide) {
+        updateLocalRoom(r.id, {
+          isOccupied: true,
+          lastActivityAt: r.lastActivityAt ?? r.createdAt ?? Date.now()
+        });
+      }
       if (toHide.length > 0) {
         toast.info(t("toast.admin.user.listingsHidden", { n: toHide.length }));
       }
@@ -95,7 +103,12 @@ export default function AdminUserDetailPage() {
 
   function handleToggleRoomOccupied(room: Room) {
     const nextOccupied = !room.isOccupied;
-    updateLocalRoom(room.id, { isOccupied: nextOccupied });
+    // When marking occupied, preserve the auto-occupy clock so it keeps
+    // reflecting the landlord's last genuine activity, not this admin action.
+    updateLocalRoom(room.id, {
+      isOccupied: nextOccupied,
+      ...(nextOccupied ? { lastActivityAt: room.lastActivityAt ?? room.createdAt ?? Date.now() } : {})
+    });
     toast.success(
       nextOccupied
         ? t("toast.admin.listing.occupied", { title: room.title })

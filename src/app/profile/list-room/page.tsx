@@ -24,15 +24,21 @@ import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
 import type { Room, PropertyType, PricePeriod } from "@/lib/types";
 
-const PRICE_PERIODS: { value: PricePeriod; label: string; suffix: string }[] = [
-  { value: "daily", label: "Daily", suffix: "/ day" },
-  { value: "weekly", label: "Weekly", suffix: "/ week" },
-  { value: "monthly", label: "Monthly", suffix: "/ month" },
-  { value: "yearly", label: "Yearly", suffix: "/ year" }
+const PRICE_PERIODS: { value: PricePeriod; label: string }[] = [
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "yearly", label: "Yearly" }
 ];
-function periodSuffix(p: PricePeriod): string {
-  return PRICE_PERIODS.find((x) => x.value === p)?.suffix ?? "/ month";
-}
+
+const FEE_UNIT_KEYS: Record<string, string> = {
+  electricity: "room.fee.electricity.unit",
+  water: "room.fee.water.unit",
+  wifi: "room.fee.wifi.unit",
+  service: "room.suffix.monthly",
+  parking: "room.suffix.monthly",
+};
+
 import type { PinValue } from "@/components/MapPinPicker";
 
 const MapPinPicker = dynamic(() => import("@/components/MapPinPicker"), {
@@ -50,14 +56,6 @@ const FEE_TYPES = [
   { value: "other", label: "Other", unit: "" }
 ];
 
-const PROPERTY_TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
-  { value: "room", label: "Room" },
-  { value: "house", label: "House" },
-  { value: "apartment", label: "Apartment" },
-  { value: "condo", label: "Condo" },
-  { value: "flat", label: "Flat" },
-  { value: "villa", label: "Villa" }
-];
 
 function formatLocation(loc: LocationValue): string {
   return [loc.province, loc.district, loc.area].filter(Boolean).join(", ");
@@ -553,7 +551,7 @@ export default function ListRoomPage() {
         images,
         owner: {
           id: session.uid,
-          name: savedUsername ?? session.username ?? "Joul user",
+          name: savedUsername ?? session.username ?? t("common.anonymousUser"),
           phoneNumbers: ownerPhones,
           telegramPhones: ownerTelegrams.length ? ownerTelegrams : undefined,
           memberSince: new Date().toISOString().slice(0, 10),
@@ -571,7 +569,7 @@ export default function ListRoomPage() {
           owner: room.owner.name,
           title: room.title,
           price: room.price,
-          suffix: periodSuffix(room.pricePeriod ?? "monthly")
+          suffix: t(`room.suffix.${room.pricePeriod ?? "monthly"}`)
         }),
         relatedId: room.id
       });
@@ -601,7 +599,7 @@ export default function ListRoomPage() {
       router.replace("/profile");
     } catch (err) {
       setSubmitting(false);
-      failWith(err instanceof Error ? err.message : t("listRoom.error.saveFailed"));
+      failWith(err instanceof Error ? t(err.message) : t("listRoom.error.saveFailed"));
     }
   }
 
@@ -818,7 +816,7 @@ export default function ListRoomPage() {
                           ${rentFee?.price || "0"}
                         </span>
                         <span className="whitespace-nowrap text-xs text-ink-muted">
-                          {periodSuffix(rentPeriod)}
+                          {t(`room.suffix.${rentPeriod}`)}
                         </span>
                       </div>
                       {filledExtras.map((f) => {
@@ -842,9 +840,9 @@ export default function ListRoomPage() {
                                   {f.customUnit.trim()}
                                 </span>
                               ) : null
-                            ) : meta?.unit ? (
+                            ) : FEE_UNIT_KEYS[f.type] ? (
                               <span className="whitespace-nowrap text-xs text-ink-muted">
-                                {meta.unit}
+                                {t(FEE_UNIT_KEYS[f.type])}
                               </span>
                             ) : null}
                           </div>
@@ -1347,7 +1345,7 @@ function FeesSheet({
                     />
                   ) : (
                     <span className="whitespace-nowrap text-xs text-ink-muted">
-                      {meta.unit ?? ""}
+                      {FEE_UNIT_KEYS[fee.type] ? t(FEE_UNIT_KEYS[fee.type]) : ""}
                     </span>
                   )}
                   <button

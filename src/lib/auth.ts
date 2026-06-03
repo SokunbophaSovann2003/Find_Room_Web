@@ -62,7 +62,7 @@ export async function loginWithPhone(phoneNumber: string, password: string) {
   // admin has disabled cannot log in, regardless of Firebase config.
   const adminEntry = findAdminUserByPhone(phoneNumber);
   if (adminEntry?.status === "disabled") {
-    throw new Error("This account has been disabled. Please contact an admin.");
+    throw new Error("auth.error.disabled");
   }
 
   if (!isFirebaseConfigured || !auth) {
@@ -101,14 +101,14 @@ export function checkPhoneAccountExists(phoneNumber: string): boolean {
 // the account is not found, or the new password is too short.
 export async function resetDemoPassword(phoneNumber: string, newPassword: string): Promise<void> {
   if (isFirebaseConfigured && auth) {
-    throw new Error("Password reset is not supported in Firebase mode. Please contact support.");
+    throw new Error("auth.forgot.noSupport");
   }
   if (newPassword.length < 8) {
-    throw new Error("Password must be at least 8 characters.");
+    throw new Error("auth.error.password.tooShort");
   }
   const adminEntry = findAdminUserByPhone(phoneNumber);
   if (!adminEntry) {
-    throw new Error("No account found for this phone number.");
+    throw new Error("auth.forgot.notFound");
   }
   // Demo mode accepts any credentials — signing in with the new password is
   // sufficient to "reset" it.
@@ -121,12 +121,12 @@ export async function resetDemoPassword(phoneNumber: string, newPassword: string
 // surface the error so the user can sign out and back in.
 export async function updateLoginPhone(newPhoneNumber: string) {
   const session = getSession();
-  if (!session) throw new Error("Not signed in.");
+  if (!session) throw new Error("auth.error.notSignedIn");
 
   const trimmed = newPhoneNumber.trim();
-  if (!trimmed) throw new Error("Phone number is required.");
+  if (!trimmed) throw new Error("auth.error.phone.required");
   const digits = trimmed.replace(/\D/g, "");
-  if (digits.length < 8) throw new Error("Enter a valid phone number.");
+  if (digits.length < 8) throw new Error("auth.error.phone.invalid");
 
   if (isFirebaseConfigured && auth?.currentUser && db) {
     await updateEmail(auth.currentUser, phoneToEmail(trimmed));

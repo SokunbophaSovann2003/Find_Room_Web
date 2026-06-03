@@ -62,6 +62,10 @@ export function useExploreFilter() {
   return useContext(Ctx);
 }
 
+// NOTE: applyFilter strips manually-occupied rooms (isOccupied: true) but does
+// NOT strip auto-occupied rooms — it has no access to the admin autoOccupyDays
+// setting. Callers must chain an additional isAutoOccupied check themselves.
+// ExploreRooms.tsx does this correctly; any new consumer must do the same.
 export function applyFilter(rooms: Room[], filter: ExploreFilter): Room[] {
   let out = rooms.filter((r) => !r.isOccupied);
   if (filter.location.province) {

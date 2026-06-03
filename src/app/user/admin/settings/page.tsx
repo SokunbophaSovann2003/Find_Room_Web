@@ -254,10 +254,22 @@ export default function AdminSettingsPage() {
               type="number"
               min={7}
               step={1}
-              value={Number.isFinite(draft.autoOccupyDays) ? draft.autoOccupyDays : 30}
+              value={draft.autoOccupyDays}
               onChange={(e) => {
-                const raw = Math.round(Number(e.target.value));
-                setDraft({ ...draft, autoOccupyDays: Number.isFinite(raw) ? Math.max(7, raw) : 30 });
+                // Allow free editing; skip commit on empty so clearing to
+                // retype a value doesn't snap to 7 on every keystroke.
+                const str = e.target.value;
+                if (str === "") return;
+                const raw = Math.round(Number(str));
+                if (Number.isFinite(raw) && raw >= 1) {
+                  setDraft({ ...draft, autoOccupyDays: raw });
+                }
+              }}
+              onBlur={() => {
+                // Enforce minimum only when focus leaves the field.
+                if (draft.autoOccupyDays < 7) {
+                  setDraft({ ...draft, autoOccupyDays: 7 });
+                }
               }}
             />
           </label>

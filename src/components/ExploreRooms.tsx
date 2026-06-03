@@ -14,13 +14,18 @@ import { getLocationFocus } from "@/lib/locations";
 import type { Bounds } from "./ExploreMap";
 import type { Room } from "@/lib/types";
 
+function MapLoading() {
+  const t = useT();
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-slate-100 text-sm text-ink-muted">
+      {t("common.loading")}
+    </div>
+  );
+}
+
 const ExploreMap = dynamic(() => import("./ExploreMap"), {
   ssr: false,
-  loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-slate-100 text-sm text-ink-muted">
-      Loading map…
-    </div>
-  )
+  loading: () => <MapLoading />
 });
 
 type View = "list" | "map";
