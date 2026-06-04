@@ -9,7 +9,7 @@ import LanguageToggle from "./LanguageToggle";
 import PropertyTypePicker from "./PropertyTypePicker";
 import { useSession } from "@/lib/session";
 import { loadOverrides, subscribeOverrides } from "@/lib/profile-overrides";
-import { isAdmin, useUserNotifications } from "@/lib/admin";
+import { isAdmin, useAdminNotifications, useUserNotifications } from "@/lib/admin";
 import { setViewMode, useViewMode } from "@/lib/view-mode";
 import { useT } from "@/lib/language";
 
@@ -85,11 +85,8 @@ export default function Navbar() {
             {/* Demo affordance: hop between User and Admin views without logging out. */}
             <ViewSwitch onAdmin={onAdmin} />
 
-            {/* Notifications bell — only for signed-in users in user view.
-                Admin view has its own notifications surface in the floating nav.
-                Sits to the left of the language toggle so the cluster reads
-                identity → action → language → profile. */}
-            {session && !onAdmin ? <NotificationBell /> : null}
+            {/* Notifications bell — user bell in user view, admin bell in admin view. */}
+            {session && (onAdmin ? <AdminNotificationBell /> : <NotificationBell />)}
 
             {/* Always visible: language toggle. */}
             <LanguageToggle />
@@ -202,6 +199,30 @@ function NotificationBell() {
         if (pathname === LIST_ROOM_PATH)
           sessionStorage.setItem(FROM_LIST_ROOM_KEY, "1");
       }}
+      className="relative flex h-10 w-10 shrink-0 items-center justify-center text-ink-muted transition hover:text-ink"
+    >
+      <Icon name="bell" className="h-6 w-6" />
+      {unread > 0 ? (
+        <span className="absolute right-0 top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white">
+          {unread > 9 ? "9+" : unread}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
+function AdminNotificationBell() {
+  const notifications = useAdminNotifications();
+  const unread = notifications.filter((n: { read: boolean }) => !n.read).length;
+  const t = useT();
+  return (
+    <Link
+      href="/user/admin/notifications/incoming"
+      aria-label={
+        unread > 0
+          ? t("nav.notifications.ariaWithCount", { n: unread })
+          : t("nav.notifications.aria")
+      }
       className="relative flex h-10 w-10 shrink-0 items-center justify-center text-ink-muted transition hover:text-ink"
     >
       <Icon name="bell" className="h-6 w-6" />

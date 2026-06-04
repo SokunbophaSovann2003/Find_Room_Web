@@ -125,16 +125,10 @@ function DeniedScreen({
 }
 
 function AdminFrame({ children }: { children: React.ReactNode }) {
-  // Push the MOCK_ROOMS catalog into local storage so each mock user's
-  // listings render on the admin user-detail page. Idempotent — guarded by a
-  // localStorage flag inside the helper.
   useEffect(() => {
     seedMockListings();
   }, []);
 
-  // The floating admin nav is now mounted globally in the root layout via
-  // <AdminFloatingNav />, so it persists across non-admin routes like
-  // /rooms/[id] when the admin keeps "Admin" view selected.
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>

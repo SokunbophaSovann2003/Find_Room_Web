@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 
 export type Language = "km" | "en";
 
@@ -848,9 +848,9 @@ const DICT: Dict = {
 export function useLanguage() {
   const [language, setLanguageState] = useState<Language>("km");
 
-  useEffect(() => {
-    // Sync once on mount, then subscribe so every consumer of useLanguage
-    // reacts when the toggle (or another tab) updates the preference.
+  useLayoutEffect(() => {
+    // Fires synchronously before the browser's first paint — the language
+    // correction happens invisibly so the user never sees a Khmer flash.
     setLanguageState(readStored());
     const sync = () => setLanguageState(readStored());
     window.addEventListener(EVENT, sync);

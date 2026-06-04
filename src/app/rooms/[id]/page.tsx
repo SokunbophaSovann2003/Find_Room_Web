@@ -320,7 +320,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl lg:text-3xl">
+                  <h1 className="text-lg font-extrabold tracking-tight sm:text-xl lg:text-2xl">
                     {room.title}
                   </h1>
                   {adminViewActive ? <AdminStatusPill occupied={effectivelyOccupied} /> : null}

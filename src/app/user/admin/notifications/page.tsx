@@ -39,67 +39,18 @@ const KIND_META: Record<AdminNotificationKind, { icon: "user" | "building" | "sh
 type Tab = "incoming" | "send";
 
 export default function AdminNotificationsPage() {
-  const searchParams = useSearchParams();
-  const initialTab: Tab = searchParams?.get("tab") === "send" ? "send" : "incoming";
-  const [tab, setTab] = useState<Tab>(initialTab);
-  const notifications = useAdminNotifications();
-  const unread = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
   const t = useT();
-
-  // If the URL changes to/from ?tab=send while the page is mounted (e.g. the
-  // admin clicks another "Send notification" deep link from elsewhere in the
-  // admin), honor the new value.
-  useEffect(() => {
-    if (searchParams?.get("tab") === "send") setTab("send");
-  }, [searchParams]);
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t("admin.notifications.title")}</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            {t("admin.notifications.subtitle")}
-          </p>
-        </div>
-        {tab === "incoming" ? (
-          <button
-            type="button"
-            onClick={() => markAllNotificationsRead()}
-            disabled={unread === 0}
-            className="btn-secondary disabled:opacity-50"
-          >
-            <Icon name="check" className="h-4 w-4" />
-            {t("admin.notifications.markAllRead")}
-          </button>
-        ) : null}
+      <header>
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t("admin.notifications.title")}</h1>
+        <p className="mt-1 text-sm text-ink-muted">
+          {t("admin.notifications.subtitle")}
+        </p>
       </header>
 
-      <div
-        role="tablist"
-        aria-label={t("admin.notifications.viewAria")}
-        className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-card"
-      >
-        <TabButton
-          active={tab === "incoming"}
-          onClick={() => setTab("incoming")}
-          icon="message"
-          label={t("admin.notifications.tab.incoming")}
-          badge={unread > 0 ? unread : undefined}
-        />
-        <TabButton
-          active={tab === "send"}
-          onClick={() => setTab("send")}
-          icon="arrow-right"
-          label={t("admin.notifications.tab.send")}
-        />
-      </div>
-
-      {tab === "incoming" ? (
-        <IncomingPanel notifications={notifications} />
-      ) : (
-        <SendPanel />
-      )}
+      <SendPanel />
     </div>
   );
 }
@@ -261,9 +212,9 @@ function SendPanel() {
   const searchParams = useSearchParams();
   const t = useT();
 
-  // If the admin deep-linked from a user page with ?to=<uid>, jump straight
-  // into "Specific users" mode with that uid pre-selected.
   const initialUid = searchParams?.get("to") ?? null;
+  // On mobile, auto-open compose sheet when deep-linked with ?to=<uid>
+  const [composeOpen, setComposeOpen] = useState(!!initialUid);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [audienceMode, setAudienceMode] = useState<AudienceMode>(
@@ -280,6 +231,7 @@ function SendPanel() {
   const [confirmDeleteTemplate, setConfirmDeleteTemplate] = useState<AdminOutboundTemplate | null>(null);
   const [justSent, setJustSent] = useState<AdminOutboundCampaign | null>(null);
   const [templateSaved, setTemplateSaved] = useState<string | null>(null);
+  const [templatesOpen, setTemplatesOpen] = useState(true);
 
   const audience: AdminOutboundAudience = useMemo(() => {
     if (audienceMode === "all") return { kind: "all" };
@@ -289,11 +241,13 @@ function SendPanel() {
 
   const recipients = useMemo(() => resolveAudience(audience), [audience, users]);
   const previewRecipient = recipients[0];
+  const canSend = title.trim().length > 0 && body.trim().length > 0 && recipients.length > 0;
 
-  function applyTemplate(t: AdminOutboundTemplate) {
-    setActiveTemplateId(t.id);
-    setTitle(t.title);
-    setBody(t.body);
+  function applyTemplate(tpl: AdminOutboundTemplate) {
+    setActiveTemplateId(tpl.id);
+    setTitle(tpl.title);
+    setBody(tpl.body);
+    setComposeOpen(true);
   }
 
   function clearComposer() {
@@ -308,6 +262,7 @@ function SendPanel() {
     const campaign = sendAdminOutbound({ title: title.trim(), body: body.trim(), audience });
     if (campaign) {
       setJustSent(campaign);
+      setComposeOpen(false);
       clearComposer();
       const recipientCount = campaign.recipientCount;
       toast.success(
@@ -318,28 +273,233 @@ function SendPanel() {
     }
   }
 
-  const canSend = title.trim().length > 0 && body.trim().length > 0 && recipients.length > 0;
+  // Compose form body — shared between desktop inline and mobile bottom sheet
+  const composeFormBody = (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] text-ink-soft">
+          {t("admin.notifications.compose.placeholders")}{" "}
+          <code className="rounded bg-slate-100 px-1">{`{{username}}`}</code>{" "}
+          <code className="rounded bg-slate-100 px-1">{`{{phone}}`}</code>{" "}
+          <code className="rounded bg-slate-100 px-1">{`{{email}}`}</code>
+        </p>
+      </div>
 
-  return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="space-y-5">
-        {templateSaved ? (
-          <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-ink">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
-              <Icon name="check" className="h-4 w-4" />
-            </span>
-            <p className="min-w-0 flex-1 font-semibold">{t("admin.notifications.send.savedTemplate", { name: templateSaved })}</p>
+      <div className="flex flex-wrap gap-2">
+        <TemplateChip
+          label={t("admin.notifications.compose.template.blank")}
+          active={activeTemplateId === null}
+          onClick={clearComposer}
+        />
+        {templates.map((tpl) => (
+          <TemplateChip
+            key={tpl.id}
+            label={tpl.name}
+            active={activeTemplateId === tpl.id}
+            onClick={() => applyTemplate(tpl)}
+          />
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-ink-muted">{t("admin.notifications.compose.field.title")}</label>
+          <input
+            className="input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={t("admin.notifications.compose.field.title.placeholder")}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-ink-muted">{t("admin.notifications.compose.field.message")}</label>
+          <textarea
+            className="input min-h-[120px] resize-y"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder={t("admin.notifications.compose.field.message.placeholder")}
+          />
+        </div>
+      </div>
+
+      <RecipientPicker
+        users={users}
+        mode={audienceMode}
+        onModeChange={setAudienceMode}
+        role={audienceRole}
+        onRoleChange={setAudienceRole}
+        selectedUids={selectedUids}
+        onSelectedChange={setSelectedUids}
+        recipientCount={recipients.length}
+      />
+
+      {previewRecipient && (title || body) ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+            {t("admin.notifications.compose.preview.as", { name: previewRecipient.username })}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-ink">
+            {fillPlaceholders(title || t("admin.notifications.compose.preview.noTitle"), previewRecipient)}
+          </p>
+          <p className="mt-0.5 whitespace-pre-wrap text-sm text-ink-muted">
+            {fillPlaceholders(body || t("admin.notifications.compose.preview.noMessage"), previewRecipient)}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setCreatingTemplate(true)}
+            disabled={!title.trim() || !body.trim()}
+            className="btn-ghost disabled:opacity-50"
+          >
+            <Icon name="plus" className="h-4 w-4" />
+            {t("admin.notifications.compose.saveTemplate")}
+          </button>
+          {activeTemplateId ? (
             <button
               type="button"
-              onClick={() => setTemplateSaved(null)}
-              className="rounded-full p-1.5 text-ink-muted transition hover:bg-slate-100 hover:text-ink"
-              aria-label={t("admin.notifications.send.dismiss")}
+              disabled={!title.trim() || !body.trim()}
+              onClick={() => {
+                if (!activeTemplateId) return;
+                updateOutboundTemplate(activeTemplateId, {
+                  title: title.trim(),
+                  body: body.trim()
+                });
+                const tpl = templates.find((tp) => tp.id === activeTemplateId);
+                setTemplateSaved(tpl?.name ?? "template");
+              }}
+              className="btn-ghost disabled:opacity-50"
             >
-              <Icon name="x" className="h-4 w-4" />
+              <Icon name="pencil" className="h-4 w-4" />
+              {t("admin.notifications.compose.updateTemplate")}
             </button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={!canSend}
+          className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Icon name="arrow-right" className="h-4 w-4" />
+          {recipients.length === 1
+            ? t("admin.notifications.compose.send.one", { n: recipients.length })
+            : t("admin.notifications.compose.send.many", { n: recipients.length })}
+        </button>
+      </div>
+    </>
+  );
 
+  // Templates section — shared between desktop sidebar and mobile stack
+  const templatesSection = (
+    <section className="card p-4">
+      <button
+        type="button"
+        onClick={() => setTemplatesOpen((v) => !v)}
+        className={`flex w-full items-center justify-between text-ink transition hover:opacity-80 ${templatesOpen ? "mb-2" : ""}`}
+        aria-label={templatesOpen ? t("common.cancel") : t("admin.notifications.templates.title")}
+      >
+        <h2 className="text-base font-bold">{t("admin.notifications.templates.title")}</h2>
+        <Icon
+          name="chevron-down"
+          className={`h-4 w-4 text-ink-muted transition-transform duration-200 ${templatesOpen ? "" : "-rotate-90"}`}
+        />
+      </button>
+      {templatesOpen ? (
+        templates.length === 0 ? (
+          <p className="text-sm text-ink-muted">{t("admin.notifications.templates.empty")}</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {templates.map((tpl) => (
+            <li key={tpl.id} className="flex items-start gap-2 rounded-xl border border-slate-100 p-2">
+              <button
+                type="button"
+                onClick={() => applyTemplate(tpl)}
+                className="min-w-0 flex-1 text-left"
+              >
+                <p className="truncate text-sm font-semibold text-ink">{tpl.name}</p>
+                <p className="truncate text-xs text-ink-muted">{tpl.title}</p>
+              </button>
+              <div className="flex shrink-0 gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => setEditingTemplate(tpl)}
+                  className="rounded-full p-1.5 text-ink-muted transition hover:bg-slate-100 hover:text-ink"
+                  aria-label={t("admin.notifications.templates.editAria")}
+                  title={t("common.edit")}
+                >
+                  <Icon name="pencil" className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteTemplate(tpl)}
+                  className="rounded-full p-1.5 text-ink-muted transition hover:bg-red-50 hover:text-red-700"
+                  aria-label={t("admin.notifications.templates.deleteAria")}
+                  title={t("common.delete")}
+                >
+                  <Icon name="trash" className="h-4 w-4" />
+                </button>
+              </div>
+            </li>
+          ))}
+          </ul>
+        )
+      ) : null}
+    </section>
+  );
+
+  // History section — shared between desktop and mobile stack
+  const historySection = (
+    <section className="card p-4 sm:p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-base font-bold">{t("admin.notifications.history.title")}</h2>
+        <span className="text-xs text-ink-soft">
+          {campaigns.length === 0
+            ? t("admin.notifications.history.empty")
+            : campaigns.length === 1
+              ? t("admin.notifications.history.campaigns.one", { n: campaigns.length })
+              : t("admin.notifications.history.campaigns.many", { n: campaigns.length })}
+        </span>
+      </div>
+      {campaigns.length === 0 ? (
+        <p className="text-sm text-ink-muted">{t("admin.notifications.history.empty.body")}</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {campaigns.map((c) => (
+            <li key={c.id} className="flex gap-3 py-3 first:pt-0 last:pb-0">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                <Icon name="arrow-right" className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-ink">{c.title}</p>
+                <p className="mt-0.5 line-clamp-2 text-sm text-ink-muted">{c.body}</p>
+                <p className="mt-1 text-[11px] text-ink-soft">
+                  {c.recipientSummary} · {formatRelative(c.sentAt, t)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteCampaign(c)}
+                className="rounded-full p-1.5 text-ink-muted transition hover:bg-red-50 hover:text-red-700"
+                aria-label={t("admin.notifications.history.deleteAria")}
+                title={t("admin.notifications.history.deleteTitle")}
+              >
+                <Icon name="trash" className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+
+  return (
+    <>
+      {/* ── Mobile layout (< lg): Templates → History + FAB ── */}
+      <div className="space-y-4 lg:hidden">
         {justSent ? (
           <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
@@ -360,224 +520,121 @@ function SendPanel() {
           </div>
         ) : null}
 
-        <section className="card space-y-4 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-bold">{t("admin.notifications.compose.title")}</h2>
-            <p className="text-[11px] text-ink-soft">
-              {t("admin.notifications.compose.placeholders")} <code className="rounded bg-slate-100 px-1">{`{{username}}`}</code>{" "}
-              <code className="rounded bg-slate-100 px-1">{`{{phone}}`}</code>{" "}
-              <code className="rounded bg-slate-100 px-1">{`{{email}}`}</code>
-            </p>
-          </div>
+        <button
+          type="button"
+          onClick={() => { clearComposer(); setComposeOpen(true); }}
+          className="btn-primary w-full"
+        >
+          <Icon name="plus" className="h-4 w-4" />
+          {t("admin.notifications.compose.title")}
+        </button>
 
-          <div className="flex flex-wrap gap-2">
-            <TemplateChip
-              label={t("admin.notifications.compose.template.blank")}
-              active={activeTemplateId === null}
-              onClick={clearComposer}
-            />
-            {templates.map((tpl) => (
-              <TemplateChip
-                key={tpl.id}
-                label={tpl.name}
-                active={activeTemplateId === tpl.id}
-                onClick={() => applyTemplate(tpl)}
-              />
-            ))}
-          </div>
+        {templatesSection}
+        {historySection}
+      </div>
 
-          <div className="space-y-3">
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">{t("admin.notifications.compose.field.title")}</label>
-              <input
-                className="input"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder={t("admin.notifications.compose.field.title.placeholder")}
-              />
+      {/* ── Mobile compose bottom sheet ── */}
+      {composeOpen ? (
+        <div
+          className="fixed inset-0 z-[1200] flex flex-col justify-end bg-black/40 lg:hidden"
+          onClick={() => setComposeOpen(false)}
+        >
+          <div
+            className="flex max-h-[92vh] flex-col overflow-hidden rounded-t-2xl bg-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* drag handle */}
+            <div className="flex justify-center pt-2.5 pb-1">
+              <span className="h-1 w-10 rounded-full bg-slate-300" />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">{t("admin.notifications.compose.field.message")}</label>
-              <textarea
-                className="input min-h-[120px] resize-y"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder={t("admin.notifications.compose.field.message.placeholder")}
-              />
+            {/* header */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+              <h3 className="text-base font-bold">{t("admin.notifications.compose.title")}</h3>
+              <button
+                type="button"
+                onClick={() => setComposeOpen(false)}
+                className="rounded-full p-1.5 text-ink-muted transition hover:bg-slate-100 hover:text-ink"
+                aria-label={t("common.close")}
+              >
+                <Icon name="x" className="h-5 w-5" />
+              </button>
+            </div>
+            {/* scrollable form body */}
+            <div className="overflow-y-auto p-4">
+              <div className="space-y-4">
+                {templateSaved ? (
+                  <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-ink">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                      <Icon name="check" className="h-4 w-4" />
+                    </span>
+                    <p className="min-w-0 flex-1 font-semibold">{t("admin.notifications.send.savedTemplate", { name: templateSaved })}</p>
+                    <button
+                      type="button"
+                      onClick={() => setTemplateSaved(null)}
+                      className="rounded-full p-1.5 text-ink-muted transition hover:bg-slate-100 hover:text-ink"
+                      aria-label={t("admin.notifications.send.dismiss")}
+                    >
+                      <Icon name="x" className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : null}
+                {composeFormBody}
+              </div>
             </div>
           </div>
+        </div>
+      ) : null}
 
-          <RecipientPicker
-            users={users}
-            mode={audienceMode}
-            onModeChange={setAudienceMode}
-            role={audienceRole}
-            onRoleChange={setAudienceRole}
-            selectedUids={selectedUids}
-            onSelectedChange={setSelectedUids}
-            recipientCount={recipients.length}
-          />
-
-          {previewRecipient && (title || body) ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
-                {t("admin.notifications.compose.preview.as", { name: previewRecipient.username })}
-              </p>
-              <p className="mt-1 text-sm font-semibold text-ink">
-                {fillPlaceholders(title || t("admin.notifications.compose.preview.noTitle"), previewRecipient)}
-              </p>
-              <p className="mt-0.5 whitespace-pre-wrap text-sm text-ink-muted">
-                {fillPlaceholders(body || t("admin.notifications.compose.preview.noMessage"), previewRecipient)}
-              </p>
+      {/* ── Desktop layout (lg+): compose + history | templates sidebar ── */}
+      <div className="hidden lg:grid lg:gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="space-y-5">
+          {templateSaved ? (
+            <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-ink">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                <Icon name="check" className="h-4 w-4" />
+              </span>
+              <p className="min-w-0 flex-1 font-semibold">{t("admin.notifications.send.savedTemplate", { name: templateSaved })}</p>
+              <button
+                type="button"
+                onClick={() => setTemplateSaved(null)}
+                className="rounded-full p-1.5 text-ink-muted transition hover:bg-slate-100 hover:text-ink"
+                aria-label={t("admin.notifications.send.dismiss")}
+              >
+                <Icon name="x" className="h-4 w-4" />
+              </button>
             </div>
           ) : null}
 
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-            <div className="flex flex-wrap gap-2">
+          {justSent ? (
+            <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
+                <Icon name="check" className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">{t("admin.notifications.send.sentTo", { summary: justSent.recipientSummary })}</p>
+                <p className="text-emerald-700/90">{justSent.title}</p>
+              </div>
               <button
                 type="button"
-                onClick={() => setCreatingTemplate(true)}
-                disabled={!title.trim() || !body.trim()}
-                className="btn-ghost disabled:opacity-50"
+                onClick={() => setJustSent(null)}
+                className="rounded-full p-1.5 text-emerald-700 transition hover:bg-emerald-100"
+                aria-label={t("admin.notifications.send.dismiss")}
               >
-                <Icon name="plus" className="h-4 w-4" />
-                {t("admin.notifications.compose.saveTemplate")}
+                <Icon name="x" className="h-4 w-4" />
               </button>
-              {activeTemplateId ? (
-                <button
-                  type="button"
-                  disabled={!title.trim() || !body.trim()}
-                  onClick={() => {
-                    if (!activeTemplateId) return;
-                    updateOutboundTemplate(activeTemplateId, {
-                      title: title.trim(),
-                      body: body.trim()
-                    });
-                    const tpl = templates.find((tp) => tp.id === activeTemplateId);
-                    setTemplateSaved(tpl?.name ?? "template");
-                  }}
-                  className="btn-ghost disabled:opacity-50"
-                >
-                  <Icon name="pencil" className="h-4 w-4" />
-                  {t("admin.notifications.compose.updateTemplate")}
-                </button>
-              ) : null}
             </div>
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={!canSend}
-              className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Icon name="arrow-right" className="h-4 w-4" />
-              {recipients.length === 1
-                ? t("admin.notifications.compose.send.one", { n: recipients.length })
-                : t("admin.notifications.compose.send.many", { n: recipients.length })}
-            </button>
-          </div>
-        </section>
+          ) : null}
 
-        <section className="card p-4 sm:p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-bold">{t("admin.notifications.history.title")}</h2>
-            <span className="text-xs text-ink-soft">
-              {campaigns.length === 0
-                ? t("admin.notifications.history.empty")
-                : campaigns.length === 1
-                  ? t("admin.notifications.history.campaigns.one", { n: campaigns.length })
-                  : t("admin.notifications.history.campaigns.many", { n: campaigns.length })}
-            </span>
-          </div>
-          {campaigns.length === 0 ? (
-            <p className="text-sm text-ink-muted">
-              {t("admin.notifications.history.empty.body")}
-            </p>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {campaigns.map((c) => (
-                <li key={c.id} className="flex gap-3 py-3 first:pt-0 last:pb-0">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
-                    <Icon name="arrow-right" className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-ink">{c.title}</p>
-                    <p className="mt-0.5 line-clamp-2 text-sm text-ink-muted">{c.body}</p>
-                    <p className="mt-1 text-[11px] text-ink-soft">
-                      {c.recipientSummary} · {formatRelative(c.sentAt, t)}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteCampaign(c)}
-                    className="rounded-full p-1.5 text-ink-muted transition hover:bg-red-50 hover:text-red-700"
-                    aria-label={t("admin.notifications.history.deleteAria")}
-                    title={t("admin.notifications.history.deleteTitle")}
-                  >
-                    <Icon name="trash" className="h-4 w-4" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+          <section className="card space-y-4 p-4 sm:p-5">
+            <h2 className="text-base font-bold">{t("admin.notifications.compose.title")}</h2>
+            {composeFormBody}
+          </section>
+
+          {historySection}
+        </div>
+
+        <aside className="space-y-3">{templatesSection}</aside>
       </div>
-
-      <aside className="space-y-3">
-        <section className="card p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-base font-bold">{t("admin.notifications.templates.title")}</h2>
-            <button
-              type="button"
-              onClick={() => setCreatingTemplate(true)}
-              className="btn-ghost px-2 py-1 text-xs"
-              aria-label={t("admin.notifications.templates.newAria")}
-            >
-              <Icon name="plus" className="h-4 w-4" />
-              {t("admin.notifications.templates.new")}
-            </button>
-          </div>
-          {templates.length === 0 ? (
-            <p className="text-sm text-ink-muted">
-              {t("admin.notifications.templates.empty")}
-            </p>
-          ) : (
-            <ul className="space-y-1.5">
-              {templates.map((tpl) => (
-                <li key={tpl.id} className="flex items-start gap-2 rounded-xl border border-slate-100 p-2">
-                  <button
-                    type="button"
-                    onClick={() => applyTemplate(tpl)}
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <p className="truncate text-sm font-semibold text-ink">{tpl.name}</p>
-                    <p className="truncate text-xs text-ink-muted">{tpl.title}</p>
-                  </button>
-                  <div className="flex shrink-0 gap-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setEditingTemplate(tpl)}
-                      className="rounded-full p-1.5 text-ink-muted transition hover:bg-slate-100 hover:text-ink"
-                      aria-label={t("admin.notifications.templates.editAria")}
-                      title={t("common.edit")}
-                    >
-                      <Icon name="pencil" className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteTemplate(tpl)}
-                      className="rounded-full p-1.5 text-ink-muted transition hover:bg-red-50 hover:text-red-700"
-                      aria-label={t("admin.notifications.templates.deleteAria")}
-                      title={t("common.delete")}
-                    >
-                      <Icon name="trash" className="h-4 w-4" />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </aside>
 
       {creatingTemplate ? (
         <TemplateFormModal
@@ -652,7 +709,7 @@ function SendPanel() {
           setConfirmDeleteCampaign(null);
         }}
       />
-    </div>
+    </>
   );
 }
 
