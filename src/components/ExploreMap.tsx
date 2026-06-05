@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -12,6 +12,19 @@ export type Bounds = [[number, number], [number, number]];
 export interface MapFocus {
   center: [number, number];
   zoom: number;
+}
+
+const MAP_VIEW_KEY = "exploreMapView";
+
+function saveMapView(center: [number, number], zoom: number) {
+  try { sessionStorage.setItem(MAP_VIEW_KEY, JSON.stringify({ center, zoom })); } catch {}
+}
+
+function loadMapView(): MapFocus | null {
+  try {
+    const raw = sessionStorage.getItem(MAP_VIEW_KEY);
+    return raw ? (JSON.parse(raw) as MapFocus) : null;
+  } catch { return null; }
 }
 
 interface ExploreMapProps {
@@ -43,6 +56,8 @@ function MapEventBridge({ onBoundsChange }: { onBoundsChange?: (b: Bounds) => vo
         [b.getSouth(), b.getWest()],
         [b.getNorth(), b.getEast()]
       ]);
+      const c = map.getCenter();
+      saveMapView([c.lat, c.lng], map.getZoom());
     };
     fire();
     map.on("moveend", fire);
@@ -65,25 +80,51 @@ function FocusController({ focus }: { focus?: MapFocus | null }) {
 function MyLocationControl() {
   const map = useMap();
   const t = useT();
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+
   function handleClick() {
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setStatus("error");
+      setTimeout(() => setStatus("idle"), 2000);
+      return;
+    }
+    setStatus("loading");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        setStatus("idle");
         map.flyTo([pos.coords.latitude, pos.coords.longitude], 15, { duration: 0.7 });
       },
       () => {
-        // permission denied / unavailable — fail silently
-      }
+        setStatus("error");
+        setTimeout(() => setStatus("idle"), 2000);
+      },
+      { timeout: 10000 }
     );
   }
+
+  const baseClass = "absolute right-3 top-3 z-[1000] flex h-10 w-10 items-center justify-center rounded-full border shadow transition";
+  const stateClass =
+    status === "error"
+      ? "border-red-200 bg-red-50 text-red-500"
+      : status === "loading"
+        ? "border-brand/30 bg-brand/10 text-brand cursor-wait"
+        : "border-slate-200 bg-white text-brand hover:bg-brand hover:text-white";
+
   return (
     <button
       type="button"
       onClick={handleClick}
+      disabled={status === "loading"}
       aria-label={t("mapPin.useMyLocation.aria")}
-      className="absolute right-3 top-3 z-[1000] flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-brand shadow transition hover:bg-brand hover:text-white"
+      className={`${baseClass} ${stateClass}`}
     >
-      <Icon name="map-pin" className="h-5 w-5" />
+      {status === "loading" ? (
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+      ) : status === "error" ? (
+        <Icon name="x" className="h-5 w-5" />
+      ) : (
+        <Icon name="map-pin" className="h-5 w-5" />
+      )}
     </button>
   );
 }
@@ -96,11 +137,13 @@ function isPositioned(r: Room): r is PositionedRoom {
 
 export default function ExploreMap({ rooms, activeId, onSelect, onBoundsChange, focus }: ExploreMapProps) {
   const positioned: PositionedRoom[] = rooms.filter(isPositioned);
+  const saved = loadMapView();
   const initialCenter: [number, number] = focus?.center
+    ?? saved?.center
     ?? (positioned.length > 0
       ? [positioned[0].lat, positioned[0].lng]
       : [11.5564, 104.9282]);
-  const initialZoom = focus?.zoom ?? 13;
+  const initialZoom = focus?.zoom ?? saved?.zoom ?? 13;
 
   return (
     <MapContainer

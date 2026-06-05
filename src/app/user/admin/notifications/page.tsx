@@ -32,8 +32,6 @@ import { useT } from "@/lib/language";
 const KIND_META: Record<AdminNotificationKind, { icon: "user" | "building" | "shield" | "message"; tone: string }> = {
   "user-registered": { icon: "user", tone: "bg-brand/10 text-brand" },
   "listing-posted": { icon: "building", tone: "bg-emerald-50 text-emerald-700" },
-  "listing-flagged": { icon: "shield", tone: "bg-amber-50 text-amber-700" },
-  system: { icon: "message", tone: "bg-slate-100 text-ink-muted" }
 };
 
 type Tab = "incoming" | "send";
@@ -120,7 +118,7 @@ function IncomingPanel({ notifications }: { notifications: AdminNotification[] }
 }
 
 function NotificationRow({ notification }: { notification: AdminNotification }) {
-  const meta = KIND_META[notification.kind];
+  const meta = KIND_META[notification.kind] ?? { icon: "message" as const, tone: "bg-slate-100 text-ink-muted" };
   const router = useRouter();
   const t = useT();
 
@@ -131,7 +129,7 @@ function NotificationRow({ notification }: { notification: AdminNotification }) 
     if (notification.kind === "user-registered") {
       return `/user/admin/users/${notification.relatedId}`;
     }
-    if (notification.kind === "listing-posted" || notification.kind === "listing-flagged") {
+    if (notification.kind === "listing-posted") {
       return `/rooms/${notification.relatedId}`;
     }
     return null;

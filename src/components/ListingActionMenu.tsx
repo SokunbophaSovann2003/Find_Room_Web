@@ -115,7 +115,7 @@ export default function ListingActionMenu({
         aria-label={t("listing.menu.aria")}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-100 hover:text-ink"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/40 text-ink shadow-sm backdrop-blur-sm transition hover:bg-white/70"
       >
         <Icon name="more-vertical" className="h-5 w-5" />
       </button>

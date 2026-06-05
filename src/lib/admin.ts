@@ -324,9 +324,7 @@ export function useAdminUsers(): AdminUser[] {
 
 export type AdminNotificationKind =
   | "user-registered"
-  | "listing-posted"
-  | "listing-flagged"
-  | "system";
+  | "listing-posted";
 
 export interface AdminNotification {
   id: string;
@@ -335,9 +333,6 @@ export interface AdminNotification {
   body: string;
   createdAt: number;
   read: boolean;
-  // Optional id that lets the admin jump to the related record from a row.
-  // For `user-registered` it's the user uid. For `listing-posted` and
-  // `listing-flagged` it's the room id. `system` rows leave it undefined.
   relatedId?: string;
 }
 
@@ -368,15 +363,6 @@ function seedNotifications(): AdminNotification[] {
       relatedId: "16"
     },
     {
-      id: "n3",
-      kind: "listing-flagged",
-      title: "Listing reported by a user",
-      body: "A renter flagged \"Cosy room in Tuol Tom Poung\" — please review.",
-      createdAt: now - 4 * 60 * min,
-      read: false,
-      relatedId: "23"
-    },
-    {
       id: "n4",
       kind: "user-registered",
       title: "New user registered",
@@ -385,14 +371,6 @@ function seedNotifications(): AdminNotification[] {
       read: true,
       relatedId: "demo-85589320117"
     },
-    {
-      id: "n5",
-      kind: "system",
-      title: "Weekly summary ready",
-      body: "8 new listings, 2 new users, 3 reports last week.",
-      createdAt: now - 3 * 24 * 60 * min,
-      read: true
-    }
   ];
 }
 
@@ -528,15 +506,6 @@ function seedCampaigns(): AdminOutboundCampaign[] {
       sentAt: now - 2 * day
     },
     {
-      id: "camp-seed-listing-live",
-      title: "Your listing is now live",
-      body: "Hi {{username}}, your room listing has passed our review and is now visible to renters. You can manage it anytime from your profile.",
-      audience: { kind: "specific", uids: [ADMIN_UID] },
-      recipientCount: 1,
-      recipientSummary: "Admin (you) (1)",
-      sentAt: now - day - 3 * hr
-    },
-    {
       id: "camp-seed-bkk1",
       title: "New rooms added in BKK1",
       body: "Hi {{username}}, 8 new verified listings just dropped in Boeng Keng Kang. Prices start at $150/month. Tap to explore them now.",
@@ -565,14 +534,6 @@ function seedTemplates(): AdminOutboundTemplate[] {
       name: "Welcome new user",
       title: "Welcome to Joul!",
       body: "Hi {{username}}, thanks for joining Joul. Browse listings, save favorites, and reach out to owners directly.",
-      createdAt: now,
-      updatedAt: now
-    },
-    {
-      id: "tpl-listing-approved",
-      name: "Listing approved",
-      title: "Your listing is live",
-      body: "Hi {{username}}, your listing has been approved and is now visible on Joul. Tenants can contact you on {{phone}}.",
       createdAt: now,
       updatedAt: now
     },

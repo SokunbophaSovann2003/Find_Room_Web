@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import RoomCard from "./RoomCard";
 import Icon from "./Icon";
@@ -39,7 +40,16 @@ function inBounds(room: Room, bounds: Bounds | null): boolean {
 
 export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
   const t = useT();
-  const [view, setView] = useState<View>("list");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [view, setView] = useState<View>(() =>
+    searchParams.get("view") === "map" ? "map" : "list"
+  );
+
+  function changeView(v: View) {
+    setView(v);
+    router.replace(`?view=${v}`, { scroll: false });
+  }
   const localRooms = useLocalRooms();
   const { filter } = useExploreFilter();
   const { autoOccupyDays } = useAdminSettings();
@@ -91,8 +101,8 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
         </div>
 
         <div role="tablist" className="flex gap-1 self-start rounded-full border border-slate-200 bg-white p-1">
-          <ViewTab active={view === "list"} onClick={() => setView("list")} icon="menu" label={t("explore.tab.list")} />
-          <ViewTab active={view === "map"} onClick={() => setView("map")} icon="map-pin" label={t("explore.tab.map")} />
+          <ViewTab active={view === "list"} onClick={() => changeView("list")} icon="menu" label={t("explore.tab.list")} />
+          <ViewTab active={view === "map"} onClick={() => changeView("map")} icon="map-pin" label={t("explore.tab.map")} />
         </div>
       </div>
 
@@ -106,7 +116,12 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
               </div>
             }
           >
-            <ExploreMap rooms={allRooms} onBoundsChange={setBounds} focus={focus} />
+            <ExploreMap
+              rooms={allRooms}
+              onBoundsChange={setBounds}
+              focus={focus}
+              onSelect={(id) => router.push(`/rooms/${id}`)}
+            />
           </ErrorBoundary>
         </div>
       ) : null}

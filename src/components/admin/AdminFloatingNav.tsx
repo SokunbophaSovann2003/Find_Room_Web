@@ -36,12 +36,14 @@ export default function AdminFloatingNav() {
   const inAdminRoute = pathname?.startsWith("/user/admin") ?? false;
   const inRoomDetail = pathname?.startsWith("/rooms/") ?? false;
   const inListRoom = pathname === "/profile/list-room";
+  const inIncomingNotifications = pathname === "/user/admin/notifications/incoming";
   const adminSession = isAdmin(session);
   const shouldRender = adminSession && (inAdminRoute || viewMode === "admin");
 
   // Pages that own their own bottom action bar suppress the global tabbed nav
   // so the two don't stack on top of each other.
   if (shouldRender && (inRoomDetail || inListRoom) && !inAdminRoute) return null;
+  if (shouldRender && inIncomingNotifications) return null;
 
   if (!shouldRender) return null;
 

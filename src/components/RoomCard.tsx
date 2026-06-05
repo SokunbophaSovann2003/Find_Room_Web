@@ -68,7 +68,7 @@ export default function RoomCard({ room }: { room: Room }) {
 
         <div className="mt-3 flex items-baseline justify-between border-t border-slate-100 pt-3">
           <div>
-            <span className="text-base font-extrabold text-brand sm:text-lg">${room.price}</span>
+            <span className="text-base font-semibold text-brand sm:text-lg">${room.price}</span>
             <span className="text-xs text-ink-soft"> {t(`room.suffix.${pricePeriod}`)}</span>
           </div>
           <span className="hidden text-xs font-medium text-brand sm:inline">{t("roomCard.viewDetails")}</span>

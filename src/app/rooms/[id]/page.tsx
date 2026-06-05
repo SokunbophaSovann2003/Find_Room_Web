@@ -128,7 +128,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const locationCard = (
     <section>
       <div className="mb-2 flex items-end justify-between">
-        <h2 className="text-base font-bold">{t("room.section.location")}</h2>
+        <h2 className="text-base font-semibold">{t("room.section.location")}</h2>
         <a
           href={mapsLink}
           target="_blank"
@@ -206,7 +206,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
 
   const hostCard = (
     <section>
-      <h2 className="mb-3 text-base font-bold lg:hidden">{t("room.section.host")}</h2>
+      <h2 className="mb-3 text-base font-semibold lg:hidden">{t("room.section.host")}</h2>
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
         <Link
           href={ownerProfileHref}
@@ -239,28 +239,6 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           })}
         </ul>
 
-        {!isOwner && !adminViewActive ? (
-          <div className="mt-4 border-t border-slate-100 pt-3 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                if (!session) {
-                  // Require sign-in before reporting — prevents spam from
-                  // anonymous users and ties reports to an identity.
-                  setAuthOpen(true);
-                  return;
-                }
-                setReportReason(null);
-                setReportDetails("");
-                setReportSent(false);
-                setReportOpen(true);
-              }}
-              className="text-xs font-semibold text-ink-muted underline-offset-2 transition hover:text-red-600 hover:underline"
-            >
-              {t("room.host.reportListing")}
-            </button>
-          </div>
-        ) : null}
       </div>
     </section>
   );
@@ -320,7 +298,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <h1 className="text-lg font-extrabold tracking-tight sm:text-xl lg:text-2xl">
+                  <h1 className="text-lg font-semibold tracking-tight sm:text-xl lg:text-2xl">
                     {room.title}
                   </h1>
                   {adminViewActive ? <AdminStatusPill occupied={effectivelyOccupied} /> : null}
@@ -331,7 +309,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
                 </p>
               </div>
               <div className="hidden shrink-0 whitespace-nowrap sm:block sm:pt-1">
-                <span className="text-3xl font-extrabold text-brand sm:text-4xl">
+                <span className="text-3xl font-semibold text-brand sm:text-4xl">
                   ${room.price}
                 </span>
                 <span className="ml-1 text-sm text-ink-muted">{priceSuffix}</span>
@@ -355,7 +333,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             </ul>
 
             <section>
-              <h2 className="mb-2 text-base font-bold">{t("room.section.about")}</h2>
+              <h2 className="mb-2 text-base font-semibold">{t("room.section.about")}</h2>
               <p className="text-sm leading-relaxed text-ink-muted">
                 {room.description}
               </p>
@@ -363,7 +341,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
 
             {room.amenities.length > 0 ? (
               <section>
-                <h2 className="mb-3 text-base font-bold">{t("room.section.amenities")}</h2>
+                <h2 className="mb-3 text-base font-semibold">{t("room.section.amenities")}</h2>
                 <ul className="flex flex-wrap gap-2">
                   {room.amenities.map((a) => (
                     <li
@@ -379,7 +357,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             ) : null}
 
             <section>
-              <h2 className="mb-2 text-base font-bold">{t("room.section.fees")}</h2>
+              <h2 className="mb-2 text-base font-semibold">{t("room.section.fees")}</h2>
               <dl className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                 <FeeRow label={rentLabel} value={`$${room.price} ${priceSuffix}`} />
                 {room.deposit != null ? (
@@ -645,7 +623,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
               <Icon name="check" className="h-6 w-6" />
             </span>
-            <h3 className="text-base font-bold">{t("room.report.success.title")}</h3>
+            <h3 className="text-base font-semibold">{t("room.report.success.title")}</h3>
             <p className="max-w-sm text-sm text-ink-muted">
               {t("room.report.success.body")}
             </p>
