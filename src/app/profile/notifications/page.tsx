@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
+import LoadMoreSentinel from "@/components/admin/LoadMoreSentinel";
 import { useSession } from "@/lib/session";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
@@ -13,12 +14,22 @@ import {
   type UserNotification
 } from "@/lib/admin";
 
+const NOTIF_PAGE_SIZE = 20;
+
 export default function UserNotificationsPage() {
   const router = useRouter();
   const session = useSession();
   const t = useT();
   const notifications = useUserNotifications(session);
   const unread = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+
+  // Render a first page, then reveal more on scroll. Reset when the list shrinks
+  // (e.g. all marked read could re-sort) or the user changes.
+  const [visibleCount, setVisibleCount] = useState(NOTIF_PAGE_SIZE);
+  useEffect(() => {
+    setVisibleCount(NOTIF_PAGE_SIZE);
+  }, [session?.uid]);
+  const shownNotifications = notifications.slice(0, visibleCount);
 
   function handleBack() {
     if (typeof window !== "undefined") {
@@ -83,11 +94,17 @@ export default function UserNotificationsPage() {
           </p>
         </div>
       ) : (
-        <ul className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
-          {notifications.map((n) => (
-            <Row key={n.id} notification={n} uid={session?.uid ?? ""} />
-          ))}
-        </ul>
+        <>
+          <ul className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+            {shownNotifications.map((n) => (
+              <Row key={n.id} notification={n} uid={session?.uid ?? ""} />
+            ))}
+          </ul>
+          <LoadMoreSentinel
+            hasMore={visibleCount < notifications.length}
+            onLoadMore={() => setVisibleCount((c) => c + NOTIF_PAGE_SIZE)}
+          />
+        </>
       )}
     </div>
   );

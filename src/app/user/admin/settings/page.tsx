@@ -13,7 +13,9 @@ import {
   setAdminUids,
   useAdminSettings,
   useAdminUsers,
-  type AdminSettings
+  type AdminSettings,
+  type AutoMessage,
+  type AutoMessageKey
 } from "@/lib/admin";
 import { useSession } from "@/lib/session";
 import { toast } from "@/lib/toast";
@@ -36,6 +38,25 @@ const PRICE_PERIOD_KEYS: Record<PricePeriod, string> = {
   yearly: "admin.pricePeriod.yearly"
 };
 
+const AUTO_MSG_META: Record<AutoMessageKey, { labelKey: string; hintKey: string }> = {
+  welcome: {
+    labelKey: "admin.settings.autoMsg.welcome.label",
+    hintKey: "admin.settings.autoMsg.welcome.hint"
+  },
+  "listing-published": {
+    labelKey: "admin.settings.autoMsg.listingPublished.label",
+    hintKey: "admin.settings.autoMsg.listingPublished.hint"
+  },
+  "listing-flagged": {
+    labelKey: "admin.settings.autoMsg.listingFlagged.label",
+    hintKey: "admin.settings.autoMsg.listingFlagged.hint"
+  },
+  "listing-occupied": {
+    labelKey: "admin.settings.autoMsg.listingOccupied.label",
+    hintKey: "admin.settings.autoMsg.listingOccupied.hint"
+  }
+};
+
 function settingsEqual(a: AdminSettings, b: AdminSettings): boolean {
   return (
     a.siteName === b.siteName &&
@@ -52,7 +73,8 @@ function settingsEqual(a: AdminSettings, b: AdminSettings): boolean {
     a.exchangeRateKhrPerUsd === b.exchangeRateKhrPerUsd &&
     a.activePropertyTypes.join("|") === b.activePropertyTypes.join("|") &&
     a.amenities.join("|") === b.amenities.join("|") &&
-    a.autoOccupyDays === b.autoOccupyDays
+    a.autoOccupyDays === b.autoOccupyDays &&
+    JSON.stringify(a.autoMessages) === JSON.stringify(b.autoMessages)
   );
 }
 
@@ -69,6 +91,14 @@ export default function AdminSettingsPage() {
   }, [stored]);
 
   const dirty = !settingsEqual(draft, stored);
+  const [openMsg, setOpenMsg] = useState<AutoMessageKey | null>(null);
+
+  function updateAutoMessage(index: number, patch: Partial<AutoMessage>) {
+    setDraft((d) => ({
+      ...d,
+      autoMessages: d.autoMessages.map((m, i) => (i === index ? { ...m, ...patch } : m))
+    }));
+  }
 
   function handleSave() {
     saveAdminSettings(draft);
@@ -87,7 +117,7 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <header>
         <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t("admin.settings.title")}</h1>
         <p className="mt-1 text-sm text-ink-muted">
@@ -277,6 +307,73 @@ export default function AdminSettingsPage() {
             {t("admin.settings.autoOccupy.hint")}
           </p>
         </div>
+      </Section>
+
+      <Section
+        icon="message"
+        title={t("admin.settings.autoMessages.title")}
+        description={t("admin.settings.autoMessages.desc")}
+      >
+        <ul className="space-y-2">
+          {draft.autoMessages.map((msg, i) => {
+            const open = openMsg === msg.key;
+            return (
+              <li key={msg.key} className="overflow-hidden rounded-xl border border-slate-200">
+                <div className="flex items-center gap-3 p-3">
+                  <button
+                    type="button"
+                    onClick={() => setOpenMsg(open ? null : msg.key)}
+                    aria-expanded={open}
+                    aria-controls={`auto-msg-${msg.key}`}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  >
+                    <Icon
+                      name="chevron-down"
+                      className={`h-4 w-4 shrink-0 text-ink-muted transition-transform ${open ? "" : "-rotate-90"}`}
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-ink">
+                        {t(AUTO_MSG_META[msg.key].labelKey)}
+                      </span>
+                      {!open ? (
+                        <span className="block truncate text-xs text-ink-muted">{msg.title}</span>
+                      ) : null}
+                    </span>
+                  </button>
+                  <Switch
+                    on={msg.enabled}
+                    onChange={(v) => updateAutoMessage(i, { enabled: v })}
+                    ariaLabel={t(AUTO_MSG_META[msg.key].labelKey)}
+                  />
+                </div>
+                {open ? (
+                  <div id={`auto-msg-${msg.key}`} className="space-y-3 border-t border-slate-100 p-3">
+                    <p className="text-xs text-ink-muted">{t(AUTO_MSG_META[msg.key].hintKey)}</p>
+                    <p className="text-[11px] text-ink-soft">
+                      {t("admin.notifications.compose.placeholders")}{" "}
+                      <code className="rounded bg-slate-100 px-1">{`{{username}}`}</code>{" "}
+                      <code className="rounded bg-slate-100 px-1">{`{{phone}}`}</code>{" "}
+                      <code className="rounded bg-slate-100 px-1">{`{{email}}`}</code>
+                    </p>
+                    <Field
+                      label={t("admin.settings.autoWelcome.titleField")}
+                      value={msg.title}
+                      onChange={(v) => updateAutoMessage(i, { title: v })}
+                    />
+                    <label className="block">
+                      <span className="label">{t("admin.settings.autoWelcome.messageField")}</span>
+                      <textarea
+                        className="input mt-1 min-h-[100px] resize-y"
+                        value={msg.message}
+                        onChange={(e) => updateAutoMessage(i, { message: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
       </Section>
 
       <AccessControlSection />
@@ -612,19 +709,27 @@ function Section({
   title,
   description,
   tone,
+  defaultOpen = false,
   children
 }: {
-  icon: "building" | "map-pin" | "shield" | "trash" | "bed";
+  icon: "building" | "map-pin" | "shield" | "trash" | "bed" | "message";
   title: string;
   description: string;
   tone?: "danger";
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <section
-      className={`card space-y-4 p-5 ${tone === "danger" ? "border-red-200/70 bg-red-50/30" : ""}`}
+      className={`card p-5 ${open ? "space-y-4" : ""} ${tone === "danger" ? "border-red-200/70 bg-red-50/30" : ""}`}
     >
-      <div className="flex items-start gap-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-start gap-3 text-left"
+      >
         <span
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
             tone === "danger" ? "bg-red-100 text-red-700" : "bg-brand/10 text-brand"
@@ -632,12 +737,16 @@ function Section({
         >
           <Icon name={icon} className="h-4 w-4" />
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h2 className="text-base font-bold">{title}</h2>
           <p className="mt-0.5 text-sm text-ink-muted">{description}</p>
         </div>
-      </div>
-      {children}
+        <Icon
+          name="chevron-down"
+          className={`mt-1 h-4 w-4 shrink-0 text-ink-muted transition-transform ${open ? "" : "-rotate-90"}`}
+        />
+      </button>
+      {open ? children : null}
     </section>
   );
 }
@@ -720,6 +829,33 @@ function ToggleRow({
           }`}
         />
       </span>
+    </button>
+  );
+}
+
+function Switch({
+  on,
+  onChange,
+  ariaLabel
+}: {
+  on: boolean;
+  onChange: (v: boolean) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={ariaLabel}
+      onClick={() => onChange(!on)}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition ${on ? "bg-brand" : "bg-slate-200"}`}
+    >
+      <span
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
+          on ? "left-[22px]" : "left-0.5"
+        }`}
+      />
     </button>
   );
 }

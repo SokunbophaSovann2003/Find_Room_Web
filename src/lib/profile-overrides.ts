@@ -1,5 +1,7 @@
 "use client";
 
+import { safeSetItem } from "./safe-storage";
+
 // Per-user profile overrides (display name, avatar). Keyed by session.uid so
 // that two accounts on the same device don't see each other's edits.
 const PREFIX = "findroom.profile-overrides.";
@@ -35,10 +37,13 @@ export function loadOverrides(uid: string | undefined | null): ProfileOverrides 
   }
 }
 
-export function saveOverrides(uid: string, o: ProfileOverrides) {
-  if (typeof window === "undefined" || !uid) return;
-  window.localStorage.setItem(keyFor(uid), JSON.stringify(o));
-  window.dispatchEvent(new CustomEvent(EVENT, { detail: { uid } }));
+// Returns false if the write was rejected (e.g. storage full, e.g. a large
+// base64 avatar) so the caller can avoid a misleading success message.
+export function saveOverrides(uid: string, o: ProfileOverrides): boolean {
+  if (typeof window === "undefined" || !uid) return false;
+  const ok = safeSetItem(keyFor(uid), JSON.stringify(o));
+  if (ok) window.dispatchEvent(new CustomEvent(EVENT, { detail: { uid } }));
+  return ok;
 }
 
 export function subscribeOverrides(uid: string | undefined | null, cb: () => void): () => void {

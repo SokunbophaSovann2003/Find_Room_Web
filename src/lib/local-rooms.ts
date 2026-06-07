@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Owner, Room } from "./types";
+import { safeSetItem } from "./safe-storage";
 
 const KEY = "findroom.local-rooms";
 const EVENT = "findroom:local-rooms-change";
@@ -25,17 +26,22 @@ export function getLocalRooms(): Room[] {
   }
 }
 
-export function addLocalRoom(room: Room) {
-  if (typeof window === "undefined") return;
+// Returns false if the write was rejected (e.g. storage full) so callers can
+// avoid a misleading success message or navigating away from unsaved input.
+export function addLocalRoom(room: Room): boolean {
+  if (typeof window === "undefined") return false;
   // Guarantee the activity timestamp is always set so auto-occupy math works.
   const stamped: Room = { ...room, lastActivityAt: room.lastActivityAt ?? Date.now() };
   const rooms = [stamped, ...getLocalRooms()];
-  window.localStorage.setItem(KEY, JSON.stringify(rooms));
-  window.dispatchEvent(new Event(EVENT));
+  const ok = safeSetItem(KEY, JSON.stringify(rooms));
+  if (ok) window.dispatchEvent(new Event(EVENT));
+  return ok;
 }
 
-export function updateLocalRoom(id: string, patch: Partial<Room>) {
-  if (typeof window === "undefined") return;
+// Returns false if the write was rejected (e.g. storage full) so photo-heavy
+// edits can report failure instead of silently dropping the change.
+export function updateLocalRoom(id: string, patch: Partial<Room>): boolean {
+  if (typeof window === "undefined") return false;
   // Any edit (title, price, photos, status toggle, etc.) counts as activity
   // and resets the auto-occupy clock. Callers may pass lastActivityAt explicitly
   // (e.g. "Mark Available") to override the default stamp.
@@ -44,14 +50,15 @@ export function updateLocalRoom(id: string, patch: Partial<Room>) {
       ? { ...r, ...patch, lastActivityAt: patch.lastActivityAt ?? Date.now() }
       : r
   );
-  window.localStorage.setItem(KEY, JSON.stringify(rooms));
-  window.dispatchEvent(new Event(EVENT));
+  const ok = safeSetItem(KEY, JSON.stringify(rooms));
+  if (ok) window.dispatchEvent(new Event(EVENT));
+  return ok;
 }
 
 export function deleteLocalRoom(id: string) {
   if (typeof window === "undefined") return;
   const rooms = getLocalRooms().filter((r) => r.id !== id);
-  window.localStorage.setItem(KEY, JSON.stringify(rooms));
+  safeSetItem(KEY, JSON.stringify(rooms));
   window.dispatchEvent(new Event(EVENT));
 }
 
@@ -177,7 +184,7 @@ export function seedSampleListings(session: {
   ];
 
   const rooms = [...samples, ...getLocalRooms()];
-  window.localStorage.setItem(KEY, JSON.stringify(rooms));
+  safeSetItem(KEY, JSON.stringify(rooms));
   window.localStorage.setItem(flagKey, "1");
   window.dispatchEvent(new Event(EVENT));
 }

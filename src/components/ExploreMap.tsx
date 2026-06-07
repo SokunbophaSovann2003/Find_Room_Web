@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -33,6 +33,10 @@ interface ExploreMapProps {
   onSelect?: (id: string) => void;
   onBoundsChange?: (bounds: Bounds) => void;
   focus?: MapFocus | null;
+  // Serialized location selection. Changes whenever the user picks a different
+  // province/district/area, even when the resolved coordinates are identical
+  // (e.g. two areas in the same district), so the map re-focuses every time.
+  focusKey?: string;
 }
 
 function priceIcon(price: number, active: boolean): L.DivIcon {
@@ -68,12 +72,12 @@ function MapEventBridge({ onBoundsChange }: { onBoundsChange?: (b: Bounds) => vo
   return null;
 }
 
-function FocusController({ focus }: { focus?: MapFocus | null }) {
+function FocusController({ focus, focusKey }: { focus?: MapFocus | null; focusKey?: string }) {
   const map = useMap();
   useEffect(() => {
     if (!focus) return;
     map.flyTo(focus.center, focus.zoom, { duration: 0.7 });
-  }, [map, focus]);
+  }, [map, focus, focusKey]);
   return null;
 }
 
@@ -135,7 +139,65 @@ function isPositioned(r: Room): r is PositionedRoom {
   return r.lat != null && r.lng != null;
 }
 
-export default function ExploreMap({ rooms, activeId, onSelect, onBoundsChange, focus }: ExploreMapProps) {
+// Render only the markers inside the current viewport (plus a 20% buffer so
+// pins are ready just outside the edges when panning). Recomputed on
+// moveend/zoomend, debounced, so dense catalogs don't put a marker for every
+// listing into the DOM at once.
+function ViewportMarkers({
+  rooms,
+  activeId,
+  onSelect
+}: {
+  rooms: PositionedRoom[];
+  activeId?: string | null;
+  onSelect?: (id: string) => void;
+}) {
+  const map = useMap();
+  const [bounds, setBounds] = useState<L.LatLngBounds>(() => map.getBounds());
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const update = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setBounds(map.getBounds()), 150);
+    };
+    // The bounds captured at mount can be wrong if the container hasn't been
+    // laid out yet, so refresh once the map is ready (and after layout settles)
+    // in addition to reacting to pan/zoom.
+    map.whenReady(() => setBounds(map.getBounds()));
+    const settle = setTimeout(() => setBounds(map.getBounds()), 300);
+    map.on("moveend", update);
+    map.on("zoomend", update);
+    map.on("resize", update);
+    return () => {
+      if (timer) clearTimeout(timer);
+      clearTimeout(settle);
+      map.off("moveend", update);
+      map.off("zoomend", update);
+      map.off("resize", update);
+    };
+  }, [map]);
+
+  const visible = useMemo(() => {
+    const padded = bounds.pad(0.2);
+    return rooms.filter((r) => padded.contains([r.lat, r.lng]));
+  }, [rooms, bounds]);
+
+  return (
+    <>
+      {visible.map((r) => (
+        <Marker
+          key={r.id}
+          position={[r.lat, r.lng]}
+          icon={priceIcon(r.price, r.id === activeId)}
+          eventHandlers={{ click: () => onSelect?.(r.id) }}
+        />
+      ))}
+    </>
+  );
+}
+
+export default function ExploreMap({ rooms, activeId, onSelect, onBoundsChange, focus, focusKey }: ExploreMapProps) {
   const positioned: PositionedRoom[] = rooms.filter(isPositioned);
   const saved = loadMapView();
   const initialCenter: [number, number] = focus?.center
@@ -157,16 +219,9 @@ export default function ExploreMap({ rooms, activeId, onSelect, onBoundsChange, 
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <MapEventBridge onBoundsChange={onBoundsChange} />
-      <FocusController focus={focus} />
+      <FocusController focus={focus} focusKey={focusKey} />
       <MyLocationControl />
-      {positioned.map((r) => (
-        <Marker
-          key={r.id}
-          position={[r.lat, r.lng]}
-          icon={priceIcon(r.price, r.id === activeId)}
-          eventHandlers={{ click: () => onSelect?.(r.id) }}
-        />
-      ))}
+      <ViewportMarkers rooms={positioned} activeId={activeId} onSelect={onSelect} />
     </MapContainer>
   );
 }

@@ -11,6 +11,7 @@
 import { useEffect, useState } from "react";
 import type { Session } from "./session";
 import { MOCK_ROOMS } from "./mock-data";
+import { safeSetItem } from "./safe-storage";
 import type { PricePeriod, PropertyType, Room } from "./types";
 
 // DEMO MODE ONLY. This phone number is the seeded admin uid. In demo mode
@@ -101,6 +102,10 @@ export interface AdminUser {
 const USERS_KEY = "findroom.admin-users";
 const USERS_EVENT = "findroom:admin-users-change";
 const USERS_SEEDED_FLAG = "findroom.admin-users-seeded";
+// Bump when new demo users are added to seedUsers(). On upgrade, missing seed
+// users are merged into already-seeded browsers by uid, without clobbering any
+// admin edits to existing rows.
+const USERS_SEED_VERSION = 2;
 
 function seedUsers(): AdminUser[] {
   const now = Date.now();
@@ -182,6 +187,123 @@ function seedUsers(): AdminUser[] {
       role: "user",
       status: "active",
       createdAt: now - day * 7
+    },
+    {
+      uid: "demo-85510234567",
+      username: "Sophea Kim",
+      phoneNumber: "+855 10 234 567",
+      email: "sophea.kim@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=5",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 84
+    },
+    {
+      uid: "demo-85593445667",
+      username: "Rithy Pen",
+      phoneNumber: "+855 93 445 667",
+      email: "rithy.pen@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=11",
+      role: "admin",
+      status: "active",
+      createdAt: now - day * 70
+    },
+    {
+      uid: "demo-85516778990",
+      username: "Bopha Nuon",
+      phoneNumber: "+855 16 778 990",
+      email: "bopha.nuon@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=9",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 66
+    },
+    {
+      uid: "demo-85511556778",
+      username: "Veasna Chea",
+      phoneNumber: "+855 11 556 778",
+      avatarUrl: "https://i.pravatar.cc/160?img=13",
+      role: "user",
+      status: "disabled",
+      createdAt: now - day * 52
+    },
+    {
+      uid: "demo-85570889221",
+      username: "Kanha Sok",
+      phoneNumber: "+855 70 889 221",
+      email: "kanha.sok@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=20",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 40
+    },
+    {
+      uid: "demo-85588112334",
+      username: "Maly Tep",
+      phoneNumber: "+855 88 112 334",
+      email: "maly.tep@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=25",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 33
+    },
+    {
+      uid: "demo-85569223445",
+      username: "Sok San",
+      phoneNumber: "+855 69 223 445",
+      avatarUrl: "https://i.pravatar.cc/160?img=14",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 26
+    },
+    {
+      uid: "demo-85515667889",
+      username: "Chenda Ouk",
+      phoneNumber: "+855 15 667 889",
+      email: "chenda.ouk@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=28",
+      role: "user",
+      status: "disabled",
+      createdAt: now - day * 21
+    },
+    {
+      uid: "demo-85577334556",
+      username: "Phally Sim",
+      phoneNumber: "+855 77 334 556",
+      email: "phally.sim@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=30",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 15
+    },
+    {
+      uid: "demo-85586990112",
+      username: "Vibol Hou",
+      phoneNumber: "+855 86 990 112",
+      email: "vibol.hou@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=51",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 10
+    },
+    {
+      uid: "demo-85531445668",
+      username: "Sothea Roeun",
+      phoneNumber: "+855 31 445 668",
+      avatarUrl: "https://i.pravatar.cc/160?img=33",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 5
+    },
+    {
+      uid: "demo-85560778223",
+      username: "Nita Chhour",
+      phoneNumber: "+855 60 778 223",
+      email: "nita.chhour@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=26",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 2
     }
   ];
 }
@@ -225,22 +347,33 @@ export function seedMockListings() {
 export function getAdminUsers(): AdminUser[] {
   if (typeof window === "undefined") return [];
   try {
-    const seeded = window.localStorage.getItem(USERS_SEEDED_FLAG);
-    if (!seeded) {
+    const seededVersion = Number(window.localStorage.getItem(USERS_SEEDED_FLAG) ?? 0);
+    if (!seededVersion) {
       const initial = seedUsers();
       window.localStorage.setItem(USERS_KEY, JSON.stringify(initial));
-      window.localStorage.setItem(USERS_SEEDED_FLAG, "1");
+      window.localStorage.setItem(USERS_SEEDED_FLAG, String(USERS_SEED_VERSION));
       return initial;
     }
     const raw = window.localStorage.getItem(USERS_KEY);
-    return raw ? (JSON.parse(raw) as AdminUser[]) : [];
+    let stored = raw ? (JSON.parse(raw) as AdminUser[]) : [];
+    // Merge in any newly added demo users (by uid) when the seed version grows.
+    if (seededVersion < USERS_SEED_VERSION) {
+      const existingIds = new Set(stored.map((u) => u.uid));
+      const additions = seedUsers().filter((u) => !existingIds.has(u.uid));
+      if (additions.length > 0) {
+        stored = [...stored, ...additions];
+        window.localStorage.setItem(USERS_KEY, JSON.stringify(stored));
+      }
+      window.localStorage.setItem(USERS_SEEDED_FLAG, String(USERS_SEED_VERSION));
+    }
+    return stored;
   } catch {
     return [];
   }
 }
 
 function writeUsers(users: AdminUser[]) {
-  window.localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  safeSetItem(USERS_KEY, JSON.stringify(users));
   window.dispatchEvent(new Event(USERS_EVENT));
 }
 
@@ -324,7 +457,8 @@ export function useAdminUsers(): AdminUser[] {
 
 export type AdminNotificationKind =
   | "user-registered"
-  | "listing-posted";
+  | "listing-posted"
+  | "listing-flagged";
 
 export interface AdminNotification {
   id: string;
@@ -392,7 +526,7 @@ export function getAdminNotifications(): AdminNotification[] {
 }
 
 function writeNotifications(list: AdminNotification[]) {
-  window.localStorage.setItem(NOTIF_KEY, JSON.stringify(list));
+  safeSetItem(NOTIF_KEY, JSON.stringify(list));
   window.dispatchEvent(new Event(NOTIF_EVENT));
 }
 
@@ -493,18 +627,7 @@ function seedCampaigns(): AdminOutboundCampaign[] {
   const now = Date.now();
   const min = 60_000;
   const hr = 60 * min;
-  const day = 24 * hr;
-  const ADMIN_UID = "demo-85512000000";
   return [
-    {
-      id: "camp-seed-welcome",
-      title: "Welcome to Joul!",
-      body: "Hi {{username}}, your account is all set. Start exploring hundreds of verified listings across Cambodia — or post your own room for free.",
-      audience: { kind: "specific", uids: [ADMIN_UID] },
-      recipientCount: 1,
-      recipientSummary: "Admin (you) (1)",
-      sentAt: now - 2 * day
-    },
     {
       id: "camp-seed-bkk1",
       title: "New rooms added in BKK1",
@@ -574,7 +697,7 @@ export function getOutboundTemplates(): AdminOutboundTemplate[] {
 }
 
 function writeTemplates(list: AdminOutboundTemplate[]) {
-  window.localStorage.setItem(TEMPLATES_KEY, JSON.stringify(list));
+  safeSetItem(TEMPLATES_KEY, JSON.stringify(list));
   window.dispatchEvent(new Event(TEMPLATES_EVENT));
 }
 
@@ -635,7 +758,7 @@ export function getOutboundCampaigns(): AdminOutboundCampaign[] {
 }
 
 function writeCampaigns(list: AdminOutboundCampaign[]) {
-  window.localStorage.setItem(CAMPAIGNS_KEY, JSON.stringify(list));
+  safeSetItem(CAMPAIGNS_KEY, JSON.stringify(list));
   window.dispatchEvent(new Event(CAMPAIGNS_EVENT));
 }
 
@@ -853,7 +976,56 @@ export interface AdminSettings {
   // Auto-occupy: number of days of inactivity after which an Available
   // listing is automatically treated as Occupied. Min 7.
   autoOccupyDays: number;
+  // Automated, event-triggered messages (e.g. auto-welcome on signup).
+  // Managed here, NOT in the manual Messages/Sent-history menu.
+  autoMessages: AutoMessage[];
 }
+
+// Event-triggered messages. The key identifies the lifecycle event that
+// fires the message; title/message support {{username}} {{phone}} {{email}}.
+export type AutoMessageKey =
+  | "welcome"
+  | "listing-published"
+  | "listing-flagged"
+  | "listing-occupied";
+
+export interface AutoMessage {
+  key: AutoMessageKey;
+  enabled: boolean;
+  title: string;
+  message: string;
+}
+
+export const DEFAULT_AUTO_MESSAGES: AutoMessage[] = [
+  {
+    key: "welcome",
+    enabled: true,
+    title: "Welcome to Joul!",
+    message:
+      "Hi {{username}}, your account is all set. Start exploring hundreds of verified listings across Cambodia — or post your own room for free."
+  },
+  {
+    key: "listing-published",
+    enabled: true,
+    title: "Your listing is live",
+    message:
+      "Hi {{username}}, your room is now published on Joul and visible to renters. Good luck finding a tenant!"
+  },
+  {
+    key: "listing-flagged",
+    enabled: true,
+    title: "Your listing was flagged",
+    message:
+      "Hi {{username}}, one of your listings was flagged by our moderation team and is under review. We'll be in touch shortly."
+  },
+  {
+    key: "listing-occupied",
+    enabled: false,
+    title: "Listing marked as occupied",
+    message:
+      "Hi {{username}}, your listing was automatically marked Occupied after a period of inactivity. Reactivate it anytime from your listings."
+  }
+];
 
 export const ALL_PROPERTY_TYPES: PropertyType[] = [
   "room",
@@ -892,7 +1064,8 @@ const DEFAULT_SETTINGS: AdminSettings = {
   defaultElectricityPrice: 0.25,
   defaultWifiPrice: 15,
   exchangeRateKhrPerUsd: 4100,
-  autoOccupyDays: 30
+  autoOccupyDays: 30,
+  autoMessages: DEFAULT_AUTO_MESSAGES.map((m) => ({ ...m }))
 };
 
 const SETTINGS_KEY = "findroom.admin-settings";
@@ -903,7 +1076,17 @@ export function getAdminSettings(): AdminSettings {
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
     if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<AdminSettings>) };
+    const parsed = JSON.parse(raw) as Partial<AdminSettings>;
+    const merged = { ...DEFAULT_SETTINGS, ...parsed };
+    // Rebuild from the known set so newly-added messages appear and removed
+    // ones drop off, while preserving the admin's saved edits per key.
+    merged.autoMessages = DEFAULT_AUTO_MESSAGES.map((def) => {
+      const stored = parsed.autoMessages?.find((m) => m.key === def.key);
+      return stored
+        ? { key: def.key, enabled: stored.enabled, title: stored.title, message: stored.message }
+        : { ...def };
+    });
+    return merged;
   } catch {
     return DEFAULT_SETTINGS;
   }

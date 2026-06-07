@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import RoomCard from "@/components/RoomCard";
 import Icon from "@/components/Icon";
+import LoadMoreSentinel from "@/components/admin/LoadMoreSentinel";
 import { MOCK_ROOMS } from "@/lib/mock-data";
 import { useLocalRooms } from "@/lib/local-rooms";
 import { useAdminSettings } from "@/lib/admin";
@@ -13,6 +14,8 @@ import { useT } from "@/lib/language";
 import { toast } from "@/lib/toast";
 import { copyToClipboard } from "@/lib/clipboard";
 import type { Owner, Room } from "@/lib/types";
+
+const HOST_PAGE_SIZE = 24;
 
 export default function HostProfilePage() {
   const router = useRouter();
@@ -47,6 +50,14 @@ export default function HostProfilePage() {
     () => ownerRooms.filter((r) => !(r.isOccupied || isAutoOccupied(r, autoOccupyDays))),
     [ownerRooms, autoOccupyDays]
   );
+
+  // Render a first page of cards, then reveal more on scroll. Reset when
+  // viewing a different host.
+  const [visibleCount, setVisibleCount] = useState(HOST_PAGE_SIZE);
+  useEffect(() => {
+    setVisibleCount(HOST_PAGE_SIZE);
+  }, [uid]);
+  const shownRooms = availableRooms.slice(0, visibleCount);
 
   // Pick the most recently-created listing's owner snapshot for the header —
   // it has the freshest avatar/name.
@@ -183,11 +194,17 @@ export default function HostProfilePage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
-            {availableRooms.map((room) => (
-              <RoomCard key={room.id} room={room} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
+              {shownRooms.map((room) => (
+                <RoomCard key={room.id} room={room} />
+              ))}
+            </div>
+            <LoadMoreSentinel
+              hasMore={visibleCount < availableRooms.length}
+              onLoadMore={() => setVisibleCount((c) => c + HOST_PAGE_SIZE)}
+            />
+          </>
         )}
       </section>
     </div>

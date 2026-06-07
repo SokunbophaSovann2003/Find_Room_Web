@@ -519,7 +519,12 @@ export default function ListRoomPage() {
             telegramPhones: ownerTelegrams.length ? ownerTelegrams : undefined
           }
         };
-        updateLocalRoom(editingId, patch);
+        if (!updateLocalRoom(editingId, patch)) {
+          // safeSetItem already surfaced a "storage full" toast; stop here so we
+          // don't claim success or navigate away from the unsaved edit.
+          setSubmitting(false);
+          return;
+        }
         toast.success(t("toast.listing.updated", { title: patch.title ?? "" }));
         router.replace("/profile");
         return;
@@ -561,7 +566,12 @@ export default function ListRoomPage() {
         lastActivityAt: Date.now()
       };
 
-      addLocalRoom(room);
+      if (!addLocalRoom(room)) {
+        // Storage full (likely the photos) — the toast is already shown. Don't
+        // fire the listing notification, save prefs, or navigate on a failed save.
+        setSubmitting(false);
+        return;
+      }
       pushIncomingNotification({
         kind: "listing-posted",
         title: t("listRoom.notif.title"),

@@ -738,10 +738,17 @@ const DISTRICT_COORDS: Record<string, { center: [number, number]; zoom: number }
 export function getLocationFocus(loc: {
   province?: string;
   district?: string;
+  area?: string;
 }): { center: [number, number]; zoom: number } | null {
   if (loc.province && loc.district) {
     const key = `${loc.province}|${loc.district}`;
-    if (DISTRICT_COORDS[key]) return DISTRICT_COORDS[key];
+    const district = DISTRICT_COORDS[key];
+    if (district) {
+      // We don't have per-sangkat coordinates, so an area selection still
+      // centers on the district — but zoom in closer to signal the narrower
+      // scope. New object so callers comparing by reference re-focus.
+      return loc.area ? { center: district.center, zoom: Math.min(district.zoom + 2, 16) } : district;
+    }
   }
   if (loc.province && PROVINCE_COORDS[loc.province]) return PROVINCE_COORDS[loc.province];
   return null;

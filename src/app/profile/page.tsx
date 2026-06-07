@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import RoomCard from "@/components/RoomCard";
 import Icon, { propertyIcon } from "@/components/Icon";
 import ListingActionMenu from "@/components/ListingActionMenu";
+import LoadMoreSentinel from "@/components/admin/LoadMoreSentinel";
 import { signOut, updateLoginPhone } from "@/lib/auth";
 import { useSession } from "@/lib/session";
 import { seedSampleListings, updateLocalRoom, useLocalRooms } from "@/lib/local-rooms";
@@ -23,6 +24,7 @@ import { copyToClipboard } from "@/lib/clipboard";
 import type { PropertyType } from "@/lib/types";
 import PropertyTypePicker from "@/components/PropertyTypePicker";
 
+const LISTINGS_PAGE_SIZE = 20;
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -35,6 +37,7 @@ export default function ProfilePage() {
   const [signingOut, setSigningOut] = useState(false);
   const [pickTypeOpen, setPickTypeOpen] = useState(false);
   const [listingsView, setListingsView] = useState<"grid" | "list">("grid");
+  const [listingsVisible, setListingsVisible] = useState(LISTINGS_PAGE_SIZE);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -62,6 +65,14 @@ export default function ProfilePage() {
     () => (session ? allLocalRooms.filter((r) => r.owner.id === session.uid) : []),
     [allLocalRooms, session]
   );
+
+  // Reset the infinite-scroll window when the owner changes; reveal more on
+  // scroll. All three listing views (mobile list, desktop grid, desktop table)
+  // share this window since only one is visible per breakpoint.
+  useEffect(() => {
+    setListingsVisible(LISTINGS_PAGE_SIZE);
+  }, [session?.uid]);
+  const shownListings = listings.slice(0, listingsVisible);
 
   if (!session) return null;
 
@@ -289,7 +300,7 @@ export default function ProfilePage() {
         ) : (
           <>
             <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card sm:hidden">
-              {listings.map((room) => {
+              {shownListings.map((room) => {
                 const autoOccupied = isAutoOccupied(room, autoOccupyDays);
                 const days = daysSinceActivity(room);
                 return (
@@ -361,7 +372,7 @@ export default function ProfilePage() {
 
             {listingsView === "grid" ? (
               <div className="hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3">
-                {listings.map((room) => {
+                {shownListings.map((room) => {
                   const autoOccupied = isAutoOccupied(room, autoOccupyDays);
                   const days = daysSinceActivity(room);
                   return (
@@ -405,7 +416,7 @@ export default function ProfilePage() {
                   <span aria-hidden />
                 </div>
                 <ul className="divide-y divide-slate-100">
-                  {listings.map((room) => {
+                  {shownListings.map((room) => {
                     const autoOccupied = isAutoOccupied(room, autoOccupyDays);
                     const days = daysSinceActivity(room);
                     return (
@@ -500,6 +511,10 @@ export default function ProfilePage() {
                 </ul>
               </div>
             )}
+            <LoadMoreSentinel
+              hasMore={listingsVisible < listings.length}
+              onLoadMore={() => setListingsVisible((c) => c + LISTINGS_PAGE_SIZE)}
+            />
           </>
         )}
       </section>
@@ -524,7 +539,11 @@ export default function ProfilePage() {
               username: next.username,
               avatarUrl: next.avatarUrl || undefined
             };
-            saveOverrides(session.uid, merged);
+            if (!saveOverrides(session.uid, merged)) {
+              // Storage full (often a large avatar) — the toast is already
+              // shown; keep the modal open so they can retry or pick a smaller image.
+              return;
+            }
             setOverrides(merged);
             setEditing(null);
             toast.success(t("toast.profile.updated"));

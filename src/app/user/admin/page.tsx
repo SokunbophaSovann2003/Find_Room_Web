@@ -40,6 +40,7 @@ export default function AdminRoomsPage() {
   const [priceMax, setPriceMax] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Room | null>(null);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState<Room[] | null>(null);
 
   const usersByUid = useMemo(() => {
     const map = new Map<string, AdminUser>();
@@ -101,6 +102,21 @@ export default function AdminRoomsPage() {
     deleteLocalRoom(confirmDelete.id);
     setConfirmDelete(null);
     toast.success(t("toast.admin.listing.deleted", { title }));
+  }
+
+  function handleBulkOccupy(selected: Room[]) {
+    for (const room of selected) {
+      if (!room.isOccupied) updateLocalRoom(room.id, { isOccupied: true });
+    }
+    toast.success(t("toast.admin.listing.bulkOccupied", { n: selected.length }));
+  }
+
+  function handleBulkDelete() {
+    if (!confirmBulkDelete) return;
+    const n = confirmBulkDelete.length;
+    for (const room of confirmBulkDelete) deleteLocalRoom(room.id);
+    setConfirmBulkDelete(null);
+    toast.success(t("toast.admin.listing.bulkDeleted", { n }));
   }
 
   return (
@@ -251,6 +267,9 @@ export default function AdminRoomsPage() {
         emptyMessage={t("admin.rooms.empty")}
         onToggleOccupied={handleToggleOccupied}
         onDelete={setConfirmDelete}
+        onBulkOccupy={handleBulkOccupy}
+        onBulkDelete={setConfirmBulkDelete}
+        paginated
       />
 
       <ConfirmModal
@@ -265,6 +284,16 @@ export default function AdminRoomsPage() {
         }
         onCancel={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
+      />
+
+      <ConfirmModal
+        open={!!confirmBulkDelete}
+        title={t("admin.rooms.bulk.delete.title")}
+        body={
+          confirmBulkDelete ? t("admin.rooms.bulk.delete.body", { n: confirmBulkDelete.length }) : null
+        }
+        onCancel={() => setConfirmBulkDelete(null)}
+        onConfirm={handleBulkDelete}
       />
     </div>
   );

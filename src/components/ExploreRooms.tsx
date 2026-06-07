@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import RoomCard from "./RoomCard";
 import Icon from "./Icon";
+import LoadMoreSentinel from "./admin/LoadMoreSentinel";
 import ErrorBoundary from "./ErrorBoundary";
 import { useLocalRooms } from "@/lib/local-rooms";
 import { useT } from "@/lib/language";
@@ -30,6 +31,10 @@ const ExploreMap = dynamic(() => import("./ExploreMap"), {
 });
 
 type View = "list" | "map";
+
+// Cards rendered up front; more load on scroll. Divisible by the 2/3/4-col
+// grid so each batch fills clean rows.
+const EXPLORE_PAGE_SIZE = 24;
 
 function inBounds(room: Room, bounds: Bounds | null): boolean {
   if (!bounds) return true;
@@ -71,12 +76,31 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
   }, [localRooms, rooms, filter, autoOccupyDays]);
   const [bounds, setBounds] = useState<Bounds | null>(null);
 
-  const focus = useMemo(() => getLocationFocus(filter.location), [filter.location]);
+  // Key off the primitive location fields, not the location object: the filter
+  // context rebuilds that object on every URL change (including type/sort), and
+  // we don't want those to re-focus the map.
+  const { province, district, area } = filter.location;
+  const focus = useMemo(
+    () => getLocationFocus({ province, district, area }),
+    [province, district, area]
+  );
+  const focusKey = useMemo(
+    () => [province, district, area].filter(Boolean).join("|"),
+    [province, district, area]
+  );
 
   const visibleRooms = useMemo(
     () => (view === "map" ? allRooms.filter((r) => inBounds(r, bounds)) : allRooms),
     [allRooms, bounds, view]
   );
+
+  // Render a first page of cards, then reveal more as the user scrolls. Reset
+  // the window whenever the result set changes (filter, view, map panning).
+  const [visibleCount, setVisibleCount] = useState(EXPLORE_PAGE_SIZE);
+  useEffect(() => {
+    setVisibleCount(EXPLORE_PAGE_SIZE);
+  }, [visibleRooms]);
+  const shownRooms = visibleRooms.slice(0, visibleCount);
 
   return (
     <>
@@ -120,6 +144,7 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
               rooms={allRooms}
               onBoundsChange={setBounds}
               focus={focus}
+              focusKey={focusKey}
               onSelect={(id) => router.push(`/rooms/${id}`)}
             />
           </ErrorBoundary>
@@ -141,11 +166,17 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-          {visibleRooms.map((room) => (
-            <RoomCard key={room.id} room={room} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
+            {shownRooms.map((room) => (
+              <RoomCard key={room.id} room={room} />
+            ))}
+          </div>
+          <LoadMoreSentinel
+            hasMore={visibleCount < visibleRooms.length}
+            onLoadMore={() => setVisibleCount((c) => c + EXPLORE_PAGE_SIZE)}
+          />
+        </>
       )}
     </>
   );

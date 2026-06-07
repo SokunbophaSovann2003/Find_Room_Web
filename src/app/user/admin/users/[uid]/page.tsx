@@ -195,7 +195,7 @@ export default function AdminUserDetailPage() {
           </div>
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
             <Link
-              href={`/user/admin/notifications?tab=send&to=${encodeURIComponent(user.uid)}`}
+              href={`/user/admin/notifications/compose?to=${encodeURIComponent(user.uid)}`}
               className="btn-secondary"
             >
               <Icon name="message" className="h-4 w-4" />
@@ -227,7 +227,7 @@ export default function AdminUserDetailPage() {
         {/* Mobile action row */}
         <div className="mt-4 flex flex-wrap justify-center gap-2 sm:hidden">
           <Link
-            href={`/user/admin/notifications?tab=send&to=${encodeURIComponent(user.uid)}`}
+            href={`/user/admin/notifications/compose?to=${encodeURIComponent(user.uid)}`}
             className="btn-secondary"
           >
             <Icon name="message" className="h-4 w-4" />

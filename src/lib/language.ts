@@ -488,6 +488,11 @@ const DICT: Dict = {
   "admin.rooms.col.daysAvailable.sort.desc": { km: "តម្រៀបហើយ: ច្រើន → តិច", en: "Sorted: large → small" },
   "admin.rooms.col.daysAvailable.sort.asc": { km: "តម្រៀបហើយ: តិច → ច្រើន", en: "Sorted: small → large" },
   "admin.rooms.col.actions": { km: "សកម្មភាព", en: "Actions" },
+  "admin.rooms.pagination.summary": { km: "បង្ហាញ {from}–{to} ក្នុងចំណោម {total}", en: "Showing {from}–{to} of {total}" },
+  "admin.rooms.pagination.prev": { km: "មុន", en: "Previous" },
+  "admin.rooms.pagination.next": { km: "បន្ទាប់", en: "Next" },
+  "admin.rooms.pagination.perPage": { km: "{n} ក្នុងមួយទំព័រ", en: "{n} per page" },
+  "admin.rooms.pagination.perPageLabel": { km: "ចំនួនជួរក្នុងមួយទំព័រ", en: "Rows per page" },
   "admin.rooms.action.viewOnSite": { km: "មើលលើគេហទំព័រ", en: "View on site" },
   "admin.rooms.action.edit": { km: "កែប្រែ", en: "Edit" },
   "admin.rooms.action.markAvailable": { km: "សម្គាល់ថាអាចជួលបាន", en: "Mark available" },
@@ -495,6 +500,16 @@ const DICT: Dict = {
   "admin.rooms.action.delete": { km: "លុប", en: "Delete" },
   "admin.rooms.delete.title": { km: "លុបបន្ទប់?", en: "Delete room?" },
   "admin.rooms.delete.body.suffix": { km: " នឹងត្រូវលុបចេញ។ មិនអាចសង្គ្រោះបានទេក្នុងទិន្នន័យសាកល្បង។", en: " will be removed. This can't be undone in mock data." },
+  "admin.rooms.bulk.selected": { km: "បានជ្រើស {n}", en: "{n} selected" },
+  "admin.rooms.bulk.clear": { km: "សម្អាត", en: "Clear" },
+  "admin.rooms.bulk.makeOccupied": { km: "សម្គាល់ថាមានអ្នកជួល", en: "Make occupied" },
+  "admin.rooms.bulk.delete": { km: "លុប", en: "Delete" },
+  "admin.rooms.bulk.selectAll": { km: "ជ្រើសទាំងអស់", en: "Select all" },
+  "admin.rooms.bulk.selectRow": { km: "ជ្រើសបន្ទប់នេះ", en: "Select row" },
+  "admin.rooms.bulk.delete.title": { km: "លុបបន្ទប់ដែលបានជ្រើស?", en: "Delete selected rooms?" },
+  "admin.rooms.bulk.delete.body": { km: "បន្ទប់ចំនួន {n} នឹងត្រូវលុបចេញ។ មិនអាចសង្គ្រោះបានទេក្នុងទិន្នន័យសាកល្បង។", en: "{n} rooms will be removed. This can't be undone in mock data." },
+  "toast.admin.listing.bulkOccupied": { km: "បន្ទប់ចំនួន {n} សម្គាល់ថាមានអ្នកជួល។", en: "{n} rooms marked as occupied." },
+  "toast.admin.listing.bulkDeleted": { km: "បន្ទប់ចំនួន {n} បានលុប។", en: "{n} rooms deleted." },
 
   // --- Admin: Listing edit modal ---
   "admin.listingEdit.title": { km: "កែប្រែបញ្ជី", en: "Edit listing" },
@@ -555,6 +570,21 @@ const DICT: Dict = {
   "admin.users.delete.body.prefix": { km: "នេះនឹងលុប ", en: "This removes " },
   "admin.users.delete.body.suffix": { km: " ចេញពីបញ្ជីអ្នកគ្រប់គ្រង។ បញ្ជីរបស់ពួកគេនៅដដែលប៉ុន្តែនឹងគ្មានម្ចាស់។ មិនអាចសង្គ្រោះបានក្នុងទិន្នន័យសាកល្បង។", en: " from the admin user list. Their listings stay in place but become unowned. This can't be undone in the mock data." },
   "admin.users.listingsCount": { km: "{n} បញ្ជី", en: "{n} listings" },
+  "admin.users.pagination.summary": { km: "បង្ហាញ {from}–{to} ក្នុងចំណោម {total}", en: "Showing {from}–{to} of {total}" },
+  "admin.users.pagination.prev": { km: "មុន", en: "Previous" },
+  "admin.users.pagination.next": { km: "បន្ទាប់", en: "Next" },
+  "admin.users.pagination.perPage": { km: "{n} ក្នុងមួយទំព័រ", en: "{n} per page" },
+  "admin.users.pagination.perPageLabel": { km: "ចំនួនជួរក្នុងមួយទំព័រ", en: "Rows per page" },
+  "admin.users.bulk.selected": { km: "បានជ្រើស {n}", en: "{n} selected" },
+  "admin.users.bulk.clear": { km: "សម្អាត", en: "Clear" },
+  "admin.users.bulk.disable": { km: "បិទ", en: "Disable" },
+  "admin.users.bulk.delete": { km: "លុប", en: "Delete" },
+  "admin.users.bulk.selectAll": { km: "ជ្រើសទាំងអស់", en: "Select all" },
+  "admin.users.bulk.selectRow": { km: "ជ្រើសអ្នកប្រើនេះ", en: "Select row" },
+  "admin.users.bulk.delete.title": { km: "លុបអ្នកប្រើដែលបានជ្រើស?", en: "Delete selected users?" },
+  "admin.users.bulk.delete.body": { km: "អ្នកប្រើចំនួន {n} នឹងត្រូវលុបចេញ។ បញ្ជីរបស់ពួកគេនឹងគ្មានម្ចាស់។ មិនអាចសង្គ្រោះបានក្នុងទិន្នន័យសាកល្បង។", en: "{n} users will be removed. Their listings become unowned. This can't be undone in mock data." },
+  "toast.admin.user.bulkDisabled": { km: "អ្នកប្រើចំនួន {n} ត្រូវបានបិទ។", en: "{n} users disabled." },
+  "toast.admin.user.bulkDeleted": { km: "អ្នកប្រើចំនួន {n} បានលុប។", en: "{n} users deleted." },
 
   // --- Admin: User detail page ---
   "admin.userDetail.notFound.title": { km: "មិនឃើញអ្នកប្រើប្រាស់", en: "User not found" },
@@ -614,6 +644,18 @@ const DICT: Dict = {
     km: "បញ្ជីដែលអាចជួលបាន ប៉ុន្តែគ្មានការកែប្រែ ឬប្ដូរស្ថានភាពក្នុងរយៈពេលនេះ នឹងត្រូវបិទដោយស្វ័យប្រវត្តិ។ យ៉ាងតិច ៧ ថ្ងៃ។",
     en: "Available listings with no edits or status changes within this period are automatically marked Occupied. Minimum 7 days."
   },
+  "admin.settings.autoMessages.title": { km: "សារស្វ័យប្រវត្តិ", en: "Automated messages" },
+  "admin.settings.autoMessages.desc": { km: "សារដែលផ្ញើដោយស្វ័យប្រវត្តិតាមព្រឹត្តិការណ៍ ដូចជាសារស្វាគមន៍សម្រាប់អ្នកប្រើប្រាស់ថ្មី។ មិនមែនជាការផ្សាយដោយដៃ។", en: "Event-triggered messages, like the welcome for new users. Not manual broadcasts." },
+  "admin.settings.autoWelcome.titleField": { km: "ចំណងជើងសារ", en: "Message title" },
+  "admin.settings.autoWelcome.messageField": { km: "សារ", en: "Message" },
+  "admin.settings.autoMsg.welcome.label": { km: "សារស្វាគមន៍ស្វ័យប្រវត្តិ", en: "Auto-welcome new users" },
+  "admin.settings.autoMsg.welcome.hint": { km: "ផ្ញើនៅពេលអ្នកប្រើប្រាស់ថ្មីចុះឈ្មោះ។", en: "Sent when a new user signs up." },
+  "admin.settings.autoMsg.listingPublished.label": { km: "បញ្ជីត្រូវបានផ្សាយ", en: "Listing published" },
+  "admin.settings.autoMsg.listingPublished.hint": { km: "ផ្ញើទៅម្ចាស់ផ្ទះនៅពេលបញ្ជីរបស់គេចេញផ្សាយ។", en: "Sent to the host when their listing goes live." },
+  "admin.settings.autoMsg.listingFlagged.label": { km: "បញ្ជីត្រូវបានរាយការណ៍", en: "Listing flagged" },
+  "admin.settings.autoMsg.listingFlagged.hint": { km: "ផ្ញើទៅម្ចាស់ផ្ទះនៅពេលបញ្ជីត្រូវបានរាយការណ៍ ឬដកចេញ។", en: "Sent to the host when their listing is flagged or removed." },
+  "admin.settings.autoMsg.listingOccupied.label": { km: "បញ្ជីត្រូវបានសម្គាល់ថាមានគេជួល", en: "Listing auto-occupied" },
+  "admin.settings.autoMsg.listingOccupied.hint": { km: "ផ្ញើទៅម្ចាស់ផ្ទះនៅពេលបញ្ជីត្រូវបានសម្គាល់ថាមានគេជួលដោយស្វ័យប្រវត្តិ។", en: "Sent to the host when their listing is auto-marked Occupied." },
   "admin.settings.access.title": { km: "ការគ្រប់គ្រងសិទ្ធិចូលប្រើ", en: "Access control" },
   "admin.settings.access.desc": { km: "អ្នកណាដែលអាចចូលដល់ផ្ទាំងអ្នកគ្រប់គ្រង។ បញ្ជីអនុញ្ញាតដំបូងដំណើរការទោះបីបញ្ជីអ្នកប្រើប្រាស់ទទេក៏ដោយ។", en: "Who can reach the admin console. The bootstrap allowlist works even if the user directory is empty." },
   "admin.settings.access.currentAdmins": { km: "អ្នកគ្រប់គ្រងបច្ចុប្បន្ន", en: "Current admins" },
@@ -673,6 +715,8 @@ const DICT: Dict = {
   "admin.notifications.send.sentTo": { km: "បានផ្ញើទៅ {summary}។", en: "Sent to {summary}." },
   "admin.notifications.send.dismiss": { km: "បិទ", en: "Dismiss" },
   "admin.notifications.compose.title": { km: "តែងការជូនដំណឹង", en: "Compose notification" },
+  "admin.notifications.compose.new": { km: "បង្កើតសារថ្មី", en: "Create new message" },
+  "admin.notifications.compose.subtitle": { km: "តែង និងផ្ញើការជូនដំណឹងទៅអ្នកប្រើប្រាស់របស់អ្នក។", en: "Compose and broadcast a notification to your users." },
   "admin.notifications.compose.placeholders": { km: "កន្លែងជំនួស៖", en: "Placeholders:" },
   "admin.notifications.compose.template.blank": { km: "ទទេ", en: "Blank" },
   "admin.notifications.compose.field.title": { km: "ចំណងជើង", en: "Title" },
@@ -693,6 +737,9 @@ const DICT: Dict = {
   "admin.notifications.history.campaigns.many": { km: "{n} ការផ្សព្វផ្សាយ", en: "{n} campaigns" },
   "admin.notifications.history.deleteAria": { km: "លុបការផ្សព្វផ្សាយ", en: "Delete campaign" },
   "admin.notifications.history.deleteTitle": { km: "លុប", en: "Delete" },
+  "admin.notifications.history.col.message": { km: "សារ", en: "Message" },
+  "admin.notifications.history.col.recipients": { km: "អ្នកទទួល", en: "Recipients" },
+  "admin.notifications.history.col.sent": { km: "បានផ្ញើ", en: "Sent" },
   "admin.notifications.templates.title": { km: "គំរូ", en: "Templates" },
   "admin.notifications.templates.new": { km: "ថ្មី", en: "New" },
   "admin.notifications.templates.newAria": { km: "គំរូថ្មី", en: "New template" },
@@ -732,6 +779,8 @@ const DICT: Dict = {
 
   // --- Admin: toast messages ---
   "toast.admin.listingUpdated": { km: "បញ្ជីត្រូវបានធ្វើបច្ចុប្បន្នភាព។", en: "Listing updated." },
+  "toast.storage.full": { km: "ឧបករណ៍ផ្ទុកពេញ។ សូមលុបរូបភាព ឬបញ្ជីចាស់ៗ រួចព្យាយាមម្ដងទៀត។", en: "Storage is full. Remove some photos or old entries and try again." },
+  "toast.storage.failed": { km: "មិនអាចរក្សាទុកបានទេ។ សូមព្យាយាមម្ដងទៀត។", en: "Couldn't save your change. Please try again." },
   "toast.admin.listing.occupied": { km: "\"{title}\" សម្គាល់ថាមានអ្នកជួល។", en: "\"{title}\" marked as occupied." },
   "toast.admin.listing.available": { km: "\"{title}\" អាចជួលបានឥឡូវនេះ។", en: "\"{title}\" is now available." },
   "toast.admin.listing.deleted": { km: "\"{title}\" បានលុប។", en: "\"{title}\" deleted." },
@@ -904,4 +953,21 @@ export function useT() {
     },
     [language]
   );
+}
+
+/**
+ * Non-hook translator for plain modules (e.g. storage helpers) that can't call
+ * useT(). Reads the persisted language directly so messages still respect the
+ * user's choice.
+ */
+export function translate(key: string, vars?: Record<string, string | number>): string {
+  const language = readStored();
+  const entry = DICT[key];
+  let value = entry?.[language] ?? entry?.en ?? key;
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      value = value.replace(`{${k}}`, String(v));
+    }
+  }
+  return value;
 }

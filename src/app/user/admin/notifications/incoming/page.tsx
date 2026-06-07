@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useEffect } from "react";
 import Icon from "@/components/Icon";
+import LoadMoreSentinel from "@/components/admin/LoadMoreSentinel";
 import {
   deleteNotification,
   markAllNotificationsRead,
@@ -16,6 +17,7 @@ import { useT } from "@/lib/language";
 const KIND_META: Record<AdminNotificationKind, { icon: "user" | "building" | "shield" | "message"; tone: string }> = {
   "user-registered": { icon: "user", tone: "bg-brand/10 text-brand" },
   "listing-posted": { icon: "building", tone: "bg-emerald-50 text-emerald-700" },
+  "listing-flagged": { icon: "shield", tone: "bg-amber-50 text-amber-700" },
 };
 
 type TypeFilter = "all" | "listing-posted" | "user-registered";
@@ -32,6 +34,8 @@ const READ_OPTIONS: { value: ReadFilter; labelKey: string }[] = [
   { value: "read", labelKey: "admin.notifications.filter.read" },
   { value: "unread", labelKey: "admin.notifications.filter.unread" },
 ];
+
+const INCOMING_PAGE_SIZE = 20;
 
 function FilterDropdown({
   options,
@@ -104,6 +108,14 @@ export default function AdminIncomingNotificationsPage() {
     return result;
   }, [notifications, typeFilter, readFilter]);
 
+  // Render a first page, then reveal more on scroll. Reset when the filters
+  // change so the window starts fresh for the new result set.
+  const [visibleCount, setVisibleCount] = useState(INCOMING_PAGE_SIZE);
+  useEffect(() => {
+    setVisibleCount(INCOMING_PAGE_SIZE);
+  }, [typeFilter, readFilter]);
+  const shown = filtered.slice(0, visibleCount);
+
   return (
     <div className="space-y-5">
       <header className="space-y-4">
@@ -150,11 +162,17 @@ export default function AdminIncomingNotificationsPage() {
           <p className="max-w-sm text-sm text-ink-muted">{t("admin.notifications.incoming.empty.body")}</p>
         </div>
       ) : (
-        <ul className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
-          {filtered.map((n) => (
-            <NotificationRow key={n.id} notification={n} />
-          ))}
-        </ul>
+        <>
+          <ul className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+            {shown.map((n) => (
+              <NotificationRow key={n.id} notification={n} />
+            ))}
+          </ul>
+          <LoadMoreSentinel
+            hasMore={visibleCount < filtered.length}
+            onLoadMore={() => setVisibleCount((c) => c + INCOMING_PAGE_SIZE)}
+          />
+        </>
       )}
     </div>
   );

@@ -7,6 +7,8 @@ import Icon, { type IconName } from "@/components/Icon";
 import ConfirmModal from "@/components/ConfirmModal";
 import DateRangePicker from "@/components/DateRangePicker";
 import UserFormModal, { type UserFormValues } from "@/components/admin/UserFormModal";
+import PageSizeSelect from "@/components/admin/PageSizeSelect";
+import LoadMoreSentinel from "@/components/admin/LoadMoreSentinel";
 import {
   addAdminUser,
   deleteAdminUser,
@@ -22,6 +24,9 @@ import { useT } from "@/lib/language";
 type StatusFilter = "all" | "active" | "disabled";
 type RoleFilter = "all" | "user" | "admin";
 
+// Mobile cards render this many rows up front, then load more on scroll.
+const MOBILE_PAGE_SIZE = 20;
+
 export default function AdminUsersPage() {
   const router = useRouter();
   const users = useAdminUsers();
@@ -36,6 +41,13 @@ export default function AdminUsersPage() {
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<AdminUser | null>(null);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState<AdminUser[] | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [mobileVisible, setMobileVisible] = useState(MOBILE_PAGE_SIZE);
+
+  const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
   const listingsByUid = useMemo(() => {
     const map = new Map<string, number>();
@@ -70,6 +82,107 @@ export default function AdminUsersPage() {
       );
     });
   }, [users, query, statusFilter, roleFilter, dateFrom, dateTo]);
+
+  const totalRows = filtered.length;
+  const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
+
+  // Clamp the current page when the result set shrinks (filter change, deletes,
+  // or a larger page size) so we never land on an empty page past the end.
+  useEffect(() => {
+    setPage((p) => Math.min(p, pageCount));
+  }, [pageCount]);
+
+  const pagedUsers = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
+
+  const rangeStart = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, totalRows);
+
+  // Mobile cards: reset the infinite-scroll window when filters/search change,
+  // then reveal MOBILE_PAGE_SIZE more each time the user scrolls to the bottom.
+  useEffect(() => {
+    setMobileVisible(MOBILE_PAGE_SIZE);
+  }, [query, statusFilter, roleFilter, dateFrom, dateTo]);
+  const mobileUsers = filtered.slice(0, mobileVisible);
+
+  // Drop selected ids that no longer exist (after a bulk delete or filter
+  // change) so the toolbar count stays accurate.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const live = new Set(users.map((u) => u.uid));
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (live.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [users]);
+
+  const selectedUsers = useMemo(
+    () => users.filter((u) => selectedIds.has(u.uid)),
+    [users, selectedIds]
+  );
+
+  const allPageSelected =
+    pagedUsers.length > 0 && pagedUsers.every((u) => selectedIds.has(u.uid));
+  const somePageSelected = pagedUsers.some((u) => selectedIds.has(u.uid));
+
+  function toggleRow(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function togglePage() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        for (const u of pagedUsers) next.delete(u.uid);
+      } else {
+        for (const u of pagedUsers) next.add(u.uid);
+      }
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  function handleBulkDisable(selected: AdminUser[]) {
+    let disabledCount = 0;
+    let hiddenCount = 0;
+    for (const u of selected) {
+      if (u.status !== "active") continue;
+      toggleAdminUserStatus(u.uid);
+      disabledCount += 1;
+      const toHide = rooms.filter((r) => r.owner.id === u.uid && !r.isOccupied);
+      for (const r of toHide) updateLocalRoom(r.id, { isOccupied: true });
+      hiddenCount += toHide.length;
+    }
+    clearSelection();
+    if (disabledCount > 0) {
+      toast.success(t("toast.admin.user.bulkDisabled", { n: disabledCount }));
+    }
+    if (hiddenCount > 0) {
+      toast.info(t("toast.admin.user.listingsHidden", { n: hiddenCount }));
+    }
+  }
+
+  function handleBulkDelete() {
+    if (!confirmBulkDelete) return;
+    const n = confirmBulkDelete.length;
+    for (const u of confirmBulkDelete) deleteAdminUser(u.uid);
+    setConfirmBulkDelete(null);
+    toast.success(t("toast.admin.user.bulkDeleted", { n }));
+  }
 
   function handleAdd(values: UserFormValues) {
     addAdminUser(values);
@@ -226,11 +339,60 @@ export default function AdminUsersPage() {
         </button>
       </div>
 
+      {/* Bulk-action toolbar (desktop). Appears when rows are selected. */}
+      {selectedUsers.length > 0 ? (
+        <div className="hidden items-center justify-between gap-3 rounded-2xl border border-brand/30 bg-brand/5 px-4 py-2.5 md:flex">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-ink">
+              {t("admin.users.bulk.selected", { n: selectedUsers.length })}
+            </span>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="text-xs font-medium text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+            >
+              {t("admin.users.bulk.clear")}
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleBulkDisable(selectedUsers)}
+              className="flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-ink transition hover:bg-slate-50"
+            >
+              <Icon name="shield" className="h-4 w-4" />
+              {t("admin.users.bulk.disable")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmBulkDelete(selectedUsers)}
+              className="flex h-9 items-center gap-1.5 rounded-xl bg-red-600 px-3 text-sm font-semibold text-white transition hover:bg-red-700"
+            >
+              <Icon name="trash" className="h-4 w-4" />
+              {t("admin.users.bulk.delete")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {/* Desktop table */}
       <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card md:block">
+        <div className="h-[640px] overflow-y-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-ink-soft">
+          <thead className="sticky top-0 z-10 bg-slate-50 text-left text-xs uppercase tracking-wider text-ink-soft">
             <tr>
+              <th className="w-10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  aria-label={t("admin.users.bulk.selectAll")}
+                  checked={allPageSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = !allPageSelected && somePageSelected;
+                  }}
+                  onChange={togglePage}
+                  className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-brand focus:ring-brand"
+                />
+              </th>
               <th className="px-4 py-3 font-semibold">{t("admin.users.col.user")}</th>
               <th className="px-4 py-3 font-semibold">{t("admin.users.col.phone")}</th>
               <th className="px-4 py-3 font-semibold">{t("admin.users.col.role")}</th>
@@ -242,13 +404,27 @@ export default function AdminUsersPage() {
           <tbody className="divide-y divide-slate-100">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-sm text-ink-muted">
+                <td colSpan={7} className="px-4 py-12 text-center text-sm text-ink-muted">
                   {t("admin.users.empty")}
                 </td>
               </tr>
             ) : (
-              filtered.map((u) => (
-                <tr key={u.uid} className="transition hover:bg-slate-50">
+              pagedUsers.map((u) => (
+                <tr
+                  key={u.uid}
+                  className={`transition hover:bg-slate-50 ${
+                    selectedIds.has(u.uid) ? "bg-brand/5" : ""
+                  }`}
+                >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={t("admin.users.bulk.selectRow")}
+                      checked={selectedIds.has(u.uid)}
+                      onChange={() => toggleRow(u.uid)}
+                      className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-brand focus:ring-brand"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <Link href={`/user/admin/users/${u.uid}`} className="flex items-center gap-3">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand/10 text-sm font-bold text-brand">
@@ -290,7 +466,7 @@ export default function AdminUsersPage() {
                       onDelete={() => setConfirmDelete(u)}
                       onSend={() =>
                         router.push(
-                          `/user/admin/notifications?tab=send&to=${encodeURIComponent(u.uid)}`
+                          `/user/admin/notifications/compose?to=${encodeURIComponent(u.uid)}`
                         )
                       }
                     />
@@ -300,7 +476,68 @@ export default function AdminUsersPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
+
+      {/* Pagination (desktop only) */}
+      {totalRows > 0 ? (
+        <div className="hidden flex-col items-center justify-between gap-3 sm:flex-row md:flex">
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-ink-muted">
+              {t("admin.users.pagination.summary", {
+                from: rangeStart,
+                to: rangeEnd,
+                total: totalRows
+              })}
+            </p>
+            <PageSizeSelect
+              value={pageSize}
+              options={PAGE_SIZE_OPTIONS}
+              onChange={(n) => {
+                setPageSize(n);
+                setPage(1);
+              }}
+              label={t("admin.users.pagination.perPageLabel")}
+              optionLabel={(n) => t("admin.users.pagination.perPage", { n })}
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-ink-muted transition hover:bg-slate-50 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-ink-muted"
+              >
+                <Icon name="chevron-down" className="h-4 w-4 rotate-90" />
+                {t("admin.users.pagination.prev")}
+              </button>
+              {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setPage(n)}
+                  aria-current={n === page ? "page" : undefined}
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl border text-sm font-semibold transition ${
+                    n === page
+                      ? "border-brand bg-brand text-white"
+                      : "border-slate-200 bg-white text-ink-muted hover:bg-slate-50 hover:text-ink"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={page >= pageCount}
+                className="flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-ink-muted transition hover:bg-slate-50 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-ink-muted"
+              >
+                {t("admin.users.pagination.next")}
+                <Icon name="chevron-down" className="h-4 w-4 -rotate-90" />
+              </button>
+            </div>
+        </div>
+      ) : null}
 
       {/* Mobile cards */}
       <ul className="space-y-2 md:hidden">
@@ -309,7 +546,7 @@ export default function AdminUsersPage() {
             {t("admin.users.empty")}
           </li>
         ) : (
-          filtered.map((u) => (
+          mobileUsers.map((u) => (
             <li key={u.uid} className="card p-3">
               <div className="flex items-center gap-3">
                 <Link
@@ -340,7 +577,7 @@ export default function AdminUsersPage() {
                   onDelete={() => setConfirmDelete(u)}
                   onSend={() =>
                     router.push(
-                      `/user/admin/notifications?tab=send&to=${encodeURIComponent(u.uid)}`
+                      `/user/admin/notifications/compose?to=${encodeURIComponent(u.uid)}`
                     )
                   }
                 />
@@ -358,6 +595,12 @@ export default function AdminUsersPage() {
           ))
         )}
       </ul>
+
+      <LoadMoreSentinel
+        className="md:hidden"
+        hasMore={mobileVisible < filtered.length}
+        onLoadMore={() => setMobileVisible((v) => v + MOBILE_PAGE_SIZE)}
+      />
 
       {adding ? (
         <UserFormModal
@@ -388,6 +631,16 @@ export default function AdminUsersPage() {
         }
         onCancel={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
+      />
+
+      <ConfirmModal
+        open={!!confirmBulkDelete}
+        title={t("admin.users.bulk.delete.title")}
+        body={
+          confirmBulkDelete ? t("admin.users.bulk.delete.body", { n: confirmBulkDelete.length }) : null
+        }
+        onCancel={() => setConfirmBulkDelete(null)}
+        onConfirm={handleBulkDelete}
       />
     </div>
   );
