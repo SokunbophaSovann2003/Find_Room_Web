@@ -265,6 +265,10 @@ const DICT: Dict = {
   "room.host.listedBy": { km: "ផ្សាយដោយ", en: "Listed by" },
   "room.host.viewProfile": { km: "មើលប្រវត្តិរូប →", en: "View profile →" },
   "room.host.reportListing": { km: "រាយការណ៍អំពីបញ្ជីនេះ", en: "Report this listing" },
+  "room.loginGate.contact.title": { km: "បង្កើតគណនីដើម្បីមើលព័ត៌មានទំនាក់ទំនង", en: "Create an account to contact the host" },
+  "room.loginGate.contact.body": { km: "ចុះឈ្មោះដើម្បីទទួលបានលេខទូរស័ព្ទ និង Telegram របស់ម្ចាស់", en: "Sign up to get the host's phone and Telegram." },
+  "room.loginGate.location.title": { km: "បង្កើតគណនីដើម្បីមើលទីតាំង", en: "Create an account to see the location" },
+  "room.loginGate.location.body": { km: "ចុះឈ្មោះដើម្បីមើលអាសយដ្ឋានពេញ និងផែនទី", en: "Sign up to see the full address and map." },
 
   // Public host profile (/users/[uid])
   "host.notFound.title": { km: "មិនឃើញម្ចាស់ផ្ទះនេះ", en: "Host not found" },
@@ -730,6 +734,10 @@ const DICT: Dict = {
   "admin.notifications.compose.updateTemplate": { km: "ធ្វើបច្ចុប្បន្នភាពគំរូ", en: "Update template" },
   "admin.notifications.compose.send.one": { km: "ផ្ញើទៅ {n} អ្នកប្រើ", en: "Send to {n} user" },
   "admin.notifications.compose.send.many": { km: "ផ្ញើទៅ {n} អ្នកប្រើ", en: "Send to {n} users" },
+  "admin.notifications.compose.confirm.title": { km: "បញ្ជាក់ការផ្ញើ", en: "Confirm send" },
+  "admin.notifications.compose.confirm.body.one": { km: "នេះនឹងផ្ញើការជូនដំណឹងទៅអ្នកទទួល {n} នាក់។ រឿងនេះមិនអាចត្រឡប់វិញបានទេ។", en: "This will send the notification to {n} recipient. This cannot be undone." },
+  "admin.notifications.compose.confirm.body.many": { km: "នេះនឹងផ្ញើការជូនដំណឹងទៅអ្នកទទួល {n} នាក់។ រឿងនេះមិនអាចត្រឡប់វិញបានទេ។", en: "This will send the notification to {n} recipients. This cannot be undone." },
+  "admin.notifications.compose.confirm.label": { km: "បញ្ជាក់ & ផ្ញើ", en: "Confirm & send" },
   "admin.notifications.history.title": { km: "ប្រវត្តិការផ្ញើ", en: "Sent history" },
   "admin.notifications.history.empty": { km: "មិនទាន់បានផ្ញើអ្វី", en: "Nothing sent yet" },
   "admin.notifications.history.empty.body": { km: "នៅពេលអ្នកផ្ញើការជូនដំណឹង វានឹងត្រូវបានកត់ត្រានៅទីនេះ។", en: "When you send a notification, it will be logged here." },

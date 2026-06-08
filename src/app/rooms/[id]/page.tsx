@@ -129,42 +129,52 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
     <section>
       <div className="mb-2 flex items-end justify-between">
         <h2 className="text-base font-semibold">{t("room.section.location")}</h2>
-        <a
-          href={mapsLink}
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs font-medium text-brand hover:text-brand-dark"
-        >
-          {t("room.location.openMaps")}
-        </a>
+        {session ? (
+          <a
+            href={mapsLink}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs font-medium text-brand hover:text-brand-dark"
+          >
+            {t("room.location.openMaps")}
+          </a>
+        ) : null}
       </div>
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
-        <div className="flex items-start gap-2 border-b border-slate-200 px-3 py-2.5">
-          <Icon name="map-pin" className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-          <p className="text-xs font-medium leading-snug text-ink">{fullAddress}</p>
+      {session ? (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+          <div className="flex items-start gap-2 border-b border-slate-200 px-3 py-2.5">
+            <Icon name="map-pin" className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+            <p className="text-xs font-medium leading-snug text-ink">{fullAddress}</p>
+          </div>
+          <div className="relative aspect-[16/9] w-full bg-slate-100 lg:aspect-[4/3]">
+            {mapLoaded ? (
+              <iframe
+                title={`${room.title} — map`}
+                src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=15&output=embed`}
+                className="h-full w-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMapLoaded(true)}
+                className="flex h-full w-full flex-col items-center justify-center gap-2 text-ink-muted transition hover:bg-slate-200/60"
+              >
+                <Icon name="map-pin" className="h-8 w-8 text-brand" />
+                <span className="text-sm font-semibold text-ink">{t("room.location.showMap")}</span>
+                <span className="text-[11px] text-ink-soft">{t("room.location.loadsGoogleMaps")}</span>
+              </button>
+            )}
+          </div>
         </div>
-        <div className="relative aspect-[16/9] w-full bg-slate-100 lg:aspect-[4/3]">
-          {mapLoaded ? (
-            <iframe
-              title={`${room.title} — map`}
-              src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=15&output=embed`}
-              className="h-full w-full border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setMapLoaded(true)}
-              className="flex h-full w-full flex-col items-center justify-center gap-2 text-ink-muted transition hover:bg-slate-200/60"
-            >
-              <Icon name="map-pin" className="h-8 w-8 text-brand" />
-              <span className="text-sm font-semibold text-ink">{t("room.location.showMap")}</span>
-              <span className="text-[11px] text-ink-soft">{t("room.location.loadsGoogleMaps")}</span>
-            </button>
-          )}
-        </div>
-      </div>
+      ) : (
+        <LoginGate
+          title={t("room.loginGate.location.title")}
+          body={t("room.loginGate.location.body")}
+          onLogin={() => setAuthOpen(true)}
+        />
+      )}
     </section>
   );
 
@@ -215,29 +225,39 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           {ownerIdentity}
         </Link>
 
-        <ul className="mt-4 space-y-2">
-          {phoneNumbers.map((p) => (
-            <ContactRow
-              key={`tel-${p}`}
-              icon="phone"
-              label={t("room.contactLabel.phone")}
-              value={p}
-              href={`tel:${p.replace(/\s/g, "")}`}
-            />
-          ))}
-          {telegramPhones.map((tg) => {
-            const handle = `+${tg.replace(/\D/g, "")}`;
-            return (
+        {session ? (
+          <ul className="mt-4 space-y-2">
+            {phoneNumbers.map((p) => (
               <ContactRow
-                key={`tg-${tg}`}
-                icon="telegram"
-                label={t("room.contactLabel.telegram")}
-                value={tg}
-                href={`https://t.me/${handle}`}
+                key={`tel-${p}`}
+                icon="phone"
+                label={t("room.contactLabel.phone")}
+                value={p}
+                href={`tel:${p.replace(/\s/g, "")}`}
               />
-            );
-          })}
-        </ul>
+            ))}
+            {telegramPhones.map((tg) => {
+              const handle = `+${tg.replace(/\D/g, "")}`;
+              return (
+                <ContactRow
+                  key={`tg-${tg}`}
+                  icon="telegram"
+                  label={t("room.contactLabel.telegram")}
+                  value={tg}
+                  href={`https://t.me/${handle}`}
+                />
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="mt-4">
+            <LoginGate
+              title={t("room.loginGate.contact.title")}
+              body={t("room.loginGate.contact.body")}
+              onLogin={() => setAuthOpen(true)}
+            />
+          </div>
+        )}
 
       </div>
     </section>
@@ -463,7 +483,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             </div>
             <button
               type="button"
-              onClick={() => setLocationOpen(true)}
+              onClick={() => session ? setLocationOpen(true) : setAuthOpen(true)}
               className="btn-secondary h-11 flex-1 justify-center px-3"
             >
               <Icon name="map-pin" className="h-4 w-4" />
@@ -471,7 +491,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             </button>
             <button
               type="button"
-              onClick={() => setContactOpen(true)}
+              onClick={() => session ? setContactOpen(true) : setAuthOpen(true)}
               className="btn-primary h-11 flex-1 justify-center px-3"
             >
               <Icon name="phone" className="h-4 w-4" />
@@ -484,13 +504,8 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
       <AuthModal
         open={authOpen}
         onClose={() => setAuthOpen(false)}
-        onSuccess={() => {
-          setAuthOpen(false);
-          setReportReason(null);
-          setReportDetails("");
-          setReportSent(false);
-          setReportOpen(true);
-        }}
+        onSuccess={() => setAuthOpen(false)}
+        defaultTab="register"
       />
 
       <ConfirmModal
@@ -808,6 +823,32 @@ function ContactRow({
         </div>
       )}
     </li>
+  );
+}
+
+function LoginGate({
+  title,
+  body,
+  onLogin
+}: {
+  title: string;
+  body: string;
+  onLogin: () => void;
+}) {
+  const t = useT();
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-center">
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white ring-1 ring-slate-200">
+        <Icon name="log-in" className="h-5 w-5 text-ink-muted" />
+      </span>
+      <div>
+        <p className="text-sm font-semibold text-ink">{title}</p>
+        <p className="mt-0.5 text-xs text-ink-muted">{body}</p>
+      </div>
+      <button type="button" onClick={onLogin} className="btn-primary">
+        {t("auth.register.submit")}
+      </button>
+    </div>
   );
 }
 

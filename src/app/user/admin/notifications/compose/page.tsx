@@ -39,6 +39,7 @@ export default function AdminComposeNotificationPage() {
   const [editingTemplate, setEditingTemplate] = useState<AdminOutboundTemplate | null>(null);
   const [creatingTemplate, setCreatingTemplate] = useState(false);
   const [confirmDeleteTemplate, setConfirmDeleteTemplate] = useState<AdminOutboundTemplate | null>(null);
+  const [confirmSend, setConfirmSend] = useState(false);
   const [templateSaved, setTemplateSaved] = useState<string | null>(null);
   const [templatesOpen, setTemplatesOpen] = useState(true);
 
@@ -163,29 +164,20 @@ export default function AdminComposeNotificationPage() {
             <Icon name="plus" className="h-4 w-4" />
             {t("admin.notifications.compose.saveTemplate")}
           </button>
-          {activeTemplateId ? (
+          {(title.trim() || body.trim()) ? (
             <button
               type="button"
-              disabled={!title.trim() || !body.trim()}
-              onClick={() => {
-                if (!activeTemplateId) return;
-                updateOutboundTemplate(activeTemplateId, {
-                  title: title.trim(),
-                  body: body.trim()
-                });
-                const tpl = templates.find((tp) => tp.id === activeTemplateId);
-                setTemplateSaved(tpl?.name ?? "template");
-              }}
-              className="btn-ghost disabled:opacity-50"
+              onClick={clearComposer}
+              className="btn-ghost text-red-500 hover:text-red-600"
             >
-              <Icon name="pencil" className="h-4 w-4" />
-              {t("admin.notifications.compose.updateTemplate")}
+              <Icon name="x" className="h-4 w-4" />
+              {t("common.clear")}
             </button>
           ) : null}
         </div>
         <button
           type="button"
-          onClick={handleSend}
+          onClick={() => setConfirmSend(true)}
           disabled={!canSend}
           className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -332,6 +324,24 @@ export default function AdminComposeNotificationPage() {
           }}
         />
       ) : null}
+
+      <ConfirmModal
+        open={confirmSend}
+        variant="default"
+        icon="arrow-right"
+        title={t("admin.notifications.compose.confirm.title")}
+        body={
+          recipients.length === 1
+            ? t("admin.notifications.compose.confirm.body.one", { n: recipients.length })
+            : t("admin.notifications.compose.confirm.body.many", { n: recipients.length })
+        }
+        confirmLabel={t("admin.notifications.compose.confirm.label")}
+        onCancel={() => setConfirmSend(false)}
+        onConfirm={() => {
+          setConfirmSend(false);
+          handleSend();
+        }}
+      />
 
       <ConfirmModal
         open={!!confirmDeleteTemplate}
