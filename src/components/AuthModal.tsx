@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { loginWithPhone, registerWithPhone, resetDemoPassword, checkPhoneAccountExists } from "@/lib/auth";
+import { sendOtp, verifyOtp } from "@/lib/otp";
 import { useT } from "@/lib/language";
 
 type Tab = "login" | "register" | "forgot";
@@ -182,6 +183,99 @@ function PasswordField({
   );
 }
 
+// ─── Shared: 6-box OTP input ─────────────────────────────────────────────────
+
+function OtpField({
+  value,
+  onChange
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const refs = useRef<Array<HTMLInputElement | null>>([]);
+
+  function handleChange(i: number, raw: string) {
+    const digit = raw.replace(/\D/g, "").slice(-1);
+    if (!digit) return;
+    const chars = Array.from({ length: 6 }, (_, j) => value.charAt(j));
+    chars[i] = digit;
+    onChange(chars.join(""));
+    if (i < 5) refs.current[i + 1]?.focus();
+  }
+
+  function handleKeyDown(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace") {
+      if (value.charAt(i)) {
+        const chars = Array.from({ length: 6 }, (_, j) => value.charAt(j));
+        chars[i] = "";
+        onChange(chars.join("").trimEnd());
+      } else if (i > 0) {
+        const chars = Array.from({ length: 6 }, (_, j) => value.charAt(j));
+        chars[i - 1] = "";
+        onChange(chars.join("").trimEnd());
+        refs.current[i - 1]?.focus();
+      }
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    e.preventDefault();
+    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    onChange(digits);
+    refs.current[Math.min(digits.length, 5)]?.focus();
+  }
+
+  return (
+    <div className="flex justify-center gap-2">
+      {Array.from({ length: 6 }, (_, i) => (
+        <input
+          key={i}
+          ref={(el) => { refs.current[i] = el; }}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={value.charAt(i)}
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onPaste={handlePaste}
+          className="h-12 w-10 rounded-xl border border-slate-200 bg-white text-center text-lg font-bold text-ink outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Shared: resend countdown timer ──────────────────────────────────────────
+
+function ResendTimer({ onResend }: { onResend: () => void }) {
+  const t = useT();
+  const [seconds, setSeconds] = useState(60);
+
+  useEffect(() => {
+    if (seconds <= 0) return;
+    const id = setTimeout(() => setSeconds((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [seconds]);
+
+  if (seconds > 0) {
+    return (
+      <p className="text-center text-xs text-ink-muted">
+        {t("auth.otp.resendIn", { n: String(seconds) })}
+      </p>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => { onResend(); setSeconds(60); }}
+      className="w-full text-center text-xs font-semibold text-brand hover:text-brand-dark"
+    >
+      {t("auth.otp.resend")}
+    </button>
+  );
+}
+
 // ─── Login form ──────────────────────────────────────────────────────────────
 
 function LoginForm({
@@ -269,6 +363,8 @@ function LoginForm({
 
 // ─── Register form ───────────────────────────────────────────────────────────
 
+type RegisterStep = "form" | "otp";
+
 function RegisterForm({
   onSuccess,
   switchToLogin
@@ -277,32 +373,41 @@ function RegisterForm({
   switchToLogin: () => void;
 }) {
   const t = useT();
+  const [step, setStep] = useState<RegisterStep>("form");
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [demoCode, setDemoCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  const digits = phone.replace(/\D/g, "");
+  const formattedPhone = `+855 ${digits}`;
+
+  async function handleSubmitForm(e: React.FormEvent) {
     e.preventDefault();
-    if (!username.trim()) {
-      setError(t("auth.error.name.required"));
-      return;
+    if (!username.trim()) { setError(t("auth.error.name.required")); return; }
+    if (digits.length < 8 || digits.length > 9) { setError(t("auth.error.phone.invalid")); return; }
+    if (password.length < 8) { setError(t("auth.error.password.tooShort")); return; }
+    if (password !== confirmPassword) { setError(t("auth.error.confirmPassword.mismatch")); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const { demoCode: code } = sendOtp(`+855${digits}`);
+      setDemoCode(code);
+      setOtp("");
+      setStep("otp");
+    } finally {
+      setLoading(false);
     }
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length < 8 || digits.length > 9) {
-      setError(t("auth.error.phone.invalid"));
-      return;
-    }
-    if (password.length < 8) {
-      setError(t("auth.error.password.tooShort"));
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError(t("auth.error.confirmPassword.mismatch"));
-      return;
-    }
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    if (otp.replace(/\s/g, "").length < 6) { setError(t("auth.otp.error.invalid")); return; }
+    if (!verifyOtp(`+855${digits}`, otp)) { setError(t("auth.otp.error.invalid")); return; }
     setLoading(true);
     setError(null);
     try {
@@ -315,12 +420,62 @@ function RegisterForm({
     }
   }
 
+  function handleResend() {
+    const { demoCode: code } = sendOtp(`+855${digits}`);
+    setDemoCode(code);
+    setOtp("");
+    setError(null);
+  }
+
+  if (step === "otp") {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => { setStep("form"); setError(null); }}
+          className="-ml-1 mb-3 inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-ink"
+        >
+          <Icon name="arrow-right" className="h-4 w-4 rotate-180" />
+          {t("common.back")}
+        </button>
+
+        <h2 className="text-xl font-extrabold tracking-tight">{t("auth.otp.title")}</h2>
+        <p className="text-sm text-ink-muted">{t("auth.otp.subtitle", { phone: formattedPhone })}</p>
+
+        <form className="mt-5 space-y-4" onSubmit={handleVerifyOtp}>
+          <OtpField value={otp} onChange={setOtp} />
+
+          {demoCode ? (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-700">
+              {t("auth.otp.demo.hint", { code: demoCode })}
+            </p>
+          ) : null}
+
+          <ResendTimer onResend={handleResend} />
+
+          {error ? (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+          ) : null}
+
+          <button
+            type="submit"
+            className="btn-primary w-full"
+            disabled={loading || otp.replace(/\s/g, "").length < 6}
+          >
+            {loading ? t("auth.otp.verifying") : t("auth.otp.submit")}
+            {loading ? null : <Icon name="arrow-right" className="h-4 w-4" />}
+          </button>
+        </form>
+      </>
+    );
+  }
+
   return (
     <>
       <h2 className="text-xl font-extrabold tracking-tight">{t("auth.register.title")}</h2>
       <p className="text-sm text-ink-muted">{t("auth.register.subtitle")}</p>
 
-      <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
+      <form className="mt-4 space-y-3" onSubmit={handleSubmitForm}>
         <div>
           <label className="label">{t("auth.field.fullName")}</label>
           <input
@@ -376,7 +531,7 @@ function RegisterForm({
 
 // ─── Forgot password form ────────────────────────────────────────────────────
 
-type ForgotStep = "phone" | "newPassword" | "done";
+type ForgotStep = "phone" | "otp" | "newPassword" | "done";
 
 function ForgotPasswordForm({
   onSuccess,
@@ -388,37 +543,44 @@ function ForgotPasswordForm({
   const t = useT();
   const [step, setStep] = useState<ForgotStep>("phone");
   const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [demoCode, setDemoCode] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const digits = phone.replace(/\D/g, "");
+  const formattedPhone = `+855 ${digits}`;
+
   async function handleFindAccount(e: React.FormEvent) {
     e.preventDefault();
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length < 8 || digits.length > 9) {
-      setError(t("auth.error.phone.invalid"));
-      return;
-    }
+    if (digits.length < 8 || digits.length > 9) { setError(t("auth.error.phone.invalid")); return; }
     setLoading(true);
     setError(null);
     try {
-      // Verify the account exists before showing the new-password form.
       if (!checkPhoneAccountExists(`+855${digits}`)) throw new Error(t("auth.forgot.notFound"));
-      setStep("newPassword");
+      const { demoCode: code } = sendOtp(`+855${digits}`);
+      setDemoCode(code);
+      setOtp("");
+      setStep("otp");
     } catch (err) {
-      setError(err instanceof Error ? t(err.message) : t("auth.forgot.notFound"));
+      setError(err instanceof Error ? err.message : t("auth.forgot.notFound"));
     } finally {
       setLoading(false);
     }
   }
 
+  function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    if (otp.replace(/\s/g, "").length < 6) { setError(t("auth.otp.error.invalid")); return; }
+    if (!verifyOtp(`+855${digits}`, otp)) { setError(t("auth.otp.error.invalid")); return; }
+    setError(null);
+    setStep("newPassword");
+  }
+
   async function handleSetPassword(e: React.FormEvent) {
     e.preventDefault();
-    if (newPassword.length < 8) {
-      setError(t("auth.error.password.tooShort"));
-      return;
-    }
-    const digits = phone.replace(/\D/g, "");
+    if (newPassword.length < 8) { setError(t("auth.error.password.tooShort")); return; }
     setLoading(true);
     setError(null);
     try {
@@ -431,6 +593,25 @@ function ForgotPasswordForm({
     }
   }
 
+  function handleResend() {
+    const { demoCode: code } = sendOtp(`+855${digits}`);
+    setDemoCode(code);
+    setOtp("");
+    setError(null);
+  }
+
+  function goBack() {
+    if (step === "phone") {
+      switchToLogin();
+    } else {
+      // From otp or newPassword: go back to phone so user can restart with a fresh OTP
+      setStep("phone");
+      setOtp("");
+      setDemoCode(null);
+      setError(null);
+    }
+  }
+
   if (step === "done") {
     return (
       <div className="flex flex-col items-center gap-3 py-6 text-center">
@@ -439,11 +620,7 @@ function ForgotPasswordForm({
         </span>
         <h2 className="text-xl font-extrabold tracking-tight">{t("auth.forgot.success.title")}</h2>
         <p className="max-w-xs text-sm text-ink-muted">{t("auth.forgot.success.body")}</p>
-        <button
-          type="button"
-          onClick={onSuccess}
-          className="btn-primary mt-2 w-full"
-        >
+        <button type="button" onClick={onSuccess} className="btn-primary mt-2 w-full">
           {t("common.continue")}
         </button>
       </div>
@@ -454,15 +631,21 @@ function ForgotPasswordForm({
     <>
       <button
         type="button"
-        onClick={switchToLogin}
+        onClick={goBack}
         className="-ml-1 mb-3 inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-ink"
       >
         <Icon name="arrow-right" className="h-4 w-4 rotate-180" />
-        {t("auth.forgot.back")}
+        {step === "phone" ? t("auth.forgot.back") : t("common.back")}
       </button>
 
       <h2 className="text-xl font-extrabold tracking-tight">{t("auth.forgot.title")}</h2>
-      <p className="text-sm text-ink-muted">{t("auth.forgot.subtitle")}</p>
+      <p className="text-sm text-ink-muted">
+        {step === "phone"
+          ? t("auth.forgot.subtitle")
+          : step === "otp"
+          ? t("auth.otp.subtitle", { phone: formattedPhone })
+          : t("auth.forgot.newPasswordSubtitle")}
+      </p>
 
       {step === "phone" ? (
         <form className="mt-4 space-y-3" onSubmit={handleFindAccount}>
@@ -474,6 +657,31 @@ function ForgotPasswordForm({
 
           <button type="submit" className="btn-primary w-full" disabled={loading}>
             {loading ? t("auth.forgot.finding") : t("auth.forgot.findAccount")}
+          </button>
+        </form>
+      ) : step === "otp" ? (
+        <form className="mt-5 space-y-4" onSubmit={handleVerifyOtp}>
+          <OtpField value={otp} onChange={setOtp} />
+
+          {demoCode ? (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-700">
+              {t("auth.otp.demo.hint", { code: demoCode })}
+            </p>
+          ) : null}
+
+          <ResendTimer onResend={handleResend} />
+
+          {error ? (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+          ) : null}
+
+          <button
+            type="submit"
+            className="btn-primary w-full"
+            disabled={otp.replace(/\s/g, "").length < 6}
+          >
+            {t("auth.otp.submit")}
+            <Icon name="arrow-right" className="h-4 w-4" />
           </button>
         </form>
       ) : (

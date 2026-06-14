@@ -329,7 +329,7 @@ export const LOCATION_NAMES_KM: Record<string, string> = {
   "Koh Kong": "កោះកុង",
   "Kratie": "ក្រចេះ",
   "Mondulkiri": "មណ្ឌលគីរី",
-  "Oddar Meanchey": "អូដ្ឌរមានជ័យ",
+  "Oddar Meanchey": "ឧត្តរមានជ័យ",
   "Pailin": "ប៉ៃលិន",
   "Preah Vihear": "ព្រះវិហារ",
   "Prey Veng": "ព្រៃវែង",
