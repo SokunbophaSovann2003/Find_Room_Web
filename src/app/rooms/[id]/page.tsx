@@ -8,7 +8,8 @@ import Icon, { amenityIcon, type IconName } from "@/components/Icon";
 import ConfirmModal from "@/components/ConfirmModal";
 import AuthModal from "@/components/AuthModal";
 import { findRoomById } from "@/lib/mock-data";
-import { deleteLocalRoom, getLocalRoomById, updateLocalRoom } from "@/lib/local-rooms";
+import { isFirebaseConfigured } from "@/lib/firebase";
+import { deleteRoom, getRoomById, updateRoom } from "@/lib/rooms";
 import { useSession } from "@/lib/session";
 import { isAdmin, pushIncomingNotification, useAdminSettings } from "@/lib/admin";
 import { isAutoOccupied } from "@/lib/auto-occupy";
@@ -33,7 +34,9 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const session = useSession();
   const viewMode = useViewMode();
   const t = useT();
-  const [room, setRoom] = useState<RoomState>(() => findRoomById(params.id) ?? "loading");
+  const [room, setRoom] = useState<RoomState>(
+    () => (!isFirebaseConfigured ? findRoomById(params.id) : undefined) ?? "loading"
+  );
   const [trackedId, setTrackedId] = useState(params.id);
   const [contactOpen, setContactOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
@@ -53,12 +56,12 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   // render the previous room under a new id.
   if (trackedId !== params.id) {
     setTrackedId(params.id);
-    setRoom(findRoomById(params.id) ?? "loading");
+    setRoom((!isFirebaseConfigured ? findRoomById(params.id) : undefined) ?? "loading");
   }
 
   useEffect(() => {
-    if (findRoomById(params.id)) return;
-    setRoom(getLocalRoomById(params.id) ?? "missing");
+    if (!isFirebaseConfigured && findRoomById(params.id)) return;
+    void getRoomById(params.id).then((r) => setRoom(r ?? "missing"));
   }, [params.id]);
 
   useEffect(() => {
@@ -269,7 +272,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
     const detailsLine = reportDetails.trim()
       ? t("room.report.notif.details", { value: reportDetails.trim() })
       : "";
-    pushIncomingNotification({
+    void pushIncomingNotification({
       kind: "listing-flagged",
       title: t("room.report.notif.title"),
       body: t("room.report.notif.body", {
@@ -443,14 +446,14 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               onClick={() => {
                 if (isAutoOccupied(room, autoOccupyDays)) {
                   // Auto-occupied: reset the clock rather than flipping isOccupied
-                  updateLocalRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() });
+                  void updateRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() });
                   setRoom({ ...(room as Room), isOccupied: false, lastActivityAt: Date.now() });
                   toast.success(t("toast.admin.listing.available", { title: room.title }));
                 } else {
                   const next = !room.isOccupied;
                   // When marking occupied by admin, preserve lastActivityAt so the
                   // auto-occupy clock is not reset to now.
-                  updateLocalRoom(room.id, {
+                  void updateRoom(room.id, {
                     isOccupied: next,
                     ...(next ? { lastActivityAt: room.lastActivityAt ?? room.createdAt ?? Date.now() } : {})
                   });
@@ -519,7 +522,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
         onCancel={() => setAdminDeleteOpen(false)}
         onConfirm={() => {
           const title = (room as Room).title;
-          deleteLocalRoom((room as Room).id);
+          void deleteRoom((room as Room).id);
           setAdminDeleteOpen(false);
           toast.success(t("toast.admin.listing.deleted", { title }));
           router.push("/user/admin");

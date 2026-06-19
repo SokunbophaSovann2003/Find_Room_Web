@@ -9,7 +9,8 @@ import ListingActionMenu from "@/components/ListingActionMenu";
 import LoadMoreSentinel from "@/components/admin/LoadMoreSentinel";
 import { signOut, updateLoginPhone } from "@/lib/auth";
 import { useSession } from "@/lib/session";
-import { seedSampleListings, updateLocalRoom, useLocalRooms } from "@/lib/local-rooms";
+import { seedSampleListings, updateRoom, useRooms } from "@/lib/rooms";
+import { isFirebaseConfigured } from "@/lib/firebase";
 import { downscalePhoto } from "@/lib/image";
 import {
   loadOverrides,
@@ -21,7 +22,7 @@ import { isAutoOccupied, daysSinceActivity } from "@/lib/auto-occupy";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
 import { copyToClipboard } from "@/lib/clipboard";
-import type { PropertyType } from "@/lib/types";
+import type { PropertyType, Room } from "@/lib/types";
 import PropertyTypePicker from "@/components/PropertyTypePicker";
 
 const LISTINGS_PAGE_SIZE = 20;
@@ -30,7 +31,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const session = useSession();
   const t = useT();
-  const allLocalRooms = useLocalRooms();
+  const allLocalRooms = useRooms();
   const { autoOccupyDays } = useAdminSettings();
   const [overrides, setOverrides] = useState<ProfileOverrides>({});
   const [editing, setEditing] = useState<"profile" | null>(null);
@@ -58,7 +59,7 @@ export default function ProfilePage() {
   }, [session]);
 
   useEffect(() => {
-    if (session) seedSampleListings(session);
+    if (session && !isFirebaseConfigured) seedSampleListings(session);
   }, [session]);
 
   const listings = useMemo(
@@ -340,7 +341,15 @@ export default function ProfilePage() {
                               {t("profile.month")}
                             </span>
                           </p>
-                          {room.isOccupied || autoOccupied ? (
+                          {room.status === "pending" ? (
+                            <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+                              {t("listing.status.pending")}
+                            </span>
+                          ) : room.status === "rejected" ? (
+                            <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-600">
+                              {t("listing.status.rejected")}
+                            </span>
+                          ) : room.isOccupied || autoOccupied ? (
                             <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
                               {t("profile.occupied")}
                             </span>
@@ -348,6 +357,11 @@ export default function ProfilePage() {
                         </div>
                       </div>
                     </Link>
+                    <ListingStatusBanner
+                      room={room}
+                      pendingClass="flex items-center gap-3 border-t border-sky-100 bg-sky-50 px-3 py-2 pr-12"
+                      rejectedClass="flex items-center justify-between gap-3 border-t border-red-100 bg-red-50 px-3 py-2 pr-12"
+                    />
                     {autoOccupied ? (
                       <div className="flex items-center justify-between gap-3 border-t border-amber-100 bg-amber-50 px-3 py-2 pr-12">
                         <p className="text-[11px] leading-snug text-amber-700">
@@ -355,7 +369,7 @@ export default function ProfilePage() {
                         </p>
                         <button
                           type="button"
-                          onClick={() => updateLocalRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() })}
+                          onClick={() => void updateRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() })}
                           className="shrink-0 rounded-full bg-brand px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-brand/90"
                         >
                           {t("profile.autoOccupied.markAvailable")}
@@ -378,7 +392,15 @@ export default function ProfilePage() {
                   return (
                     <div key={room.id} className="relative flex flex-col">
                       <RoomCard room={room} />
-                      {room.isOccupied || autoOccupied ? (
+                      {room.status === "pending" ? (
+                        <span className="pointer-events-none absolute left-3 top-12 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700 shadow">
+                          {t("listing.status.pending")}
+                        </span>
+                      ) : room.status === "rejected" ? (
+                        <span className="pointer-events-none absolute left-3 top-12 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-600 shadow">
+                          {t("listing.status.rejected")}
+                        </span>
+                      ) : room.isOccupied || autoOccupied ? (
                         <span className="pointer-events-none absolute left-3 top-12 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow">
                           {t("profile.occupied")}
                         </span>
@@ -386,6 +408,11 @@ export default function ProfilePage() {
                       <div className="absolute right-2 top-2">
                         <ListingActionMenu room={room} />
                       </div>
+                      <ListingStatusBanner
+                        room={room}
+                        pendingClass="mt-2 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2.5"
+                        rejectedClass="mt-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5"
+                      />
                       {autoOccupied ? (
                         <div className="mt-2 flex items-start justify-between gap-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5">
                           <p className="text-[11px] leading-snug text-amber-700">
@@ -393,7 +420,7 @@ export default function ProfilePage() {
                           </p>
                           <button
                             type="button"
-                            onClick={() => updateLocalRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() })}
+                            onClick={() => void updateRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() })}
                             className="shrink-0 rounded-full bg-brand px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-brand/90"
                           >
                             {t("profile.autoOccupied.markAvailable")}
@@ -457,7 +484,15 @@ export default function ProfilePage() {
                             </p>
                           </div>
                           <div>
-                            {room.isOccupied || autoOccupied ? (
+                            {room.status === "pending" ? (
+                              <span className="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">
+                                {t("listing.status.pending")}
+                              </span>
+                            ) : room.status === "rejected" ? (
+                              <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600">
+                                {t("listing.status.rejected")}
+                              </span>
+                            ) : room.isOccupied || autoOccupied ? (
                               <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
                                 {t("profile.occupied")}
                               </span>
@@ -488,6 +523,11 @@ export default function ProfilePage() {
                           </div>
                           <span aria-hidden />
                         </Link>
+                        <ListingStatusBanner
+                          room={room}
+                          pendingClass="flex items-center gap-3 border-t border-sky-100 bg-sky-50 px-4 py-2"
+                          rejectedClass="flex items-center gap-3 border-t border-red-100 bg-red-50 px-4 py-2"
+                        />
                         {autoOccupied ? (
                           <div className="flex items-center justify-between gap-3 border-t border-amber-100 bg-amber-50 px-4 py-2">
                             <p className="text-[11px] text-amber-700">
@@ -495,7 +535,7 @@ export default function ProfilePage() {
                             </p>
                             <button
                               type="button"
-                              onClick={() => updateLocalRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() })}
+                              onClick={() => void updateRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() })}
                               className="shrink-0 rounded-full bg-brand px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-brand/90"
                             >
                               {t("profile.autoOccupied.markAvailable")}
@@ -864,4 +904,35 @@ function ProfileActionsMenu({
       ) : null}
     </div>
   );
+}
+
+function ListingStatusBanner({
+  room,
+  pendingClass,
+  rejectedClass,
+}: {
+  room: Room;
+  pendingClass: string;
+  rejectedClass: string;
+}) {
+  const t = useT();
+  if (room.status === "pending") {
+    return (
+      <div className={pendingClass}>
+        <p className="text-[11px] leading-snug text-sky-700">{t("profile.listing.pendingNote")}</p>
+      </div>
+    );
+  }
+  if (room.status === "rejected") {
+    return (
+      <div className={rejectedClass}>
+        <p className="text-[11px] leading-snug text-red-600">
+          {room.rejectionReason
+            ? t("profile.listing.rejectedNote", { reason: room.rejectionReason })
+            : t("profile.listing.rejectedNoteNoReason")}
+        </p>
+      </div>
+    );
+  }
+  return null;
 }

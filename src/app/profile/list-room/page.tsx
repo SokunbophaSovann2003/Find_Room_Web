@@ -9,6 +9,7 @@ import ContactListEditor from "@/components/ContactListEditor";
 import { useSession } from "@/lib/session";
 import { addRoom, generateRoomId, getRoomById, updateRoom } from "@/lib/rooms";
 import { findRoomById } from "@/lib/mock-data";
+import { isFirebaseConfigured } from "@/lib/firebase";
 import { uploadRoomPhoto } from "@/lib/storage";
 import { loadOverrides } from "@/lib/profile-overrides";
 import { DEFAULT_AMENITIES, getAdminSettings, pushIncomingNotification } from "@/lib/admin";
@@ -168,7 +169,7 @@ export default function ListRoomPage() {
     const copyId = searchParams?.get("copyFrom");
     if (!copyId) return;
     void getRoomById(copyId).then((fetched) => {
-      const source = fetched ?? findRoomById(copyId);
+      const source = fetched ?? (!isFirebaseConfigured ? findRoomById(copyId) : undefined);
       if (!source) return;
       copyAppliedRef.current = true;
 
@@ -231,7 +232,7 @@ export default function ListRoomPage() {
     if (editAppliedRef.current) return;
     if (!editingId) return;
     void getRoomById(editingId).then((fetched) => {
-      const source = fetched ?? findRoomById(editingId);
+      const source = fetched ?? (!isFirebaseConfigured ? findRoomById(editingId) : undefined);
       if (!source) return;
       editAppliedRef.current = true;
 

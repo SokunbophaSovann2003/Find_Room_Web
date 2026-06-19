@@ -7,7 +7,8 @@ import RoomCard from "@/components/RoomCard";
 import Icon from "@/components/Icon";
 import LoadMoreSentinel from "@/components/admin/LoadMoreSentinel";
 import { MOCK_ROOMS } from "@/lib/mock-data";
-import { useLocalRooms } from "@/lib/local-rooms";
+import { isFirebaseConfigured } from "@/lib/firebase";
+import { useRooms } from "@/lib/rooms";
 import { useAdminSettings } from "@/lib/admin";
 import { isAutoOccupied } from "@/lib/auto-occupy";
 import { useT } from "@/lib/language";
@@ -22,7 +23,7 @@ export default function HostProfilePage() {
   const params = useParams<{ uid: string }>();
   const uid = decodeURIComponent(params.uid ?? "");
   const t = useT();
-  const localRooms = useLocalRooms();
+  const localRooms = useRooms();
   const { autoOccupyDays } = useAdminSettings();
 
   // Merge mock + local rooms the same way ExploreRooms does so admin-edited
@@ -31,7 +32,8 @@ export default function HostProfilePage() {
   const allRooms: Room[] = useMemo(() => {
     const seen = new Set<string>();
     const canonical = (id: string) => (id.startsWith("mock-") ? id.slice(5) : id);
-    return [...localRooms, ...MOCK_ROOMS].filter((r) => {
+    const roomList = isFirebaseConfigured ? localRooms : [...localRooms, ...MOCK_ROOMS];
+    return roomList.filter((r) => {
       const key = canonical(r.id);
       if (seen.has(key)) return false;
       seen.add(key);
