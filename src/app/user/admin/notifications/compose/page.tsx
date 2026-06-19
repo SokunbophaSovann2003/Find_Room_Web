@@ -65,10 +65,10 @@ export default function AdminComposeNotificationPage() {
     setBody("");
   }
 
-  function handleSend() {
+  async function handleSend() {
     if (!title.trim() || !body.trim()) return;
     if (recipients.length === 0) return;
-    const campaign = sendAdminOutbound({ title: title.trim(), body: body.trim(), audience });
+    const campaign = await sendAdminOutbound({ title: title.trim(), body: body.trim(), audience });
     if (campaign) {
       const recipientCount = campaign.recipientCount;
       toast.success(
@@ -296,8 +296,8 @@ export default function AdminComposeNotificationPage() {
           mode="create"
           initial={{ name: "", title, body }}
           onCancel={() => setCreatingTemplate(false)}
-          onSubmit={(v) => {
-            const created = addOutboundTemplate(v);
+          onSubmit={async (v) => {
+            const created = await addOutboundTemplate(v);
             setActiveTemplateId(created.id);
             setCreatingTemplate(false);
           }}
@@ -314,7 +314,7 @@ export default function AdminComposeNotificationPage() {
           }}
           onCancel={() => setEditingTemplate(null)}
           onSubmit={(v) => {
-            updateOutboundTemplate(editingTemplate.id, v);
+            void updateOutboundTemplate(editingTemplate.id, v);
             if (activeTemplateId === editingTemplate.id) {
               setTitle(v.title);
               setBody(v.body);
@@ -339,7 +339,7 @@ export default function AdminComposeNotificationPage() {
         onCancel={() => setConfirmSend(false)}
         onConfirm={() => {
           setConfirmSend(false);
-          handleSend();
+          void handleSend();
         }}
       />
 
@@ -356,7 +356,7 @@ export default function AdminComposeNotificationPage() {
         onCancel={() => setConfirmDeleteTemplate(null)}
         onConfirm={() => {
           if (!confirmDeleteTemplate) return;
-          deleteOutboundTemplate(confirmDeleteTemplate.id);
+          void deleteOutboundTemplate(confirmDeleteTemplate.id);
           if (activeTemplateId === confirmDeleteTemplate.id) setActiveTemplateId(null);
           setConfirmDeleteTemplate(null);
         }}

@@ -5,7 +5,8 @@ import {
   updateEmail
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import { auth, db, isFirebaseConfigured } from "./firebase";
+import { httpsCallable } from "firebase/functions";
+import { auth, db, functions, isFirebaseConfigured } from "./firebase";
 import { clearSession, getSession, setSession } from "./session";
 import { ensureAdminUser, findAdminUserByPhone, pushIncomingNotification } from "./admin";
 import { setViewMode } from "./view-mode";
@@ -29,8 +30,8 @@ export async function registerWithPhone(params: {
     // Demo mode: no backend configured, sign the user in locally.
     const uid = `demo-${phoneNumber.replace(/\D/g, "")}`;
     setSession({ uid, username, phoneNumber });
-    ensureAdminUser({ uid, username, phoneNumber });
-    pushIncomingNotification({
+    await ensureAdminUser({ uid, username, phoneNumber });
+    void pushIncomingNotification({
       kind: "user-registered",
       title: "New user registered",
       body: `${username} joined Joul with phone ${phoneNumber}.`,
@@ -40,15 +41,9 @@ export async function registerWithPhone(params: {
   }
 
   const cred = await createUserWithEmailAndPassword(auth, phoneToEmail(phoneNumber), password);
-  await setDoc(doc(db, "users", cred.user.uid), {
-    uid: cred.user.uid,
-    username,
-    phoneNumber,
-    createdAt: Date.now()
-  });
   setSession({ uid: cred.user.uid, username, phoneNumber });
-  ensureAdminUser({ uid: cred.user.uid, username, phoneNumber });
-  pushIncomingNotification({
+  await ensureAdminUser({ uid: cred.user.uid, username, phoneNumber });
+  void pushIncomingNotification({
     kind: "user-registered",
     title: "New user registered",
     body: `${username} joined Joul with phone ${phoneNumber}.`,
@@ -88,30 +83,45 @@ export async function signOut() {
   setViewMode("user");
 }
 
-// Returns true if a demo account exists for the given phone number.
-// Used by the Forgot Password flow to gate the new-password step.
-export function checkPhoneAccountExists(phoneNumber: string): boolean {
+// Returns true if an account exists for the given phone number.
+// Firebase mode: queries Firestore users collection.
+// Demo mode: checks the in-memory admin user cache.
+export async function checkPhoneAccountExists(phoneNumber: string): Promise<boolean> {
+  if (isFirebaseConfigured && db) {
+    const { getDocs, where, query, collection, limit } = await import("firebase/firestore");
+    const snap = await getDocs(
+      query(collection(db, "users"), where("phoneNumber", "==", phoneNumber), limit(1))
+    );
+    return !snap.empty;
+  }
   return !!findAdminUserByPhone(phoneNumber);
 }
 
-// Reset password for a demo-mode account. Verifies the account exists in the
-// admin user store, then signs the user in with the new password (in demo
-// mode any password is accepted, so "reset" is essentially a re-login).
-// Throws an error if: Firebase mode is active (no phone-based reset there),
-// the account is not found, or the new password is too short.
-export async function resetDemoPassword(phoneNumber: string, newPassword: string): Promise<void> {
-  if (isFirebaseConfigured && auth) {
-    throw new Error("auth.forgot.noSupport");
-  }
+// Reset a user's password after OTP verification.
+// Firebase mode: calls the resetPassword Cloud Function with the nonce issued
+// by verifyCodeForReset(). Demo mode: signs the user in with the new password
+// (demo auth accepts any credentials, so this is equivalent to a reset).
+export async function resetPassword(
+  phoneNumber: string,
+  nonce: string,
+  newPassword: string
+): Promise<void> {
   if (newPassword.length < 8) {
     throw new Error("auth.error.password.tooShort");
   }
+  if (isFirebaseConfigured && functions) {
+    await httpsCallable(functions, "resetPassword")({
+      phone: phoneNumber,
+      nonce,
+      newPassword
+    });
+    return;
+  }
+  // Demo mode — nonce is a static sentinel; just verify the account exists.
   const adminEntry = findAdminUserByPhone(phoneNumber);
   if (!adminEntry) {
     throw new Error("auth.forgot.notFound");
   }
-  // Demo mode accepts any credentials — signing in with the new password is
-  // sufficient to "reset" it.
   await loginWithPhone(phoneNumber, newPassword);
 }
 

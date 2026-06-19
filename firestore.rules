@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Returns true if the caller is a signed-in admin.
+    // Uses a document read — only called where the result can be cached by
+    // the rules engine (get/update/delete on a single document).
+    function isAdmin() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // ─── Rooms ───────────────────────────────────────────────────────────────
+    // Public read: listings are intentionally public (room rental platform).
+    // Authenticated users may create rooms they own.
+    // Only the owner or an admin may update / delete.
+    match /rooms/{roomId} {
+      allow read: if true;
+
+      allow create: if isSignedIn() &&
+        request.auth.uid == request.resource.data.owner.id;
+
+      allow update: if isSignedIn() && (
+        request.auth.uid == resource.data.owner.id || isAdmin()
+      );
+
+      allow delete: if isSignedIn() && (
+        request.auth.uid == resource.data.owner.id || isAdmin()
+      );
+    }
+
+    // ─── Users ───────────────────────────────────────────────────────────────
+    // Users can read and write their own document.
+    // Admins can read and write any user document.
+    match /users/{uid} {
+      allow read:   if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ─── Admin incoming notifications ─────────────────────────────────────
+    // Only admins may read or write these.
+    match /admin_notifications/{notifId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── Outbound notification templates ──────────────────────────────────
+    // Only admins may manage templates.
+    match /notification_templates/{templateId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── Outbound notification campaigns ──────────────────────────────────
+    // Any signed-in user may read campaigns (needed for the notification inbox).
+    // Only admins may create, update, or delete campaigns.
+    match /notification_campaigns/{campaignId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ─── OTP codes & password-reset tokens ────────────────────────────────
+    // These are written and read exclusively by Cloud Functions (Admin SDK
+    // bypasses rules). Clients must never access them directly.
+    match /otp_codes/{phone} {
+      allow read, write: if false;
+    }
+
+    match /password_reset_tokens/{phone} {
+      allow read, write: if false;
+    }
+  }
+}

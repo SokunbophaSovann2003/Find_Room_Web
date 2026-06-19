@@ -42,7 +42,7 @@ export default function UserNotificationsPage() {
     if (!session) return;
     const count = notifications.filter((n) => !n.read).length;
     if (count === 0) return;
-    markAllUserCampaignsRead(
+    void markAllUserCampaignsRead(
       session.uid,
       notifications.filter((n) => !n.read).map((n) => n.id)
     );
@@ -134,7 +134,7 @@ function Row({ notification, uid }: { notification: UserNotification; uid: strin
       {!notification.read && uid ? (
         <button
           type="button"
-          onClick={() => markUserCampaignRead(uid, notification.id, true)}
+          onClick={() => void markUserCampaignRead(uid, notification.id, true)}
           className="shrink-0 rounded-full p-1.5 text-ink-muted transition hover:bg-slate-100 hover:text-ink"
           aria-label={t("common.markAsRead")}
           title={t("common.markAsRead")}

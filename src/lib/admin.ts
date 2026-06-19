@@ -9,10 +9,28 @@
 // admin visit so the UI has something to render.
 
 import { useEffect, useState } from "react";
+import {
+  collection,
+  doc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  writeBatch
+} from "firebase/firestore";
+import { db, isFirebaseConfigured } from "./firebase";
 import type { Session } from "./session";
 import { MOCK_ROOMS } from "./mock-data";
 import { safeSetItem } from "./safe-storage";
 import type { PricePeriod, PropertyType, Room } from "./types";
+
+// Module-level cache so synchronous helpers (isAdmin, getAdminUserById,
+// findAdminUserByPhone) work without an async Firestore read every call.
+// Populated by useAdminUsers() the first time the hook mounts.
+const usersCache = new Map<string, AdminUser>();
 
 // DEMO MODE ONLY. This phone number is the seeded admin uid. In demo mode
 // (no Firebase configured), anyone who signs in with phone +855 12 000 000 is
@@ -50,9 +68,11 @@ export function isAdminUid(uid: string | undefined | null): boolean {
 
 export function isAdmin(session: Session | null): boolean {
   if (!session) return false;
+  if (isFirebaseConfigured) {
+    const u = usersCache.get(session.uid);
+    return u?.role === "admin" && u?.status === "active";
+  }
   if (isAdminUid(session.uid)) return true;
-  // Role/status promoted via the user-management UI is also honored, so
-  // changing a user to role=admin actually grants access.
   const u = getAdminUserById(session.uid);
   return u?.role === "admin" && u?.status === "active";
 }
@@ -81,6 +101,12 @@ function resolveOwnerUid(legacyOrDemoUid: string): string {
 // Look up an admin user by the phone they sign in with. Used by the login
 // flow to block disabled accounts before a session is created.
 export function findAdminUserByPhone(phoneNumber: string): AdminUser | undefined {
+  if (isFirebaseConfigured) {
+    for (const u of usersCache.values()) {
+      if (u.phoneNumber.replace(/\D/g, "") === phoneNumber.replace(/\D/g, "")) return u;
+    }
+    return undefined;
+  }
   const digits = phoneNumber.replace(/\D/g, "");
   const uid = `demo-${digits}`;
   return getAdminUserById(uid);
@@ -377,8 +403,7 @@ function writeUsers(users: AdminUser[]) {
   window.dispatchEvent(new Event(USERS_EVENT));
 }
 
-export function addAdminUser(input: Omit<AdminUser, "uid" | "createdAt"> & { uid?: string }): AdminUser {
-  const users = getAdminUsers();
+export async function addAdminUser(input: Omit<AdminUser, "uid" | "createdAt"> & { uid?: string }): Promise<AdminUser> {
   const uid = input.uid?.trim() || `user-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const next: AdminUser = {
     uid,
@@ -390,21 +415,25 @@ export function addAdminUser(input: Omit<AdminUser, "uid" | "createdAt"> & { uid
     status: input.status,
     createdAt: Date.now()
   };
-  writeUsers([next, ...users]);
+  if (isFirebaseConfigured && db) {
+    await setDoc(doc(db, "users", uid), next);
+    return next;
+  }
+  writeUsers([next, ...getAdminUsers()]);
   return next;
 }
 
 // Upsert helper for the sign-up flow: register a new user in the admin
 // directory, no-op if they're already there. Default role/status reflect a
 // normal end-user account.
-export function ensureAdminUser(input: {
+export async function ensureAdminUser(input: {
   uid: string;
   username: string;
   phoneNumber: string;
   email?: string;
   role?: "user" | "admin";
   status?: "active" | "disabled";
-}): AdminUser {
+}): Promise<AdminUser> {
   const existing = getAdminUserById(input.uid);
   if (existing) return existing;
   return addAdminUser({
@@ -417,30 +446,51 @@ export function ensureAdminUser(input: {
   });
 }
 
-export function updateAdminUser(uid: string, patch: Partial<Omit<AdminUser, "uid">>) {
-  const users = getAdminUsers().map((u) => (u.uid === uid ? { ...u, ...patch } : u));
-  writeUsers(users);
+export async function updateAdminUser(uid: string, patch: Partial<Omit<AdminUser, "uid">>) {
+  if (isFirebaseConfigured && db) {
+    await updateDoc(doc(db, "users", uid), patch);
+    return;
+  }
+  writeUsers(getAdminUsers().map((u) => (u.uid === uid ? { ...u, ...patch } : u)));
 }
 
-export function deleteAdminUser(uid: string) {
-  const users = getAdminUsers().filter((u) => u.uid !== uid);
-  writeUsers(users);
+export async function deleteAdminUser(uid: string) {
+  if (isFirebaseConfigured && db) {
+    await deleteDoc(doc(db, "users", uid));
+    return;
+  }
+  writeUsers(getAdminUsers().filter((u) => u.uid !== uid));
 }
 
-export function toggleAdminUserStatus(uid: string) {
-  const users = getAdminUsers().map((u) =>
-    u.uid === uid ? { ...u, status: u.status === "active" ? "disabled" : "active" } : u
-  );
-  writeUsers(users as AdminUser[]);
+export async function toggleAdminUserStatus(uid: string) {
+  const user = getAdminUserById(uid);
+  const nextStatus = user?.status === "active" ? "disabled" : "active";
+  if (isFirebaseConfigured && db) {
+    await updateDoc(doc(db, "users", uid), { status: nextStatus });
+    return;
+  }
+  writeUsers(getAdminUsers().map((u) =>
+    u.uid === uid ? { ...u, status: nextStatus } : u
+  ) as AdminUser[]);
 }
 
 export function getAdminUserById(uid: string): AdminUser | undefined {
+  if (isFirebaseConfigured) return usersCache.get(uid);
   return getAdminUsers().find((u) => u.uid === uid);
 }
 
 export function useAdminUsers(): AdminUser[] {
   const [users, setUsers] = useState<AdminUser[]>([]);
   useEffect(() => {
+    if (isFirebaseConfigured && db) {
+      const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+      return onSnapshot(q, (snap) => {
+        const list = snap.docs.map((d) => ({ uid: d.id, ...d.data() } as AdminUser));
+        usersCache.clear();
+        list.forEach((u) => usersCache.set(u.uid, u));
+        setUsers(list);
+      });
+    }
     const sync = () => setUsers(getAdminUsers());
     sync();
     window.addEventListener(USERS_EVENT, sync);
@@ -458,6 +508,7 @@ export function useAdminUsers(): AdminUser[] {
 export type AdminNotificationKind =
   | "user-registered"
   | "listing-posted"
+  | "listing-pending"
   | "listing-flagged";
 
 export interface AdminNotification {
@@ -533,12 +584,24 @@ function writeNotifications(list: AdminNotification[]) {
 // Record an admin-visible incoming event (new sign-up, new listing, report, …).
 // Call this from the user-facing flow that triggers the event, NOT from
 // seeders — seeders write the rooms/users store directly to bypass this path.
-export function pushIncomingNotification(input: {
+export async function pushIncomingNotification(input: {
   kind: AdminNotificationKind;
   title: string;
   body: string;
   relatedId?: string;
-}): AdminNotification {
+}): Promise<AdminNotification> {
+  if (isFirebaseConfigured && db) {
+    const data = {
+      kind: input.kind,
+      title: input.title,
+      body: input.body,
+      createdAt: Date.now(),
+      read: false,
+      ...(input.relatedId ? { relatedId: input.relatedId } : {})
+    };
+    const ref = await addDoc(collection(db, "admin_notifications"), data);
+    return { id: ref.id, ...data };
+  }
   const n: AdminNotification = {
     id: `n-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     kind: input.kind,
@@ -548,30 +611,48 @@ export function pushIncomingNotification(input: {
     read: false,
     relatedId: input.relatedId
   };
-  // Make sure the store is initialized — getAdminNotifications seeds on
-  // first read, which we want even if no admin has visited yet.
-  const list = [n, ...getAdminNotifications()];
-  writeNotifications(list);
+  writeNotifications([n, ...getAdminNotifications()]);
   return n;
 }
 
-export function markNotificationRead(id: string, read = true) {
-  const list = getAdminNotifications().map((n) => (n.id === id ? { ...n, read } : n));
-  writeNotifications(list);
+export async function markNotificationRead(id: string, read = true) {
+  if (isFirebaseConfigured && db) {
+    await updateDoc(doc(db, "admin_notifications", id), { read });
+    return;
+  }
+  writeNotifications(getAdminNotifications().map((n) => (n.id === id ? { ...n, read } : n)));
 }
 
-export function markAllNotificationsRead() {
-  const list = getAdminNotifications().map((n) => ({ ...n, read: true }));
-  writeNotifications(list);
+export async function markAllNotificationsRead() {
+  if (isFirebaseConfigured && db) {
+    const snap = await import("firebase/firestore").then(({ getDocs, query, collection, where }) =>
+      getDocs(query(collection(db!, "admin_notifications"), where("read", "==", false)))
+    );
+    const batch = writeBatch(db);
+    snap.docs.forEach((d) => batch.update(d.ref, { read: true }));
+    await batch.commit();
+    return;
+  }
+  writeNotifications(getAdminNotifications().map((n) => ({ ...n, read: true })));
 }
 
-export function deleteNotification(id: string) {
+export async function deleteNotification(id: string) {
+  if (isFirebaseConfigured && db) {
+    await deleteDoc(doc(db, "admin_notifications", id));
+    return;
+  }
   writeNotifications(getAdminNotifications().filter((n) => n.id !== id));
 }
 
 export function useAdminNotifications(): AdminNotification[] {
   const [list, setList] = useState<AdminNotification[]>([]);
   useEffect(() => {
+    if (isFirebaseConfigured && db) {
+      const q = query(collection(db, "admin_notifications"), orderBy("createdAt", "desc"));
+      return onSnapshot(q, (snap) => {
+        setList(snap.docs.map((d) => ({ id: d.id, ...d.data() } as AdminNotification)));
+      });
+    }
     const sync = () => setList(getAdminNotifications());
     sync();
     window.addEventListener(NOTIF_EVENT, sync);
@@ -701,7 +782,7 @@ function writeTemplates(list: AdminOutboundTemplate[]) {
   window.dispatchEvent(new Event(TEMPLATES_EVENT));
 }
 
-export function addOutboundTemplate(input: { name: string; title: string; body: string }): AdminOutboundTemplate {
+export async function addOutboundTemplate(input: { name: string; title: string; body: string }): Promise<AdminOutboundTemplate> {
   const now = Date.now();
   const tpl: AdminOutboundTemplate = {
     id: `tpl-${now}-${Math.random().toString(36).slice(2, 7)}`,
@@ -711,24 +792,41 @@ export function addOutboundTemplate(input: { name: string; title: string; body: 
     createdAt: now,
     updatedAt: now
   };
+  if (isFirebaseConfigured && db) {
+    await setDoc(doc(db, "notification_templates", tpl.id), tpl);
+    return tpl;
+  }
   writeTemplates([tpl, ...getOutboundTemplates()]);
   return tpl;
 }
 
-export function updateOutboundTemplate(id: string, patch: Partial<Pick<AdminOutboundTemplate, "name" | "title" | "body">>) {
-  const list = getOutboundTemplates().map((t) =>
+export async function updateOutboundTemplate(id: string, patch: Partial<Pick<AdminOutboundTemplate, "name" | "title" | "body">>) {
+  if (isFirebaseConfigured && db) {
+    await updateDoc(doc(db, "notification_templates", id), { ...patch, updatedAt: Date.now() });
+    return;
+  }
+  writeTemplates(getOutboundTemplates().map((t) =>
     t.id === id ? { ...t, ...patch, updatedAt: Date.now() } : t
-  );
-  writeTemplates(list);
+  ));
 }
 
-export function deleteOutboundTemplate(id: string) {
+export async function deleteOutboundTemplate(id: string) {
+  if (isFirebaseConfigured && db) {
+    await deleteDoc(doc(db, "notification_templates", id));
+    return;
+  }
   writeTemplates(getOutboundTemplates().filter((t) => t.id !== id));
 }
 
 export function useOutboundTemplates(): AdminOutboundTemplate[] {
   const [list, setList] = useState<AdminOutboundTemplate[]>([]);
   useEffect(() => {
+    if (isFirebaseConfigured && db) {
+      const q = query(collection(db, "notification_templates"), orderBy("createdAt", "desc"));
+      return onSnapshot(q, (snap) => {
+        setList(snap.docs.map((d) => ({ id: d.id, ...d.data() } as AdminOutboundTemplate)));
+      });
+    }
     const sync = () => setList(getOutboundTemplates());
     sync();
     window.addEventListener(TEMPLATES_EVENT, sync);
@@ -765,7 +863,9 @@ function writeCampaigns(list: AdminOutboundCampaign[]) {
 // Resolve the concrete list of users an audience targets. Disabled accounts are
 // dropped so the admin sees a realistic recipient count.
 export function resolveAudience(audience: AdminOutboundAudience): AdminUser[] {
-  const users = getAdminUsers().filter((u) => u.status === "active");
+  const users = isFirebaseConfigured
+    ? Array.from(usersCache.values()).filter((u) => u.status === "active")
+    : getAdminUsers().filter((u) => u.status === "active");
   if (audience.kind === "all") return users;
   if (audience.kind === "role") return users.filter((u) => u.role === audience.role);
   const set = new Set(audience.uids);
@@ -785,11 +885,11 @@ function audienceSummary(audience: AdminOutboundAudience, count: number): string
   return `${count} users`;
 }
 
-export function sendAdminOutbound(input: {
+export async function sendAdminOutbound(input: {
   title: string;
   body: string;
   audience: AdminOutboundAudience;
-}): AdminOutboundCampaign | null {
+}): Promise<AdminOutboundCampaign | null> {
   const recipients = resolveAudience(input.audience);
   if (recipients.length === 0) return null;
   const campaign: AdminOutboundCampaign = {
@@ -801,17 +901,31 @@ export function sendAdminOutbound(input: {
     recipientSummary: audienceSummary(input.audience, recipients.length),
     sentAt: Date.now()
   };
+  if (isFirebaseConfigured && db) {
+    await setDoc(doc(db, "notification_campaigns", campaign.id), campaign);
+    return campaign;
+  }
   writeCampaigns([campaign, ...getOutboundCampaigns()]);
   return campaign;
 }
 
-export function deleteOutboundCampaign(id: string) {
+export async function deleteOutboundCampaign(id: string) {
+  if (isFirebaseConfigured && db) {
+    await deleteDoc(doc(db, "notification_campaigns", id));
+    return;
+  }
   writeCampaigns(getOutboundCampaigns().filter((c) => c.id !== id));
 }
 
 export function useOutboundCampaigns(): AdminOutboundCampaign[] {
   const [list, setList] = useState<AdminOutboundCampaign[]>([]);
   useEffect(() => {
+    if (isFirebaseConfigured && db) {
+      const q = query(collection(db, "notification_campaigns"), orderBy("sentAt", "desc"));
+      return onSnapshot(q, (snap) => {
+        setList(snap.docs.map((d) => ({ id: d.id, ...d.data() } as AdminOutboundCampaign)));
+      });
+    }
     const sync = () => setList(getOutboundCampaigns());
     sync();
     window.addEventListener(CAMPAIGNS_EVENT, sync);
@@ -896,7 +1010,14 @@ export function getUserNotifications(session: {
     }));
 }
 
-export function markUserCampaignRead(uid: string, campaignId: string, read = true) {
+export async function markUserCampaignRead(uid: string, campaignId: string, read = true) {
+  if (isFirebaseConfigured && db) {
+    const { arrayUnion, arrayRemove } = await import("firebase/firestore");
+    await updateDoc(doc(db, "users", uid), {
+      readCampaignIds: read ? arrayUnion(campaignId) : arrayRemove(campaignId)
+    });
+    return;
+  }
   if (typeof window === "undefined") return;
   const ids = new Set(getUserReadCampaignIds(uid));
   if (read) ids.add(campaignId);
@@ -905,7 +1026,14 @@ export function markUserCampaignRead(uid: string, campaignId: string, read = tru
   window.dispatchEvent(new Event(USER_NOTIF_EVENT));
 }
 
-export function markAllUserCampaignsRead(uid: string, campaignIds: string[]) {
+export async function markAllUserCampaignsRead(uid: string, campaignIds: string[]) {
+  if (isFirebaseConfigured && db) {
+    const { arrayUnion } = await import("firebase/firestore");
+    await updateDoc(doc(db, "users", uid), {
+      readCampaignIds: arrayUnion(...campaignIds)
+    });
+    return;
+  }
   if (typeof window === "undefined") return;
   const merged = new Set([...getUserReadCampaignIds(uid), ...campaignIds]);
   window.localStorage.setItem(userReadKey(uid), JSON.stringify([...merged]));
@@ -919,6 +1047,44 @@ export function useUserNotifications(session: {
 } | null): UserNotification[] {
   const [list, setList] = useState<UserNotification[]>([]);
   useEffect(() => {
+    if (!session) { setList([]); return; }
+
+    if (isFirebaseConfigured && db) {
+      let campaigns: AdminOutboundCampaign[] = [];
+      let readIds = new Set<string>();
+
+      const derive = () => {
+        const user = userContextForSession(session);
+        setList(
+          campaigns
+            .filter((c) => campaignMatchesUser(c.audience, user))
+            .map((c) => ({
+              id: c.id,
+              title: fillPlaceholders(c.title, user),
+              body: fillPlaceholders(c.body, user),
+              createdAt: c.sentAt,
+              read: readIds.has(c.id)
+            }))
+        );
+      };
+
+      const unsubCampaigns = onSnapshot(
+        query(collection(db, "notification_campaigns"), orderBy("sentAt", "desc")),
+        (snap) => {
+          campaigns = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AdminOutboundCampaign));
+          derive();
+        }
+      );
+
+      const unsubUser = onSnapshot(doc(db, "users", session.uid), (snap) => {
+        const data = snap.data();
+        readIds = new Set<string>(Array.isArray(data?.readCampaignIds) ? data.readCampaignIds : []);
+        derive();
+      });
+
+      return () => { unsubCampaigns(); unsubUser(); };
+    }
+
     const sync = () => setList(getUserNotifications(session));
     sync();
     window.addEventListener(USER_NOTIF_EVENT, sync);

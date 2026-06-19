@@ -17,6 +17,7 @@ import { useT } from "@/lib/language";
 const KIND_META: Record<AdminNotificationKind, { icon: "user" | "building" | "shield" | "message"; tone: string }> = {
   "user-registered": { icon: "user", tone: "bg-brand/10 text-brand" },
   "listing-posted": { icon: "building", tone: "bg-emerald-50 text-emerald-700" },
+  "listing-pending": { icon: "building", tone: "bg-sky-50 text-sky-700" },
   "listing-flagged": { icon: "shield", tone: "bg-amber-50 text-amber-700" },
 };
 
@@ -139,7 +140,7 @@ export default function AdminIncomingNotificationsPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => markAllNotificationsRead()}
+            onClick={() => void markAllNotificationsRead()}
             disabled={unread === 0}
             className="btn-primary disabled:opacity-50"
           >
@@ -194,7 +195,7 @@ function NotificationRow({ notification }: { notification: AdminNotification }) 
 
   function handleNavigate() {
     if (!destination) return;
-    if (!notification.read) markNotificationRead(notification.id, true);
+    if (!notification.read) void markNotificationRead(notification.id, true);
     router.push(destination);
   }
 
@@ -223,7 +224,7 @@ function NotificationRow({ notification }: { notification: AdminNotification }) 
         {!notification.read ? (
           <button
             type="button"
-            onClick={() => markNotificationRead(notification.id, true)}
+            onClick={() => void markNotificationRead(notification.id, true)}
             className="rounded-full p-1.5 text-ink-muted transition hover:bg-slate-100 hover:text-ink"
             aria-label={t("admin.notifications.row.markRead")}
             title={t("admin.notifications.row.markRead")}
@@ -233,7 +234,7 @@ function NotificationRow({ notification }: { notification: AdminNotification }) 
         ) : null}
         <button
           type="button"
-          onClick={() => deleteNotification(notification.id)}
+          onClick={() => void deleteNotification(notification.id)}
           className="rounded-full p-1.5 text-ink-muted transition hover:bg-red-50 hover:text-red-700"
           aria-label={t("admin.notifications.row.delete")}
           title={t("admin.notifications.row.deleteTitle")}

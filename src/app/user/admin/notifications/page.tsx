@@ -163,7 +163,7 @@ export default function AdminNotificationsPage() {
         onCancel={() => setConfirmDeleteCampaign(null)}
         onConfirm={() => {
           if (!confirmDeleteCampaign) return;
-          deleteOutboundCampaign(confirmDeleteCampaign.id);
+          void deleteOutboundCampaign(confirmDeleteCampaign.id);
           setConfirmDeleteCampaign(null);
         }}
       />

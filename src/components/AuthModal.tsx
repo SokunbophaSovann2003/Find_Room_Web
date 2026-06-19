@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
-import { loginWithPhone, registerWithPhone, resetDemoPassword, checkPhoneAccountExists } from "@/lib/auth";
-import { sendOtp, verifyOtp } from "@/lib/otp";
+import { loginWithPhone, registerWithPhone, resetPassword, checkPhoneAccountExists } from "@/lib/auth";
+import { sendOtp, verifyOtp, verifyOtpForReset } from "@/lib/otp";
 import { useT } from "@/lib/language";
 
 type Tab = "login" | "register" | "forgot";
@@ -395,10 +395,12 @@ function RegisterForm({
     setLoading(true);
     setError(null);
     try {
-      const { demoCode: code } = sendOtp(`+855${digits}`);
+      const { demoCode: code } = await sendOtp(`+855${digits}`);
       setDemoCode(code);
       setOtp("");
       setStep("otp");
+    } catch (err) {
+      setError(err instanceof Error ? t(err.message) : t("auth.error.signUpFailed"));
     } finally {
       setLoading(false);
     }
@@ -407,7 +409,7 @@ function RegisterForm({
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
     if (otp.replace(/\s/g, "").length < 6) { setError(t("auth.otp.error.invalid")); return; }
-    if (!verifyOtp(`+855${digits}`, otp)) { setError(t("auth.otp.error.invalid")); return; }
+    if (!await verifyOtp(`+855${digits}`, otp)) { setError(t("auth.otp.error.invalid")); return; }
     setLoading(true);
     setError(null);
     try {
@@ -420,8 +422,8 @@ function RegisterForm({
     }
   }
 
-  function handleResend() {
-    const { demoCode: code } = sendOtp(`+855${digits}`);
+  async function handleResend() {
+    const { demoCode: code } = await sendOtp(`+855${digits}`);
     setDemoCode(code);
     setOtp("");
     setError(null);
@@ -545,6 +547,7 @@ function ForgotPasswordForm({
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [demoCode, setDemoCode] = useState<string | null>(null);
+  const [resetNonce, setResetNonce] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -558,8 +561,8 @@ function ForgotPasswordForm({
     setLoading(true);
     setError(null);
     try {
-      if (!checkPhoneAccountExists(`+855${digits}`)) throw new Error(t("auth.forgot.notFound"));
-      const { demoCode: code } = sendOtp(`+855${digits}`);
+      if (!await checkPhoneAccountExists(`+855${digits}`)) throw new Error(t("auth.forgot.notFound"));
+      const { demoCode: code } = await sendOtp(`+855${digits}`);
       setDemoCode(code);
       setOtp("");
       setStep("otp");
@@ -570,21 +573,30 @@ function ForgotPasswordForm({
     }
   }
 
-  function handleVerifyOtp(e: React.FormEvent) {
+  async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
     if (otp.replace(/\s/g, "").length < 6) { setError(t("auth.otp.error.invalid")); return; }
-    if (!verifyOtp(`+855${digits}`, otp)) { setError(t("auth.otp.error.invalid")); return; }
+    setLoading(true);
     setError(null);
-    setStep("newPassword");
+    try {
+      const nonce = await verifyOtpForReset(`+855${digits}`, otp);
+      setResetNonce(nonce);
+      setStep("newPassword");
+    } catch (err) {
+      setError(err instanceof Error ? t(err.message) : t("auth.otp.error.invalid"));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSetPassword(e: React.FormEvent) {
     e.preventDefault();
     if (newPassword.length < 8) { setError(t("auth.error.password.tooShort")); return; }
+    if (!resetNonce) { setError(t("auth.forgot.notFound")); return; }
     setLoading(true);
     setError(null);
     try {
-      await resetDemoPassword(`+855${digits}`, newPassword);
+      await resetPassword(`+855${digits}`, resetNonce, newPassword);
       setStep("done");
     } catch (err) {
       setError(err instanceof Error ? t(err.message) : t("auth.forgot.noSupport"));
@@ -593,8 +605,8 @@ function ForgotPasswordForm({
     }
   }
 
-  function handleResend() {
-    const { demoCode: code } = sendOtp(`+855${digits}`);
+  async function handleResend() {
+    const { demoCode: code } = await sendOtp(`+855${digits}`);
     setDemoCode(code);
     setOtp("");
     setError(null);
@@ -678,10 +690,10 @@ function ForgotPasswordForm({
           <button
             type="submit"
             className="btn-primary w-full"
-            disabled={otp.replace(/\s/g, "").length < 6}
+            disabled={loading || otp.replace(/\s/g, "").length < 6}
           >
-            {t("auth.otp.submit")}
-            <Icon name="arrow-right" className="h-4 w-4" />
+            {loading ? t("auth.otp.verifying") : t("auth.otp.submit")}
+            {loading ? null : <Icon name="arrow-right" className="h-4 w-4" />}
           </button>
         </form>
       ) : (

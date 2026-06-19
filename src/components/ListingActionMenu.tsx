@@ -4,10 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "./Icon";
 import ConfirmModal from "./ConfirmModal";
-import {
-  deleteLocalRoom,
-  updateLocalRoom
-} from "@/lib/local-rooms";
+import { deleteRoom, updateRoom } from "@/lib/rooms";
 import { useAdminSettings } from "@/lib/admin";
 import { isAutoOccupied } from "@/lib/auto-occupy";
 import { toast } from "@/lib/toast";
@@ -85,11 +82,11 @@ export default function ListingActionMenu({
       // Room is auto-occupied (isOccupied is false in storage but the clock
       // expired). "Mark Available" means resetting lastActivityAt so the room
       // becomes visible on Explore again — not flipping isOccupied.
-      updateLocalRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() });
+      void updateRoom(room.id, { isOccupied: false, lastActivityAt: Date.now() });
       toast.success(t("toast.listing.available", { title: room.title }));
     } else {
       const nextOccupied = !room.isOccupied;
-      updateLocalRoom(room.id, { isOccupied: nextOccupied });
+      void updateRoom(room.id, { isOccupied: nextOccupied });
       toast.success(
         t(
           nextOccupied ? "toast.listing.occupied" : "toast.listing.available",
@@ -147,7 +144,7 @@ export default function ListingActionMenu({
         onCancel={() => setConfirmDeleteOpen(false)}
         onConfirm={() => {
           setConfirmDeleteOpen(false);
-          deleteLocalRoom(room.id);
+          void deleteRoom(room.id);
           toast.success(t("toast.listing.deleted", { title: room.title }));
         }}
       />

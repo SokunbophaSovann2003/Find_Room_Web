@@ -7,9 +7,9 @@ import Icon, { amenityIcon } from "@/components/Icon";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import ContactListEditor from "@/components/ContactListEditor";
 import { useSession } from "@/lib/session";
-import { addLocalRoom, getLocalRoomById, updateLocalRoom } from "@/lib/local-rooms";
+import { addRoom, generateRoomId, getRoomById, updateRoom } from "@/lib/rooms";
 import { findRoomById } from "@/lib/mock-data";
-import { downscalePhoto } from "@/lib/image";
+import { uploadRoomPhoto } from "@/lib/storage";
 import { loadOverrides } from "@/lib/profile-overrides";
 import { DEFAULT_AMENITIES, getAdminSettings, pushIncomingNotification } from "@/lib/admin";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -167,9 +167,10 @@ export default function ListRoomPage() {
     if (copyAppliedRef.current) return;
     const copyId = searchParams?.get("copyFrom");
     if (!copyId) return;
-    const source = getLocalRoomById(copyId) ?? findRoomById(copyId);
-    if (!source) return;
-    copyAppliedRef.current = true;
+    void getRoomById(copyId).then((fetched) => {
+      const source = fetched ?? findRoomById(copyId);
+      if (!source) return;
+      copyAppliedRef.current = true;
 
     setTitle(`${t("listRoom.copyPrefix")} ${source.title}`);
     setDescription(source.description);
@@ -219,6 +220,7 @@ export default function ListRoomPage() {
     if (source.owner.telegramPhones?.length) {
       setTelegramPhones(source.owner.telegramPhones);
     }
+    });
   }, [searchParams]);
 
   // Editing an existing listing: hydrate every field from the source room
@@ -228,9 +230,10 @@ export default function ListRoomPage() {
   useEffect(() => {
     if (editAppliedRef.current) return;
     if (!editingId) return;
-    const source = getLocalRoomById(editingId) ?? findRoomById(editingId);
-    if (!source) return;
-    editAppliedRef.current = true;
+    void getRoomById(editingId).then((fetched) => {
+      const source = fetched ?? findRoomById(editingId);
+      if (!source) return;
+      editAppliedRef.current = true;
 
     setTitle(source.title);
     setDescription(source.description);
@@ -281,6 +284,7 @@ export default function ListRoomPage() {
     if (source.owner.telegramPhones?.length) {
       setTelegramPhones(source.owner.telegramPhones);
     }
+    });
   }, [editingId]);
 
   // Hydrate the persisted "things that don't change per listing" fields
@@ -457,8 +461,14 @@ export default function ListRoomPage() {
 
     setSubmitting(true);
     try {
+      const newPhotos = photos.slice(0, Math.max(0, MAX_PHOTOS - existingImages.length));
+
+      // For the edit path we know the ID already; for create, generate it now
+      // so we can use it as the Storage folder path before the Firestore write.
+      const pendingRoomId = editingId ?? generateRoomId();
+
       const newImages = await Promise.all(
-        photos.slice(0, Math.max(0, MAX_PHOTOS - existingImages.length)).map((p) => downscalePhoto(p.file))
+        newPhotos.map((p, i) => uploadRoomPhoto(pendingRoomId, p.file, existingImages.length + i))
       );
       const images = [...existingImages, ...newImages];
 
@@ -484,9 +494,18 @@ export default function ListRoomPage() {
           };
         });
 
+      const settings = getAdminSettings();
+
       if (editingId) {
-        const existing = getLocalRoomById(editingId);
+        const existing = await getRoomById(editingId);
+        // If approval is required and the listing was rejected, reset to pending
+        // so the admin re-reviews it. Published/pending listings keep their status.
+        const resubmitStatus =
+          existing?.status === "rejected"
+            ? (settings.autoPublishListings ? "published" : "pending")
+            : undefined;
         const patch: Partial<Room> = {
+          ...(resubmitStatus ? { status: resubmitStatus, rejectionReason: undefined } : {}),
           title: title.trim(),
           description: description.trim(),
           price: rentValue,
@@ -519,9 +538,9 @@ export default function ListRoomPage() {
             telegramPhones: ownerTelegrams.length ? ownerTelegrams : undefined
           }
         };
-        if (!updateLocalRoom(editingId, patch)) {
-          // safeSetItem already surfaced a "storage full" toast; stop here so we
-          // don't claim success or navigate away from the unsaved edit.
+        try {
+          await updateRoom(editingId, patch);
+        } catch {
           setSubmitting(false);
           return;
         }
@@ -531,7 +550,7 @@ export default function ListRoomPage() {
       }
 
       const room: Room = {
-        id: `local-${Date.now()}`,
+        id: pendingRoomId,
         title: title.trim(),
         description: description.trim(),
         price: rentValue,
@@ -563,17 +582,19 @@ export default function ListRoomPage() {
           listingsCount: 1
         },
         createdAt: Date.now(),
-        lastActivityAt: Date.now()
+        lastActivityAt: Date.now(),
+        status: settings.autoPublishListings ? "published" : "pending"
       };
 
-      if (!addLocalRoom(room)) {
-        // Storage full (likely the photos) — the toast is already shown. Don't
-        // fire the listing notification, save prefs, or navigate on a failed save.
+      try {
+        await addRoom(room);
+      } catch {
         setSubmitting(false);
         return;
       }
-      pushIncomingNotification({
-        kind: "listing-posted",
+
+      void pushIncomingNotification({
+        kind: room.status === "pending" ? "listing-pending" : "listing-posted",
         title: t("listRoom.notif.title"),
         body: t("listRoom.notif.body", {
           owner: room.owner.name,
@@ -605,7 +626,11 @@ export default function ListRoomPage() {
         });
       }
 
-      toast.success(t("toast.listing.published", { title: room.title }));
+      toast.success(
+        room.status === "pending"
+          ? t("toast.listing.pendingApproval", { title: room.title })
+          : t("toast.listing.published", { title: room.title })
+      );
       router.replace("/profile");
     } catch (err) {
       setSubmitting(false);

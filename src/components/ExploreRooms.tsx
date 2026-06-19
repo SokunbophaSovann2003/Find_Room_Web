@@ -7,7 +7,7 @@ import RoomCard from "./RoomCard";
 import Icon from "./Icon";
 import LoadMoreSentinel from "./admin/LoadMoreSentinel";
 import ErrorBoundary from "./ErrorBoundary";
-import { useLocalRooms } from "@/lib/local-rooms";
+import { useRooms } from "@/lib/rooms";
 import { useT } from "@/lib/language";
 import { useAdminSettings } from "@/lib/admin";
 import { isAutoOccupied } from "@/lib/auto-occupy";
@@ -55,7 +55,7 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
     setView(v);
     router.replace(`?view=${v}`, { scroll: false });
   }
-  const localRooms = useLocalRooms();
+  const localRooms = useRooms();
   const { filter } = useExploreFilter();
   const { autoOccupyDays } = useAdminSettings();
   const allRooms = useMemo(() => {
@@ -71,8 +71,11 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
       return true;
     });
     // applyFilter already strips manually-occupied rooms; additionally remove
-    // listings that have gone stale and should be auto-occupied.
-    return applyFilter(merged, filter).filter((r) => !isAutoOccupied(r, autoOccupyDays));
+    // listings that have gone stale and should be auto-occupied, and any that
+    // haven't been approved yet (pending/rejected are invisible to renters).
+    return applyFilter(merged, filter)
+      .filter((r) => !isAutoOccupied(r, autoOccupyDays))
+      .filter((r) => (r.status ?? "published") === "published");
   }, [localRooms, rooms, filter, autoOccupyDays]);
   const [bounds, setBounds] = useState<Bounds | null>(null);
 
