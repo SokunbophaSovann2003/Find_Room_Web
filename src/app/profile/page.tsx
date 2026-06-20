@@ -36,6 +36,7 @@ export default function ProfilePage() {
   const [overrides, setOverrides] = useState<ProfileOverrides>({});
   const [editing, setEditing] = useState<"profile" | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [pickTypeOpen, setPickTypeOpen] = useState(false);
   const [listingsView, setListingsView] = useState<"grid" | "list">("grid");
   const [listingsVisible, setListingsVisible] = useState(LISTINGS_PAGE_SIZE);
@@ -156,7 +157,7 @@ export default function ProfilePage() {
           <ProfileActionsMenu
             onEdit={() => setEditing("profile")}
             onShare={handleShareProfile}
-            onLogout={handleLogout}
+            onLogout={() => setConfirmLogout(true)}
             signingOut={signingOut}
           />
         </div>
@@ -230,7 +231,7 @@ export default function ProfilePage() {
             </button>
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={() => setConfirmLogout(true)}
               disabled={signingOut}
               className="btn-danger"
             >
@@ -599,6 +600,33 @@ export default function ProfilePage() {
           router.push(`/profile/list-room?type=${t}`);
         }}
       />
+
+      {confirmLogout ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 backdrop-blur-sm sm:items-center">
+          <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-base font-bold text-ink">{t("profile.logOut.confirm.title")}</h2>
+            <p className="text-sm text-ink-muted">{t("profile.logOut.confirm.body")}</p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setConfirmLogout(false)}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                className="btn-danger"
+                disabled={signingOut}
+                onClick={() => { setConfirmLogout(false); void handleLogout(); }}
+              >
+                <Icon name="log-out" className="h-4 w-4" />
+                {signingOut ? t("profile.loggingOut") : t("profile.logOut.confirm.cta")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
