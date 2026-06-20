@@ -4,11 +4,12 @@ import twilio from "twilio";
 
 admin.initializeApp();
 const db = admin.firestore();
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
-const TWILIO_FROM = process.env.TWILIO_FROM_NUMBER ?? "";
+
+const TWILIO_SID  = process.env.TWILIO_ACCOUNT_SID  ?? "";
+const TWILIO_AUTH = process.env.TWILIO_AUTH_TOKEN    ?? "";
+const TWILIO_FROM = process.env.TWILIO_FROM_NUMBER   ?? "";
+const twilioReady = Boolean(TWILIO_SID && TWILIO_AUTH && TWILIO_FROM);
+const twilioClient = twilioReady ? twilio(TWILIO_SID, TWILIO_AUTH) : null;
 
 const OTP_TTL_MS       = 5  * 60 * 1000;  // 5 minutes
 const NONCE_TTL_MS     = 10 * 60 * 1000;  // 10 minutes
@@ -49,13 +50,17 @@ export const sendVerificationCode = onCall(async (request) => {
     expiresAt: Date.now() + OTP_TTL_MS
   });
 
-  await twilioClient.messages.create({
-    body: `Your Joul.KH verification code is ${code}. Valid for 5 minutes.`,
-    from: TWILIO_FROM,
-    to: phone
-  });
+  if (twilioClient) {
+    await twilioClient.messages.create({
+      body: `Your Joul.KH verification code is ${code}. Valid for 5 minutes.`,
+      from: TWILIO_FROM,
+      to: phone
+    });
+    return { success: true };
+  }
 
-  return { success: true };
+  // Twilio not configured — return code so the client can show it in demo mode
+  return { success: true, demoCode: code };
 });
 
 // ─── verifyCode ─────────────────────────────────────────────────────────────
