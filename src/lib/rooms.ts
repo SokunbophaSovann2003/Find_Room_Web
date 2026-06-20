@@ -74,12 +74,12 @@ export async function updateRoom(id: string, patch: Partial<Room>): Promise<void
   });
 }
 
-export async function deleteRoom(id: string): Promise<void> {
+export async function deleteRoom(id: string, ownerId: string): Promise<void> {
   if (!isFirebaseConfigured || !db) {
     localDeleteRoom(id);
     return;
   }
-  await deleteRoomPhotos(id);
+  await deleteRoomPhotos(ownerId, id);
   await deleteDoc(roomDoc(id));
 }
 

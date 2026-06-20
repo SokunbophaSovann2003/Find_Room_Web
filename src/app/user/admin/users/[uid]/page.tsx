@@ -139,7 +139,7 @@ export default function AdminUserDetailPage() {
   function handleDeleteRoom() {
     if (!confirmDeleteRoom) return;
     const title = confirmDeleteRoom.title;
-    void deleteRoom(confirmDeleteRoom.id);
+    void deleteRoom(confirmDeleteRoom.id, confirmDeleteRoom.owner.id);
     setConfirmDeleteRoom(null);
     toast.success(t("toast.admin.listing.deleted", { title }));
   }

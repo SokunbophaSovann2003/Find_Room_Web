@@ -469,7 +469,7 @@ export default function ListRoomPage() {
       const pendingRoomId = editingId ?? generateRoomId();
 
       const newImages = await Promise.all(
-        newPhotos.map((p, i) => uploadRoomPhoto(pendingRoomId, p.file, existingImages.length + i))
+        newPhotos.map((p, i) => uploadRoomPhoto(session.uid, pendingRoomId, p.file, existingImages.length + i))
       );
       const images = [...existingImages, ...newImages];
 

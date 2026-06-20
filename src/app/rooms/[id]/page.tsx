@@ -522,7 +522,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
         onCancel={() => setAdminDeleteOpen(false)}
         onConfirm={() => {
           const title = (room as Room).title;
-          void deleteRoom((room as Room).id);
+          void deleteRoom((room as Room).id, (room as Room).owner.id);
           setAdminDeleteOpen(false);
           toast.success(t("toast.admin.listing.deleted", { title }));
           router.push("/user/admin");

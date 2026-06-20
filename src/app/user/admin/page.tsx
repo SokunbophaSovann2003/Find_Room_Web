@@ -102,7 +102,7 @@ export default function AdminRoomsPage() {
   function handleDelete() {
     if (!confirmDelete) return;
     const title = confirmDelete.title;
-    void deleteRoom(confirmDelete.id);
+    void deleteRoom(confirmDelete.id, confirmDelete.owner.id);
     setConfirmDelete(null);
     toast.success(t("toast.admin.listing.deleted", { title }));
   }
@@ -136,7 +136,7 @@ export default function AdminRoomsPage() {
   function handleBulkDelete() {
     if (!confirmBulkDelete) return;
     const n = confirmBulkDelete.length;
-    for (const room of confirmBulkDelete) void deleteRoom(room.id);
+    for (const room of confirmBulkDelete) void deleteRoom(room.id, room.owner.id);
     setConfirmBulkDelete(null);
     toast.success(t("toast.admin.listing.bulkDeleted", { n }));
   }

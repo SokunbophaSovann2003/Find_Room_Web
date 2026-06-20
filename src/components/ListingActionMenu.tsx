@@ -144,7 +144,7 @@ export default function ListingActionMenu({
         onCancel={() => setConfirmDeleteOpen(false)}
         onConfirm={() => {
           setConfirmDeleteOpen(false);
-          void deleteRoom(room.id);
+          void deleteRoom(room.id, room.owner.id);
           toast.success(t("toast.listing.deleted", { title: room.title }));
         }}
       />

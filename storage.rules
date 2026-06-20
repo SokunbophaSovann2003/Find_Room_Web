@@ -3,21 +3,19 @@ service firebase.storage {
   match /b/{bucket}/o {
 
     // ─── Room photos ────────────────────────────────────────────────────────
-    // Public read: photos are shown on the public listings pages.
-    // Authenticated users may upload images ≤ 5 MB of image/* type.
-    // (Owner enforcement happens in Firestore; Storage only validates type/size.)
-    match /rooms/{roomId}/{fileName} {
+    // Path: rooms/{ownerId}/{roomId}/{fileName}
+    // ownerId is the Firebase Auth uid of the room owner, encoded in the path
+    // so Storage rules can enforce ownership without a Firestore cross-lookup.
+    match /rooms/{ownerId}/{roomId}/{fileName} {
       allow read: if true;
 
       allow write: if request.auth != null
+        && request.auth.uid == ownerId
         && request.resource.size  < 5 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
 
-      // Storage rules can't query Firestore to verify room ownership, so delete
-      // is scoped to signed-in users only. Paths contain an unpredictable
-      // timestamp (e.g. rooms/{roomId}/1718888400000_0), which makes blind
-      // deletion impractical. Owner-level enforcement happens in Firestore.
-      allow delete: if request.auth != null;
+      allow delete: if request.auth != null
+        && request.auth.uid == ownerId;
     }
   }
 }
