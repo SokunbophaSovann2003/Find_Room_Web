@@ -18,7 +18,9 @@
  * Firestore document (idempotent) and skip the Auth creation step.
  */
 
-import * as admin from "firebase-admin";
+import { initializeApp, cert, type ServiceAccount } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
@@ -44,18 +46,18 @@ if (password.length < 8) {
 
 // ── Init Firebase Admin ───────────────────────────────────────────────────────
 const keyPath = resolve(__dirname, "serviceAccountKey.json");
-let serviceAccount: admin.ServiceAccount;
+let serviceAccount: ServiceAccount;
 try {
-  serviceAccount = JSON.parse(readFileSync(keyPath, "utf8")) as admin.ServiceAccount;
+  serviceAccount = JSON.parse(readFileSync(keyPath, "utf8")) as ServiceAccount;
 } catch {
   console.error(`Could not read ${keyPath}`);
   console.error("Download it from: Firebase Console → Project Settings → Service Accounts → Generate new private key");
   process.exit(1);
 }
 
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-const db   = admin.firestore();
-const auth = admin.auth();
+initializeApp({ credential: cert(serviceAccount) });
+const db   = getFirestore();
+const auth = getAuth();
 
 function phoneToEmail(p: string): string {
   return `${p.replace(/\D/g, "")}@findroom.app`;
