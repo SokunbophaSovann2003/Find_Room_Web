@@ -503,6 +503,29 @@ export function useAdminUsers(): AdminUser[] {
   return users;
 }
 
+// Reads the current user's own Firestore document to check their role.
+// Avoids the timing bug where usersCache is empty on first render.
+export function useIsAdmin(session: Session | null): { admin: boolean; loading: boolean } {
+  const [admin, setAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!session) { setAdmin(false); setLoading(false); return; }
+    if (isFirebaseConfigured && db) {
+      return onSnapshot(doc(db, "users", session.uid), (snap) => {
+        const data = snap.data();
+        setAdmin(data?.role === "admin" && data?.status === "active");
+        setLoading(false);
+      });
+    }
+    // Demo mode: synchronous check
+    setAdmin(isAdmin(session));
+    setLoading(false);
+  }, [session?.uid]);
+
+  return { admin, loading };
+}
+
 // ---------- Mock notifications ----------
 
 export type AdminNotificationKind =

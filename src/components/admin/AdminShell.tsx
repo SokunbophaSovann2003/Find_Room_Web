@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import Icon from "@/components/Icon";
 import AuthModal from "@/components/AuthModal";
 import { getSession, subscribeSession, type Session } from "@/lib/session";
-import { isAdmin, seedMockListings } from "@/lib/admin";
+import { useIsAdmin, seedMockListings } from "@/lib/admin";
 import { signOut } from "@/lib/auth";
 import { useT } from "@/lib/language";
 
@@ -14,19 +14,20 @@ type Status = "checking" | "denied" | "ok";
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>("checking");
-  const [session, setSessionState] = useState<Session | null>(null);
+  const [session, setSessionState] = useState<Session | null>(() => getSession());
   const t = useT();
+  const { admin, loading } = useIsAdmin(session);
 
   useEffect(() => {
-    function apply(s: Session | null) {
-      setSessionState(s);
-      if (!s) setStatus("denied");
-      else if (!isAdmin(s)) setStatus("denied");
-      else setStatus("ok");
-    }
-    apply(getSession());
-    return subscribeSession(apply);
+    return subscribeSession((s) => setSessionState(s));
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!session) setStatus("denied");
+    else if (!admin) setStatus("denied");
+    else setStatus("ok");
+  }, [session, admin, loading]);
 
   if (status === "checking") {
     return (
@@ -43,11 +44,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     return (
       <DeniedScreen
         session={session}
-        onAuthSuccess={() => {
-          const s = getSession();
-          if (s && isAdmin(s)) setStatus("ok");
-          else setStatus("denied");
-        }}
+        onAuthSuccess={(s) => setSessionState(s)}
       />
     );
   }
@@ -60,7 +57,7 @@ function DeniedScreen({
   onAuthSuccess
 }: {
   session: Session | null;
-  onAuthSuccess: () => void;
+  onAuthSuccess: (s: Session | null) => void;
 }) {
   const router = useRouter();
   const t = useT();
@@ -117,7 +114,7 @@ function DeniedScreen({
         }}
         onSuccess={() => {
           setAuthOpen(false);
-          onAuthSuccess();
+          onAuthSuccess(getSession());
         }}
       />
     </>
