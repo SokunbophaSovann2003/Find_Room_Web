@@ -9,7 +9,7 @@ import LanguageToggle from "./LanguageToggle";
 import PropertyTypePicker from "./PropertyTypePicker";
 import { useSession } from "@/lib/session";
 import { loadOverrides, subscribeOverrides } from "@/lib/profile-overrides";
-import { isAdmin, useAdminNotifications, useUserNotifications } from "@/lib/admin";
+import { useIsAdmin, useAdminNotifications, useUserNotifications } from "@/lib/admin";
 import { setViewMode, useViewMode } from "@/lib/view-mode";
 import { useT } from "@/lib/language";
 
@@ -63,8 +63,9 @@ export default function Navbar() {
   // wins inside /user/admin/*, otherwise the sticky viewMode preference lets
   // an admin keep their admin context on shared routes like /rooms/[id].
   const viewMode = useViewMode();
+  const { admin: isAdminUser } = useIsAdmin(session);
   const pathOnAdmin = pathname?.startsWith("/user/admin") ?? false;
-  const onAdmin = pathOnAdmin || (viewMode === "admin" && isAdmin(session));
+  const onAdmin = pathOnAdmin || (viewMode === "admin" && isAdminUser);
 
   return (
     <>
@@ -239,13 +240,9 @@ function ViewSwitch({ onAdmin }: { onAdmin: boolean }) {
   const router = useRouter();
   const session = useSession();
   const t = useT();
+  const { admin: isAdminUser } = useIsAdmin(session);
 
-  // Only render for actual admin sessions. Logged-out and regular users can't
-  // self-promote anymore — they have to sign in with an admin account via the
-  // normal AuthModal flow. (Previously this button silently added the current
-  // uid to the admin allowlist; that was a frontend-only convenience for the
-  // mock demo and a hard "no" for any real deployment.)
-  if (!isAdmin(session)) return null;
+  if (!isAdminUser) return null;
 
   function toggle() {
     if (onAdmin) {

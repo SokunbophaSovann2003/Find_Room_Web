@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon, { type IconName } from "@/components/Icon";
-import { isAdmin, useAdminNotifications } from "@/lib/admin";
+import { useIsAdmin, useAdminNotifications } from "@/lib/admin";
 import { useSession } from "@/lib/session";
 import { useViewMode } from "@/lib/view-mode";
 import { useKeyboardOpen } from "@/lib/use-keyboard-open";
@@ -38,8 +38,8 @@ export default function AdminFloatingNav() {
   const inListRoom = pathname === "/profile/list-room";
   const inIncomingNotifications = pathname === "/user/admin/notifications/incoming";
   const inComposeNotification = pathname === "/user/admin/notifications/compose";
-  const adminSession = isAdmin(session);
-  const shouldRender = adminSession && (inAdminRoute || viewMode === "admin");
+  const { admin: isAdminUser } = useIsAdmin(session);
+  const shouldRender = isAdminUser && (inAdminRoute || viewMode === "admin");
 
   // Pages that own their own bottom action bar suppress the global tabbed nav
   // so the two don't stack on top of each other.
