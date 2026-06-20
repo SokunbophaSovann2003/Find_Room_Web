@@ -1,10 +1,10 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
-import { Twilio } from "twilio";
+import twilio from "twilio";
 
 admin.initializeApp();
 const db = admin.firestore();
-const twilioClient = new Twilio(
+const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 );

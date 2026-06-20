@@ -12,6 +12,7 @@
   },
   "storage": [
     {
+      "bucket": "joul-kh.firebasestorage.app",
       "rules": "storage.rules"
     }
   ]
