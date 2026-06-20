@@ -27,7 +27,7 @@ function hexNonce(len = 32): string {
 
 // ─── sendVerificationCode ───────────────────────────────────────────────────
 // Generates a 6-digit OTP, stores it in Firestore, and sends it via Twilio.
-export const sendVerificationCode = onCall(async (request) => {
+export const sendVerificationCode = onCall({ invoker: "public" }, async (request) => {
   const phone = request.data?.phone as string | undefined;
   if (!phone || typeof phone !== "string") {
     throw new HttpsError("invalid-argument", "phone is required");
@@ -65,7 +65,7 @@ export const sendVerificationCode = onCall(async (request) => {
 
 // ─── verifyCode ─────────────────────────────────────────────────────────────
 // Validates and consumes an OTP for the Register flow.
-export const verifyCode = onCall(async (request) => {
+export const verifyCode = onCall({ invoker: "public" }, async (request) => {
   const { phone, code } = request.data as { phone?: string; code?: string };
   if (!phone || !code) {
     throw new HttpsError("invalid-argument", "phone and code are required");
@@ -98,7 +98,7 @@ export const verifyCode = onCall(async (request) => {
 // ─── verifyCodeForReset ──────────────────────────────────────────────────────
 // Validates and consumes an OTP for the Forgot Password flow.
 // On success, stores a short-lived nonce in password_reset_tokens and returns it.
-export const verifyCodeForReset = onCall(async (request) => {
+export const verifyCodeForReset = onCall({ invoker: "public" }, async (request) => {
   const { phone, code } = request.data as { phone?: string; code?: string };
   if (!phone || !code) {
     throw new HttpsError("invalid-argument", "phone and code are required");
@@ -138,7 +138,7 @@ export const verifyCodeForReset = onCall(async (request) => {
 // ─── resetPassword ───────────────────────────────────────────────────────────
 // Validates the nonce issued by verifyCodeForReset, looks up the user by phone,
 // and updates their password via the Firebase Admin SDK.
-export const resetPassword = onCall(async (request) => {
+export const resetPassword = onCall({ invoker: "public" }, async (request) => {
   const { phone, nonce, newPassword } = request.data as {
     phone?: string;
     nonce?: string;

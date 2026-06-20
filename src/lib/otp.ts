@@ -23,8 +23,10 @@ function randomSixDigits(): string {
 // Demo mode: in-memory code displayed in the UI — demoCode is the code string.
 export async function sendOtp(phone: string): Promise<{ demoCode: string | null }> {
   if (isFirebaseConfigured && functions) {
-    await httpsCallable(functions, "sendVerificationCode")({ phone });
-    return { demoCode: null };
+    const result = await httpsCallable<{ phone: string }, { success: boolean; demoCode?: string }>(
+      functions, "sendVerificationCode"
+    )({ phone });
+    return { demoCode: result.data.demoCode ?? null };
   }
   const code = randomSixDigits();
   store.set(phone, { code, expiresAt: Date.now() + OTP_TTL_MS });
