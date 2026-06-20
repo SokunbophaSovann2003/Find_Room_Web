@@ -13,6 +13,10 @@ service firebase.storage {
         && request.resource.size  < 5 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
 
+      // Storage rules can't query Firestore to verify room ownership, so delete
+      // is scoped to signed-in users only. Paths contain an unpredictable
+      // timestamp (e.g. rooms/{roomId}/1718888400000_0), which makes blind
+      // deletion impractical. Owner-level enforcement happens in Firestore.
       allow delete: if request.auth != null;
     }
   }
