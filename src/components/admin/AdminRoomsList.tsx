@@ -23,6 +23,8 @@ export default function AdminRoomsList({
   emptyMessage,
   onToggleOccupied,
   onDelete,
+  onApprove,
+  onReject,
   onBulkOccupy,
   onBulkDelete,
   hideOwnerColumn = false,
@@ -33,6 +35,8 @@ export default function AdminRoomsList({
   emptyMessage: string;
   onToggleOccupied: (room: Room) => void;
   onDelete: (room: Room) => void;
+  onApprove?: (room: Room) => void;
+  onReject?: (room: Room) => void;
   // When both bulk handlers are provided, the desktop table shows selection
   // checkboxes and a bulk-action toolbar above it.
   onBulkOccupy?: (rooms: Room[]) => void;
@@ -356,11 +360,11 @@ export default function AdminRoomsList({
                   </td>
                   <td className="px-4 py-3 font-semibold text-brand">${room.price}</td>
                   <td className="px-4 py-3">
-                    <StatusPill occupied={effectivelyOccupied} />
+                    <StatusPill occupied={effectivelyOccupied} status={room.status} />
                   </td>
                   {hasAvailableRooms ? (
                     <td className="px-4 py-3">
-                      {!effectivelyOccupied ? (
+                      {!effectivelyOccupied && room.status !== "pending" && room.status !== "rejected" ? (
                         <span className="text-sm tabular-nums text-ink">
                           {daysSinceActivity(room)}
                           <span className="ml-0.5 text-xs text-ink-muted">d</span>
@@ -374,6 +378,8 @@ export default function AdminRoomsList({
                       effectivelyOccupied={effectivelyOccupied}
                       onToggle={() => onToggleOccupied(room)}
                       onDelete={() => onDelete(room)}
+                      onApprove={onApprove ? () => onApprove(room) : undefined}
+                      onReject={onReject ? () => onReject(room) : undefined}
                     />
                   </td>
                 </tr>
@@ -439,8 +445,8 @@ export default function AdminRoomsList({
                         {t("room.suffix.monthly")}
                       </span>
                     </p>
-                    <StatusPill occupied={effectivelyOccupied} />
-                    {!effectivelyOccupied ? (
+                    <StatusPill occupied={effectivelyOccupied} status={room.status} />
+                    {!effectivelyOccupied && room.status !== "pending" && room.status !== "rejected" ? (
                       <span className="text-[11px] text-ink-muted">
                         {daysSinceActivity(room)}d
                       </span>
@@ -452,6 +458,8 @@ export default function AdminRoomsList({
                   effectivelyOccupied={effectivelyOccupied}
                   onToggle={() => onToggleOccupied(room)}
                   onDelete={() => onDelete(room)}
+                  onApprove={onApprove ? () => onApprove(room) : undefined}
+                  onReject={onReject ? () => onReject(room) : undefined}
                 />
               </div>
             </li>
@@ -542,8 +550,24 @@ function OwnerAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string }) 
   );
 }
 
-function StatusPill({ occupied }: { occupied: boolean }) {
+function StatusPill({ occupied, status }: { occupied: boolean; status?: string }) {
   const t = useT();
+  if (status === "pending") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+        <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+        {t("listing.status.pending")}
+      </span>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600">
+        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+        {t("listing.status.rejected")}
+      </span>
+    );
+  }
   if (occupied) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
@@ -564,15 +588,20 @@ function RowActions({
   room,
   effectivelyOccupied,
   onToggle,
-  onDelete
+  onDelete,
+  onApprove,
+  onReject
 }: {
   room: Room;
   effectivelyOccupied: boolean;
   onToggle: () => void;
   onDelete: () => void;
+  onApprove?: () => void;
+  onReject?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const t = useT();
+  const isPending = room.status === "pending";
   return (
     <div className="relative">
       <button
@@ -589,14 +618,37 @@ function RowActions({
           role="menu"
           className="absolute right-0 top-full z-30 mt-1.5 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-cardHover"
         >
-          <MenuItem
-            icon="shield"
-            label={effectivelyOccupied ? t("admin.rooms.action.markAvailable") : t("admin.rooms.action.markOccupied")}
-            onClick={() => {
-              setOpen(false);
-              onToggle();
-            }}
-          />
+          {isPending && onApprove ? (
+            <MenuItem
+              icon="check"
+              label={t("admin.rooms.action.approve")}
+              onClick={() => {
+                setOpen(false);
+                onApprove();
+              }}
+            />
+          ) : null}
+          {isPending && onReject ? (
+            <MenuItem
+              icon="x"
+              label={t("admin.rooms.action.reject")}
+              danger
+              onClick={() => {
+                setOpen(false);
+                onReject();
+              }}
+            />
+          ) : null}
+          {!isPending ? (
+            <MenuItem
+              icon="shield"
+              label={effectivelyOccupied ? t("admin.rooms.action.markAvailable") : t("admin.rooms.action.markOccupied")}
+              onClick={() => {
+                setOpen(false);
+                onToggle();
+              }}
+            />
+          ) : null}
           <MenuItem
             icon="trash"
             label={t("admin.rooms.action.delete")}
@@ -618,7 +670,7 @@ function MenuItem({
   onClick,
   danger
 }: {
-  icon: "home" | "shield" | "trash";
+  icon: "home" | "shield" | "trash" | "check" | "x";
   label: string;
   onClick: () => void;
   danger?: boolean;

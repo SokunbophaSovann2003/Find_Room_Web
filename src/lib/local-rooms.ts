@@ -16,11 +16,16 @@ export function getLocalRooms(): Room[] {
     const rooms = JSON.parse(raw) as Room[];
     // Back-fill lastActivityAt for rooms created before this field existed.
     // We use createdAt (same moment as creation) so they don't instantly expire.
-    return rooms.map((r) =>
-      r.lastActivityAt !== undefined
-        ? r
-        : { ...r, lastActivityAt: r.createdAt ?? Date.now() }
-    );
+    return rooms.map((r) => {
+      const withActivity =
+        r.lastActivityAt !== undefined
+          ? r
+          : { ...r, lastActivityAt: r.createdAt ?? Date.now() };
+      // Back-fill status for rooms created before the approval flow existed.
+      return withActivity.status !== undefined
+        ? withActivity
+        : { ...withActivity, status: "published" as const };
+    });
   } catch {
     return [];
   }

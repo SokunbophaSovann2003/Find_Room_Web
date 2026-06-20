@@ -53,6 +53,11 @@ export interface Room {
   // availability toggled. Used by the auto-occupy feature to determine
   // whether an Available room has gone stale.
   lastActivityAt?: number; // ms epoch
+  // Approval workflow: pending → published (or rejected). Defaults to
+  // "published" when autoPublishListings is on. Legacy rooms without this
+  // field are treated as "published" by all consumers.
+  status?: "pending" | "published" | "rejected";
+  rejectionReason?: string;
   owner: Owner;
   createdAt: number;
 }

@@ -17,7 +17,7 @@ import {
   useAdminUsers,
   type AdminUser
 } from "@/lib/admin";
-import { updateLocalRoom, useLocalRooms } from "@/lib/local-rooms";
+import { updateRoom, useRooms } from "@/lib/rooms";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
 
@@ -30,7 +30,7 @@ const MOBILE_PAGE_SIZE = 20;
 export default function AdminUsersPage() {
   const router = useRouter();
   const users = useAdminUsers();
-  const rooms = useLocalRooms();
+  const rooms = useRooms();
   const t = useT();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -161,10 +161,10 @@ export default function AdminUsersPage() {
     let hiddenCount = 0;
     for (const u of selected) {
       if (u.status !== "active") continue;
-      toggleAdminUserStatus(u.uid);
+      void toggleAdminUserStatus(u.uid);
       disabledCount += 1;
       const toHide = rooms.filter((r) => r.owner.id === u.uid && !r.isOccupied);
-      for (const r of toHide) updateLocalRoom(r.id, { isOccupied: true });
+      for (const r of toHide) void updateRoom(r.id, { isOccupied: true });
       hiddenCount += toHide.length;
     }
     clearSelection();
@@ -179,20 +179,20 @@ export default function AdminUsersPage() {
   function handleBulkDelete() {
     if (!confirmBulkDelete) return;
     const n = confirmBulkDelete.length;
-    for (const u of confirmBulkDelete) deleteAdminUser(u.uid);
+    for (const u of confirmBulkDelete) void deleteAdminUser(u.uid);
     setConfirmBulkDelete(null);
     toast.success(t("toast.admin.user.bulkDeleted", { n }));
   }
 
   function handleAdd(values: UserFormValues) {
-    addAdminUser(values);
+    void addAdminUser(values);
     setAdding(false);
     toast.success(t("toast.admin.user.added", { name: values.username }));
   }
 
   function handleEditSave(values: UserFormValues) {
     if (!editing) return;
-    updateAdminUser(editing.uid, values);
+    void updateAdminUser(editing.uid, values);
     setEditing(null);
     toast.success(t("toast.admin.user.updated", { name: values.username }));
   }
@@ -200,14 +200,14 @@ export default function AdminUsersPage() {
   function handleDelete() {
     if (!confirmDelete) return;
     const name = confirmDelete.username;
-    deleteAdminUser(confirmDelete.uid);
+    void deleteAdminUser(confirmDelete.uid);
     setConfirmDelete(null);
     toast.success(t("toast.admin.user.deleted", { name }));
   }
 
   function handleToggleStatus(u: AdminUser) {
     const wasActive = u.status === "active";
-    toggleAdminUserStatus(u.uid);
+    void toggleAdminUserStatus(u.uid);
     toast.success(
       wasActive
         ? t("toast.admin.user.disabled", { name: u.username })
@@ -220,7 +220,7 @@ export default function AdminUsersPage() {
     // owner once they're active again.
     if (wasActive) {
       const toHide = rooms.filter((r) => r.owner.id === u.uid && !r.isOccupied);
-      for (const r of toHide) updateLocalRoom(r.id, { isOccupied: true });
+      for (const r of toHide) void updateRoom(r.id, { isOccupied: true });
       if (toHide.length > 0) {
         toast.info(t("toast.admin.user.listingsHidden", { n: toHide.length }));
       }

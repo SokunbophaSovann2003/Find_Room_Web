@@ -14,7 +14,7 @@ import {
   useAdminUsers,
   type AdminUser
 } from "@/lib/admin";
-import { deleteLocalRoom, updateLocalRoom, useLocalRooms } from "@/lib/local-rooms";
+import { deleteRoom, updateRoom, useRooms } from "@/lib/rooms";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
 import type { Room } from "@/lib/types";
@@ -24,11 +24,13 @@ export default function AdminUserDetailPage() {
   const params = useParams<{ uid: string }>();
   const uid = decodeURIComponent(params.uid ?? "");
   const users = useAdminUsers();
-  const allRooms = useLocalRooms();
+  const allRooms = useRooms();
   const t = useT();
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmDeleteRoom, setConfirmDeleteRoom] = useState<Room | null>(null);
+  const [confirmReject, setConfirmReject] = useState<Room | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const user = useMemo(() => users.find((u) => u.uid === uid), [users, uid]);
   const listings = useMemo(
@@ -60,14 +62,14 @@ export default function AdminUserDetailPage() {
   }
 
   function handleEditSave(values: UserFormValues) {
-    updateAdminUser(user!.uid, values);
+    void updateAdminUser(user!.uid, values);
     setEditing(false);
     toast.success(t("toast.admin.user.updated", { name: values.username }));
   }
 
   function handleDelete() {
     const name = user!.username;
-    deleteAdminUser(user!.uid);
+    void deleteAdminUser(user!.uid);
     setConfirmDelete(false);
     toast.success(t("toast.admin.user.deleted", { name }));
     router.replace("/user/admin/users");
@@ -76,7 +78,7 @@ export default function AdminUserDetailPage() {
   function handleToggleStatus() {
     if (!user) return;
     const wasActive = user.status === "active";
-    toggleAdminUserStatus(user.uid);
+    void toggleAdminUserStatus(user.uid);
     toast.success(
       wasActive
         ? t("toast.admin.user.disabled", { name: user.username })
@@ -90,7 +92,7 @@ export default function AdminUserDetailPage() {
       // the auto-occupy clock — the stale counter should reflect the landlord's
       // last genuine edit, not this admin action.
       for (const r of toHide) {
-        updateLocalRoom(r.id, {
+        void updateRoom(r.id, {
           isOccupied: true,
           lastActivityAt: r.lastActivityAt ?? r.createdAt ?? Date.now()
         });
@@ -101,11 +103,29 @@ export default function AdminUserDetailPage() {
     }
   }
 
+  function handleApproveRoom(room: Room) {
+    void updateRoom(room.id, { status: "published", rejectionReason: undefined, lastActivityAt: room.lastActivityAt });
+    toast.success(t("toast.admin.listing.approved", { title: room.title }));
+  }
+
+  function handleRejectRoom(room: Room) {
+    setConfirmReject(room);
+    setRejectReason("");
+  }
+
+  function handleRejectRoomConfirm() {
+    if (!confirmReject) return;
+    void updateRoom(confirmReject.id, { status: "rejected", rejectionReason: rejectReason.trim() || undefined });
+    toast.success(t("toast.admin.listing.rejected", { title: confirmReject.title }));
+    setConfirmReject(null);
+    setRejectReason("");
+  }
+
   function handleToggleRoomOccupied(room: Room) {
     const nextOccupied = !room.isOccupied;
     // When marking occupied, preserve the auto-occupy clock so it keeps
     // reflecting the landlord's last genuine activity, not this admin action.
-    updateLocalRoom(room.id, {
+    void updateRoom(room.id, {
       isOccupied: nextOccupied,
       ...(nextOccupied ? { lastActivityAt: room.lastActivityAt ?? room.createdAt ?? Date.now() } : {})
     });
@@ -119,7 +139,7 @@ export default function AdminUserDetailPage() {
   function handleDeleteRoom() {
     if (!confirmDeleteRoom) return;
     const title = confirmDeleteRoom.title;
-    deleteLocalRoom(confirmDeleteRoom.id);
+    void deleteRoom(confirmDeleteRoom.id);
     setConfirmDeleteRoom(null);
     toast.success(t("toast.admin.listing.deleted", { title }));
   }
@@ -283,6 +303,8 @@ export default function AdminUserDetailPage() {
             emptyMessage={t("admin.rooms.empty")}
             onToggleOccupied={handleToggleRoomOccupied}
             onDelete={setConfirmDeleteRoom}
+            onApprove={handleApproveRoom}
+            onReject={handleRejectRoom}
             hideOwnerColumn
           />
         )}
@@ -322,6 +344,36 @@ export default function AdminUserDetailPage() {
         onCancel={() => setConfirmDeleteRoom(null)}
         onConfirm={handleDeleteRoom}
       />
+
+      {confirmReject ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 backdrop-blur-sm sm:items-center">
+          <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-base font-bold text-ink">{t("admin.rooms.reject.title")}</h2>
+            <p className="text-sm text-ink-muted">
+              <b>{confirmReject.title}</b>
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                {t("admin.rooms.reject.reasonLabel")}
+              </label>
+              <textarea
+                className="input min-h-[80px] w-full resize-none"
+                placeholder={t("admin.rooms.reject.reasonPlaceholder")}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setConfirmReject(null)}>
+                {t("common.cancel")}
+              </button>
+              <button type="button" className="btn-danger" onClick={handleRejectRoomConfirm}>
+                {t("admin.rooms.action.reject")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

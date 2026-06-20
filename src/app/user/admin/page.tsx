@@ -10,22 +10,18 @@ import LocationPicker, { type LocationValue } from "@/components/LocationPicker"
 import AdminRoomsList from "@/components/admin/AdminRoomsList";
 import { ALL_PROPERTY_TYPES, useAdminSettings, useAdminUsers, type AdminUser } from "@/lib/admin";
 import { isAutoOccupied } from "@/lib/auto-occupy";
-import {
-  deleteLocalRoom,
-  updateLocalRoom,
-  useLocalRooms
-} from "@/lib/local-rooms";
+import { deleteRoom, updateRoom, useRooms } from "@/lib/rooms";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
 import type { PropertyType, Room } from "@/lib/types";
 
-type StatusFilter = "all" | "available" | "occupied";
+type StatusFilter = "all" | "pending" | "available" | "occupied";
 type TypeFilter = "all" | PropertyType;
 
 const ADD_ROOM_PATH = "/profile/list-room";
 
 export default function AdminRoomsPage() {
-  const rooms = useLocalRooms();
+  const rooms = useRooms();
   const users = useAdminUsers();
   const { autoOccupyDays } = useAdminSettings();
   const t = useT();
@@ -41,6 +37,8 @@ export default function AdminRoomsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Room | null>(null);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState<Room[] | null>(null);
+  const [confirmReject, setConfirmReject] = useState<Room | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const usersByUid = useMemo(() => {
     const map = new Map<string, AdminUser>();
@@ -49,10 +47,13 @@ export default function AdminRoomsPage() {
   }, [users]);
 
   const stats = useMemo(() => {
-    const occupied = rooms.filter((r) => r.isOccupied || isAutoOccupied(r, autoOccupyDays)).length;
-    const available = rooms.length - occupied;
+    const pending = rooms.filter((r) => r.status === "pending").length;
+    const published = rooms.filter((r) => (r.status ?? "published") === "published");
+    const occupied = published.filter((r) => r.isOccupied || isAutoOccupied(r, autoOccupyDays)).length;
+    const available = published.length - occupied;
     const types = new Set(rooms.map((r) => r.type)).size;
-    return { total: rooms.length, available, occupied, types };
+    // Exclude rejected rooms from total so available + occupied + pending = total
+    return { total: pending + published.length, available, occupied, pending, types };
   }, [rooms, autoOccupyDays]);
 
   const locationLabel =
@@ -66,8 +67,10 @@ export default function AdminRoomsPage() {
     const maxP = priceMax ? Number(priceMax) : null;
     return rooms.filter((r) => {
       const effectivelyOccupied = r.isOccupied || isAutoOccupied(r, autoOccupyDays);
-      if (statusFilter === "available" && effectivelyOccupied) return false;
-      if (statusFilter === "occupied" && !effectivelyOccupied) return false;
+      const roomStatus = r.status ?? "published";
+      if (statusFilter === "pending" && roomStatus !== "pending") return false;
+      if (statusFilter === "available" && (roomStatus !== "published" || effectivelyOccupied)) return false;
+      if (statusFilter === "occupied" && (roomStatus !== "published" || !effectivelyOccupied)) return false;
       if (typeFilter !== "all" && r.type !== typeFilter) return false;
       if (locationFilter.province && r.city !== locationFilter.province) return false;
       if (locationFilter.district && r.district !== locationFilter.district) return false;
@@ -88,7 +91,7 @@ export default function AdminRoomsPage() {
 
   function handleToggleOccupied(room: Room) {
     const nextOccupied = !room.isOccupied;
-    updateLocalRoom(room.id, { isOccupied: nextOccupied });
+    void updateRoom(room.id, { isOccupied: nextOccupied });
     toast.success(
       nextOccupied
         ? t("toast.admin.listing.occupied", { title: room.title })
@@ -99,14 +102,33 @@ export default function AdminRoomsPage() {
   function handleDelete() {
     if (!confirmDelete) return;
     const title = confirmDelete.title;
-    deleteLocalRoom(confirmDelete.id);
+    void deleteRoom(confirmDelete.id);
     setConfirmDelete(null);
     toast.success(t("toast.admin.listing.deleted", { title }));
   }
 
+  function handleApprove(room: Room) {
+    // Preserve lastActivityAt so approval doesn't reset the auto-occupy clock
+    void updateRoom(room.id, { status: "published", rejectionReason: undefined, lastActivityAt: room.lastActivityAt });
+    toast.success(t("toast.admin.listing.approved", { title: room.title }));
+  }
+
+  function handleReject(room: Room) {
+    setConfirmReject(room);
+    setRejectReason("");
+  }
+
+  function handleRejectConfirm() {
+    if (!confirmReject) return;
+    void updateRoom(confirmReject.id, { status: "rejected", rejectionReason: rejectReason.trim() || undefined });
+    toast.success(t("toast.admin.listing.rejected", { title: confirmReject.title }));
+    setConfirmReject(null);
+    setRejectReason("");
+  }
+
   function handleBulkOccupy(selected: Room[]) {
     for (const room of selected) {
-      if (!room.isOccupied) updateLocalRoom(room.id, { isOccupied: true });
+      if (!room.isOccupied) void updateRoom(room.id, { isOccupied: true });
     }
     toast.success(t("toast.admin.listing.bulkOccupied", { n: selected.length }));
   }
@@ -114,7 +136,7 @@ export default function AdminRoomsPage() {
   function handleBulkDelete() {
     if (!confirmBulkDelete) return;
     const n = confirmBulkDelete.length;
-    for (const room of confirmBulkDelete) deleteLocalRoom(room.id);
+    for (const room of confirmBulkDelete) void deleteRoom(room.id);
     setConfirmBulkDelete(null);
     toast.success(t("toast.admin.listing.bulkDeleted", { n }));
   }
@@ -128,12 +150,19 @@ export default function AdminRoomsPage() {
         </p>
       </header>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <StatCard
           label={t("admin.rooms.stat.rooms")}
           value={stats.total}
           hint={t("admin.rooms.stat.availableHint", { n: stats.available })}
           icon="building"
+        />
+        <StatCard
+          label={t("admin.rooms.stat.pending")}
+          value={stats.pending}
+          hint={stats.pending === 0 ? t("admin.rooms.stat.noPending") : t("admin.rooms.stat.awaitingReview")}
+          icon="bell"
+          highlight={stats.pending > 0}
         />
         <StatCard
           label={t("admin.rooms.stat.available")}
@@ -195,6 +224,7 @@ export default function AdminRoomsPage() {
             onChange={(v) => setStatusFilter(v as StatusFilter)}
             options={[
               { value: "all", label: t("admin.filter.anyStatus") },
+              { value: "pending", label: t("listing.status.pending") + (stats.pending > 0 ? ` (${stats.pending})` : "") },
               { value: "available", label: t("admin.status.available") },
               { value: "occupied", label: t("admin.status.occupied") }
             ]}
@@ -267,6 +297,8 @@ export default function AdminRoomsPage() {
         emptyMessage={t("admin.rooms.empty")}
         onToggleOccupied={handleToggleOccupied}
         onDelete={setConfirmDelete}
+        onApprove={handleApprove}
+        onReject={handleReject}
         onBulkOccupy={handleBulkOccupy}
         onBulkDelete={setConfirmBulkDelete}
         paginated
@@ -295,6 +327,36 @@ export default function AdminRoomsPage() {
         onCancel={() => setConfirmBulkDelete(null)}
         onConfirm={handleBulkDelete}
       />
+
+      {confirmReject ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 backdrop-blur-sm sm:items-center">
+          <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-base font-bold text-ink">{t("admin.rooms.reject.title")}</h2>
+            <p className="text-sm text-ink-muted">
+              <b>{confirmReject.title}</b>
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                {t("admin.rooms.reject.reasonLabel")}
+              </label>
+              <textarea
+                className="input min-h-[80px] w-full resize-none"
+                placeholder={t("admin.rooms.reject.reasonPlaceholder")}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setConfirmReject(null)}>
+                {t("common.cancel")}
+              </button>
+              <button type="button" className="btn-danger" onClick={handleRejectConfirm}>
+                {t("admin.rooms.action.reject")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -303,24 +365,26 @@ function StatCard({
   label,
   value,
   hint,
-  icon
+  icon,
+  highlight = false
 }: {
   label: string;
   value: number;
   hint: string;
   icon: IconName;
+  highlight?: boolean;
 }) {
   return (
-    <div className="card flex flex-col gap-2 p-4">
+    <div className={`card flex flex-col gap-2 p-4 ${highlight ? "border-sky-200 ring-1 ring-sky-200" : ""}`}>
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
           {label}
         </span>
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+        <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${highlight ? "bg-sky-100 text-sky-600" : "bg-brand/10 text-brand"}`}>
           <Icon name={icon} className="h-4 w-4" />
         </span>
       </div>
-      <p className="text-2xl font-extrabold tracking-tight">{value}</p>
+      <p className={`text-2xl font-extrabold tracking-tight ${highlight ? "text-sky-600" : ""}`}>{value}</p>
       <p className="text-[11px] text-ink-muted">{hint}</p>
     </div>
   );
