@@ -44,7 +44,11 @@ service cloud.firestore {
     // Admins can read and write any user document.
     match /users/{uid} {
       allow read:   if isSignedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if isSignedIn() && request.auth.uid == uid;
+      // On create, role must be "user" (or absent) and status must be "active"
+      // (or absent). Only an admin can ever set role="admin".
+      allow create: if isSignedIn() && request.auth.uid == uid
+        && request.resource.data.get('role', 'user') == 'user'
+        && request.resource.data.get('status', 'active') == 'active';
       // Users may update their own document only when they don't touch role/status.
       // Admins may update any field on any user document.
       allow update: if isSignedIn() && (
