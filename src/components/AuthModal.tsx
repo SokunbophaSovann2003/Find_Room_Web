@@ -4,9 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { loginWithPhone, registerWithPhone, resetPassword, checkPhoneAccountExists } from "@/lib/auth";
 import { sendOtp, verifyOtp, verifyOtpForReset } from "@/lib/otp";
+import { isFirebaseConfigured } from "@/lib/firebase";
 import { useT } from "@/lib/language";
 
 type Tab = "login" | "register" | "forgot";
+
+// Map Firebase error codes to app-level i18n keys so raw SDK strings never reach the UI.
+function firebaseAuthKey(err: unknown): string {
+  const code = (err as { code?: string }).code ?? "";
+  if (code === "auth/invalid-credential" || code === "auth/wrong-password") return "auth.error.invalidCredential";
+  if (code === "auth/email-already-in-use") return "auth.error.phoneInUse";
+  if (code === "auth/too-many-requests") return "auth.error.tooManyRequests";
+  if (code === "auth/user-disabled") return "auth.error.disabled";
+  return err instanceof Error ? err.message : "auth.error.signInFailed";
+}
 
 export default function AuthModal({
   open,
@@ -306,7 +317,7 @@ function LoginForm({
       await loginWithPhone(`+855${digits}`, password);
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? t(err.message) : t("auth.error.signInFailed"));
+      setError(t(firebaseAuthKey(err)));
     } finally {
       setLoading(false);
     }
@@ -395,12 +406,19 @@ function RegisterForm({
     setLoading(true);
     setError(null);
     try {
+      // In demo mode we can check for duplicates before burning an OTP.
+      // In Firebase mode the users collection is auth-gated; the duplicate is
+      // caught post-OTP when createUserWithEmailAndPassword throws.
+      if (!isFirebaseConfigured && await checkPhoneAccountExists(`+855${digits}`)) {
+        setError(t("auth.error.phoneInUse"));
+        return;
+      }
       const { demoCode: code } = await sendOtp(`+855${digits}`);
       setDemoCode(code);
       setOtp("");
       setStep("otp");
     } catch (err) {
-      setError(err instanceof Error ? t(err.message) : t("auth.error.signUpFailed"));
+      setError(t(firebaseAuthKey(err)));
     } finally {
       setLoading(false);
     }
@@ -416,7 +434,7 @@ function RegisterForm({
       await registerWithPhone({ username: username.trim(), phoneNumber: `+855${digits}`, password });
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? t(err.message) : t("auth.error.signUpFailed"));
+      setError(t(firebaseAuthKey(err)));
     } finally {
       setLoading(false);
     }
@@ -561,7 +579,12 @@ function ForgotPasswordForm({
     setLoading(true);
     setError(null);
     try {
-      if (!await checkPhoneAccountExists(`+855${digits}`)) throw new Error(t("auth.forgot.notFound"));
+      // In Firebase mode the existence check is skipped — the resetPassword
+      // Cloud Function returns auth.forgot.notFound at the end if the account
+      // doesn't exist, avoiding an unauthenticated Firestore read.
+      if (!isFirebaseConfigured) {
+        if (!await checkPhoneAccountExists(`+855${digits}`)) throw new Error(t("auth.forgot.notFound"));
+      }
       const { demoCode: code } = await sendOtp(`+855${digits}`);
       setDemoCode(code);
       setOtp("");

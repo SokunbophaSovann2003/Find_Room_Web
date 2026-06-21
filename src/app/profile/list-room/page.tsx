@@ -348,14 +348,25 @@ export default function ListRoomPage() {
     if (!files || files.length === 0) return;
     const accepted: File[] = [];
     let oversized = 0;
+    let invalidType = 0;
     for (const file of Array.from(files)) {
+      if (!file.type.startsWith("image/")) {
+        invalidType += 1;
+        continue;
+      }
       if (file.size > MAX_PHOTO_BYTES) {
         oversized += 1;
         continue;
       }
       accepted.push(file);
     }
-    if (oversized > 0) {
+    if (invalidType > 0) {
+      setError(
+        invalidType === 1
+          ? t("listRoom.photos.invalidType.one")
+          : t("listRoom.photos.invalidType.many", { n: invalidType })
+      );
+    } else if (oversized > 0) {
       setError(
         oversized === 1
           ? t("listRoom.photos.oversized.one")

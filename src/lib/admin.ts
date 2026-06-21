@@ -416,7 +416,8 @@ export async function addAdminUser(input: Omit<AdminUser, "uid" | "createdAt"> &
     createdAt: Date.now()
   };
   if (isFirebaseConfigured && db) {
-    await setDoc(doc(db, "users", uid), next);
+    const data = Object.fromEntries(Object.entries(next).filter(([, v]) => v !== undefined));
+    await setDoc(doc(db, "users", uid), data);
     return next;
   }
   writeUsers([next, ...getAdminUsers()]);
@@ -489,7 +490,7 @@ export function useAdminUsers(): AdminUser[] {
         usersCache.clear();
         list.forEach((u) => usersCache.set(u.uid, u));
         setUsers(list);
-      });
+      }, () => {});
     }
     const sync = () => setUsers(getAdminUsers());
     sync();
@@ -516,7 +517,7 @@ export function useIsAdmin(session: Session | null): { admin: boolean; loading: 
         const data = snap.data();
         setAdmin(data?.role === "admin" && data?.status === "active");
         setLoading(false);
-      });
+      }, () => { setAdmin(false); setLoading(false); });
     }
     // Demo mode: synchronous check
     setAdmin(isAdmin(session));
@@ -674,7 +675,7 @@ export function useAdminNotifications(): AdminNotification[] {
       const q = query(collection(db, "admin_notifications"), orderBy("createdAt", "desc"));
       return onSnapshot(q, (snap) => {
         setList(snap.docs.map((d) => ({ id: d.id, ...d.data() } as AdminNotification)));
-      });
+      }, () => {});
     }
     const sync = () => setList(getAdminNotifications());
     sync();
@@ -848,7 +849,7 @@ export function useOutboundTemplates(): AdminOutboundTemplate[] {
       const q = query(collection(db, "notification_templates"), orderBy("createdAt", "desc"));
       return onSnapshot(q, (snap) => {
         setList(snap.docs.map((d) => ({ id: d.id, ...d.data() } as AdminOutboundTemplate)));
-      });
+      }, () => {});
     }
     const sync = () => setList(getOutboundTemplates());
     sync();
@@ -947,7 +948,7 @@ export function useOutboundCampaigns(): AdminOutboundCampaign[] {
       const q = query(collection(db, "notification_campaigns"), orderBy("sentAt", "desc"));
       return onSnapshot(q, (snap) => {
         setList(snap.docs.map((d) => ({ id: d.id, ...d.data() } as AdminOutboundCampaign)));
-      });
+      }, () => {});
     }
     const sync = () => setList(getOutboundCampaigns());
     sync();
@@ -1096,14 +1097,15 @@ export function useUserNotifications(session: {
         (snap) => {
           campaigns = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AdminOutboundCampaign));
           derive();
-        }
+        },
+        () => {}
       );
 
       const unsubUser = onSnapshot(doc(db, "users", session.uid), (snap) => {
         const data = snap.data();
         readIds = new Set<string>(Array.isArray(data?.readCampaignIds) ? data.readCampaignIds : []);
         derive();
-      });
+      }, () => {});
 
       return () => { unsubCampaigns(); unsubUser(); };
     }

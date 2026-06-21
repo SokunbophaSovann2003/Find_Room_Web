@@ -719,7 +719,14 @@ function EditProfileModal({
         avatarUrl: avatarUrl.trim()
       });
     } catch (err) {
-      setError(err instanceof Error ? t(err.message) : t("profile.edit.error.saveFailed"));
+      const code = (err as { code?: string }).code ?? "";
+      let key: string;
+      if (code === "auth/requires-recent-login") key = "auth.error.requiresRecentLogin";
+      else if (code === "auth/email-already-in-use") key = "auth.error.phoneInUse";
+      else if (code === "auth/operation-not-allowed") key = "auth.error.operationNotAllowed";
+      else if (code === "auth/too-many-requests") key = "auth.error.tooManyRequests";
+      else key = err instanceof Error ? err.message : "profile.edit.error.saveFailed";
+      setError(t(key));
       setSaving(false);
     }
   }

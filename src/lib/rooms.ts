@@ -38,6 +38,21 @@ function roomsCol() {
   return collection(db!, "rooms");
 }
 
+// Recursively remove undefined values so Firestore setDoc/updateDoc never
+// receives them (the SDK throws on undefined field values).
+function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(obj)
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => [
+        k,
+        v && typeof v === "object" && !Array.isArray(v)
+          ? stripUndefined(v as Record<string, unknown>)
+          : v
+      ])
+  );
+}
+
 // Generate a room ID appropriate for the current backend.
 // Firebase mode: Firestore auto-ID format. Demo mode: stable local prefix.
 export function generateRoomId(): string {
@@ -57,10 +72,10 @@ export async function addRoom(room: Room): Promise<void> {
     return;
   }
   const { id, ...data } = room;
-  await setDoc(roomDoc(id), {
+  await setDoc(roomDoc(id), stripUndefined({
     ...data,
     lastActivityAt: data.lastActivityAt ?? Date.now()
-  });
+  }));
 }
 
 export async function updateRoom(id: string, patch: Partial<Room>): Promise<void> {
@@ -68,10 +83,10 @@ export async function updateRoom(id: string, patch: Partial<Room>): Promise<void
     localUpdateRoom(id, patch);
     return;
   }
-  await updateDoc(roomDoc(id), {
+  await updateDoc(roomDoc(id), stripUndefined({
     ...patch,
     lastActivityAt: patch.lastActivityAt ?? Date.now()
-  });
+  }));
 }
 
 export async function deleteRoom(id: string, ownerId: string): Promise<void> {
@@ -110,7 +125,7 @@ export function useRooms(): Room[] {
     const q = query(roomsCol(), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
       setRooms(snap.docs.map((d) => toRoom(d.id, d.data())));
-    });
+    }, () => {});
     return unsub;
   }, []);
 

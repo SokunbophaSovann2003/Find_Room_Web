@@ -115,6 +115,8 @@ export async function resetPassword(
       nonce,
       newPassword
     });
+    // Sign the user in with the new password so the session is live immediately.
+    await loginWithPhone(phoneNumber, newPassword);
     return;
   }
   // Demo mode — nonce is a static sentinel; just verify the account exists.
