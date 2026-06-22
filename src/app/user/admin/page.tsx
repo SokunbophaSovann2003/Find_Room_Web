@@ -133,6 +133,13 @@ export default function AdminRoomsPage() {
     toast.success(t("toast.admin.listing.bulkOccupied", { n: selected.length }));
   }
 
+  function handleBulkUnoccupy(selected: Room[]) {
+    for (const room of selected) {
+      if (room.isOccupied) void updateRoom(room.id, { isOccupied: false });
+    }
+    toast.success(t("toast.admin.listing.bulkAvailable", { n: selected.length }));
+  }
+
   function handleBulkDelete() {
     if (!confirmBulkDelete) return;
     const n = confirmBulkDelete.length;
@@ -300,6 +307,7 @@ export default function AdminRoomsPage() {
         onApprove={handleApprove}
         onReject={handleReject}
         onBulkOccupy={handleBulkOccupy}
+        onBulkUnoccupy={handleBulkUnoccupy}
         onBulkDelete={setConfirmBulkDelete}
         paginated
       />

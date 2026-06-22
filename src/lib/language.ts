@@ -535,12 +535,14 @@ const DICT: Dict = {
   "admin.rooms.bulk.selected": { km: "បានជ្រើស {n}", en: "{n} selected" },
   "admin.rooms.bulk.clear": { km: "សម្អាត", en: "Clear" },
   "admin.rooms.bulk.makeOccupied": { km: "សម្គាល់ថាមានអ្នកជួល", en: "Make occupied" },
+  "admin.rooms.bulk.makeAvailable": { km: "សម្គាល់ថាទំនេរ", en: "Make available" },
   "admin.rooms.bulk.delete": { km: "លុប", en: "Delete" },
   "admin.rooms.bulk.selectAll": { km: "ជ្រើសទាំងអស់", en: "Select all" },
   "admin.rooms.bulk.selectRow": { km: "ជ្រើសបន្ទប់នេះ", en: "Select row" },
   "admin.rooms.bulk.delete.title": { km: "លុបបន្ទប់ដែលបានជ្រើស?", en: "Delete selected rooms?" },
   "admin.rooms.bulk.delete.body": { km: "បន្ទប់ចំនួន {n} នឹងត្រូវលុបចេញ។ មិនអាចសង្គ្រោះបានទេក្នុងទិន្នន័យសាកល្បង។", en: "{n} rooms will be removed. This can't be undone in mock data." },
   "toast.admin.listing.bulkOccupied": { km: "បន្ទប់ចំនួន {n} សម្គាល់ថាមានអ្នកជួល។", en: "{n} rooms marked as occupied." },
+  "toast.admin.listing.bulkAvailable": { km: "បន្ទប់ចំនួន {n} សម្គាល់ថាទំនេរ។", en: "{n} rooms marked as available." },
   "toast.admin.listing.bulkDeleted": { km: "បន្ទប់ចំនួន {n} បានលុប។", en: "{n} rooms deleted." },
 
   // --- Admin: Listing edit modal ---

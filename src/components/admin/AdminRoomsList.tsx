@@ -26,6 +26,7 @@ export default function AdminRoomsList({
   onApprove,
   onReject,
   onBulkOccupy,
+  onBulkUnoccupy,
   onBulkDelete,
   hideOwnerColumn = false,
   paginated = false
@@ -40,6 +41,7 @@ export default function AdminRoomsList({
   // When both bulk handlers are provided, the desktop table shows selection
   // checkboxes and a bulk-action toolbar above it.
   onBulkOccupy?: (rooms: Room[]) => void;
+  onBulkUnoccupy?: (rooms: Room[]) => void;
   onBulkDelete?: (rooms: Room[]) => void;
   // Hide the Owner column when every row would show the same owner (e.g. the
   // listings table on the user detail page).
@@ -57,7 +59,7 @@ export default function AdminRoomsList({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [mobileVisible, setMobileVisible] = useState(MOBILE_PAGE_SIZE);
 
-  const selectable = !!onBulkOccupy && !!onBulkDelete;
+  const selectable = !!onBulkDelete;
 
   function cycleSortDays() {
     setSortDays((cur) => (cur === null ? "desc" : cur === "desc" ? "asc" : null));
@@ -130,6 +132,11 @@ export default function AdminRoomsList({
   const allPageSelected =
     pagedRooms.length > 0 && pagedRooms.every((r) => selectedIds.has(r.id));
   const somePageSelected = pagedRooms.some((r) => selectedIds.has(r.id));
+
+  const allSelectedAvailable = selectedRooms.length > 0 &&
+    selectedRooms.every((r) => r.status === "published" && !r.isOccupied && !isAutoOccupied(r, autoOccupyDays));
+  const allSelectedOccupied = selectedRooms.length > 0 &&
+    selectedRooms.every((r) => r.isOccupied || isAutoOccupied(r, autoOccupyDays));
 
   function toggleRow(id: string) {
     setSelectedIds((prev) => {
@@ -212,17 +219,32 @@ export default function AdminRoomsList({
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                onBulkOccupy?.(selectedRooms);
-                clearSelection();
-              }}
-              className="flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-ink transition hover:bg-slate-50"
-            >
-              <Icon name="shield" className="h-4 w-4" />
-              {t("admin.rooms.bulk.makeOccupied")}
-            </button>
+            {allSelectedAvailable ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onBulkOccupy?.(selectedRooms);
+                  clearSelection();
+                }}
+                className="flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-ink transition hover:bg-slate-50"
+              >
+                <Icon name="shield" className="h-4 w-4" />
+                {t("admin.rooms.bulk.makeOccupied")}
+              </button>
+            ) : null}
+            {allSelectedOccupied && onBulkUnoccupy ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onBulkUnoccupy(selectedRooms);
+                  clearSelection();
+                }}
+                className="flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-ink transition hover:bg-slate-50"
+              >
+                <Icon name="home" className="h-4 w-4" />
+                {t("admin.rooms.bulk.makeAvailable")}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => onBulkDelete?.(selectedRooms)}
