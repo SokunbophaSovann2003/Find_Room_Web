@@ -40,7 +40,8 @@ function roomsCol() {
 
 // Recursively remove undefined values so Firestore setDoc/updateDoc never
 // receives them (the SDK throws on undefined field values).
-function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function stripUndefined(obj: Record<string, unknown>): Record<string, any> {
   return Object.fromEntries(
     Object.entries(obj)
       .filter(([, v]) => v !== undefined)
