@@ -484,9 +484,13 @@ export function useAdminUsers(): AdminUser[] {
   const [users, setUsers] = useState<AdminUser[]>([]);
   useEffect(() => {
     if (isFirebaseConfigured && db) {
-      const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+      // No orderBy — documents without createdAt are excluded by Firestore when
+      // orderBy is used. Sort client-side so all users are always returned.
+      const q = collection(db, "users");
       return onSnapshot(q, (snap) => {
-        const list = snap.docs.map((d) => ({ uid: d.id, ...d.data() } as AdminUser));
+        const list = snap.docs
+          .map((d) => ({ uid: d.id, ...d.data() } as AdminUser))
+          .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
         usersCache.clear();
         list.forEach((u) => usersCache.set(u.uid, u));
         setUsers(list);
