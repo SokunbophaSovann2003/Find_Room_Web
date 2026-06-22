@@ -618,7 +618,7 @@ function RowActions({
           role="menu"
           className="absolute right-0 top-full z-30 mt-1.5 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-cardHover"
         >
-          {(isPending || room.status === "rejected") && onApprove ? (
+          {(isPending || room.status === "rejected") && onApprove ? ( // allow re-approving rejected listings
             <MenuItem
               icon="check"
               label={t("admin.rooms.action.approve")}
@@ -628,7 +628,7 @@ function RowActions({
               }}
             />
           ) : null}
-          {(isPending || room.status === "rejected") && onReject ? (
+          {isPending && onReject ? (
             <MenuItem
               icon="x"
               label={t("admin.rooms.action.reject")}
