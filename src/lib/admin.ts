@@ -449,7 +449,8 @@ export async function ensureAdminUser(input: {
 
 export async function updateAdminUser(uid: string, patch: Partial<Omit<AdminUser, "uid">>) {
   if (isFirebaseConfigured && db) {
-    await updateDoc(doc(db, "users", uid), patch);
+    const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+    await updateDoc(doc(db, "users", uid), clean);
     return;
   }
   writeUsers(getAdminUsers().map((u) => (u.uid === uid ? { ...u, ...patch } : u)));
