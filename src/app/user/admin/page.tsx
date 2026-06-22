@@ -126,6 +126,20 @@ export default function AdminRoomsPage() {
     setRejectReason("");
   }
 
+  function handleBulkApprove(selected: Room[]) {
+    for (const room of selected) {
+      void updateRoom(room.id, { status: "published", rejectionReason: undefined, lastActivityAt: room.lastActivityAt });
+    }
+    toast.success(t("toast.admin.listing.bulkApproved", { n: selected.length }));
+  }
+
+  function handleBulkReject(selected: Room[]) {
+    for (const room of selected) {
+      void updateRoom(room.id, { status: "rejected" });
+    }
+    toast.success(t("toast.admin.listing.bulkRejected", { n: selected.length }));
+  }
+
   function handleBulkOccupy(selected: Room[]) {
     for (const room of selected) {
       if (!room.isOccupied) void updateRoom(room.id, { isOccupied: true });
@@ -306,6 +320,8 @@ export default function AdminRoomsPage() {
         onDelete={setConfirmDelete}
         onApprove={handleApprove}
         onReject={handleReject}
+        onBulkApprove={handleBulkApprove}
+        onBulkReject={handleBulkReject}
         onBulkOccupy={handleBulkOccupy}
         onBulkUnoccupy={handleBulkUnoccupy}
         onBulkDelete={setConfirmBulkDelete}

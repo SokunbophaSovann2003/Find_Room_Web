@@ -25,6 +25,8 @@ export default function AdminRoomsList({
   onDelete,
   onApprove,
   onReject,
+  onBulkApprove,
+  onBulkReject,
   onBulkOccupy,
   onBulkUnoccupy,
   onBulkDelete,
@@ -40,6 +42,8 @@ export default function AdminRoomsList({
   onReject?: (room: Room) => void;
   // When both bulk handlers are provided, the desktop table shows selection
   // checkboxes and a bulk-action toolbar above it.
+  onBulkApprove?: (rooms: Room[]) => void;
+  onBulkReject?: (rooms: Room[]) => void;
   onBulkOccupy?: (rooms: Room[]) => void;
   onBulkUnoccupy?: (rooms: Room[]) => void;
   onBulkDelete?: (rooms: Room[]) => void;
@@ -137,6 +141,10 @@ export default function AdminRoomsList({
     selectedRooms.every((r) => r.status === "published" && !r.isOccupied && !isAutoOccupied(r, autoOccupyDays));
   const allSelectedOccupied = selectedRooms.length > 0 &&
     selectedRooms.every((r) => r.isOccupied || isAutoOccupied(r, autoOccupyDays));
+  const allSelectedPending = selectedRooms.length > 0 &&
+    selectedRooms.every((r) => r.status === "pending");
+  const allSelectedRejected = selectedRooms.length > 0 &&
+    selectedRooms.every((r) => r.status === "rejected");
 
   function toggleRow(id: string) {
     setSelectedIds((prev) => {
@@ -219,6 +227,26 @@ export default function AdminRoomsList({
             </button>
           </div>
           <div className="flex items-center gap-2">
+            {(allSelectedPending || allSelectedRejected) && onBulkApprove ? (
+              <button
+                type="button"
+                onClick={() => { onBulkApprove(selectedRooms); clearSelection(); }}
+                className="flex h-9 items-center gap-1.5 rounded-xl border border-brand bg-brand/10 px-3 text-sm font-semibold text-brand transition hover:bg-brand/20"
+              >
+                <Icon name="check" className="h-4 w-4" />
+                {t("admin.rooms.bulk.approve")}
+              </button>
+            ) : null}
+            {allSelectedPending && onBulkReject ? (
+              <button
+                type="button"
+                onClick={() => { onBulkReject(selectedRooms); clearSelection(); }}
+                className="flex h-9 items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+              >
+                <Icon name="x" className="h-4 w-4" />
+                {t("admin.rooms.bulk.reject")}
+              </button>
+            ) : null}
             {allSelectedAvailable ? (
               <button
                 type="button"
