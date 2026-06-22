@@ -21,7 +21,7 @@ import {
   orderBy,
   writeBatch
 } from "firebase/firestore";
-import { db, isFirebaseConfigured } from "./firebase";
+import { db, auth, isFirebaseConfigured } from "./firebase";
 import type { Session } from "./session";
 import { MOCK_ROOMS } from "./mock-data";
 import { safeSetItem } from "./safe-storage";
@@ -512,12 +512,19 @@ export function useIsAdmin(session: Session | null): { admin: boolean; loading: 
 
   useEffect(() => {
     if (!session) { setAdmin(false); setLoading(false); return; }
-    if (isFirebaseConfigured && db) {
-      return onSnapshot(doc(db, "users", session.uid), (snap) => {
-        const data = snap.data();
-        setAdmin(data?.role === "admin" && data?.status === "active");
-        setLoading(false);
-      }, () => { setAdmin(false); setLoading(false); });
+    if (isFirebaseConfigured && db && auth) {
+      let unsub: (() => void) | undefined;
+      // Wait for Firebase Auth to finish initialising before reading Firestore,
+      // otherwise the request goes out unauthenticated and gets permission-denied.
+      auth.authStateReady().then(() => {
+        if (!auth!.currentUser) { setAdmin(false); setLoading(false); return; }
+        unsub = onSnapshot(doc(db!, "users", session.uid), (snap) => {
+          const data = snap.data();
+          setAdmin(data?.role === "admin" && data?.status === "active");
+          setLoading(false);
+        }, () => { setAdmin(false); setLoading(false); });
+      });
+      return () => unsub?.();
     }
     // Demo mode: synchronous check
     setAdmin(isAdmin(session));
