@@ -58,9 +58,11 @@ service cloud.firestore {
     }
 
     // ─── Admin incoming notifications ─────────────────────────────────────
-    // Only admins may read or write these.
+    // Any signed-in user may create (e.g. registration / listing events).
+    // Only admins may read, update, or delete.
     match /admin_notifications/{notifId} {
-      allow read, write: if isAdmin();
+      allow create: if isSignedIn();
+      allow read, update, delete: if isAdmin();
     }
 
     // ─── Outbound notification templates ──────────────────────────────────
