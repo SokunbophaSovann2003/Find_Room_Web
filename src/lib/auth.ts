@@ -4,7 +4,7 @@ import {
   signOut as fbSignOut,
   updateEmail
 } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { auth, db, functions, isFirebaseConfigured } from "./firebase";
 import { clearSession, getSession, setSession } from "./session";
@@ -68,6 +68,12 @@ export async function loginWithPhone(phoneNumber: string, password: string) {
   }
 
   const cred = await signInWithEmailAndPassword(auth, phoneToEmail(phoneNumber), password);
+  // Check Firestore status directly — the in-memory cache is empty on fresh page loads.
+  const userSnap = await getDoc(doc(db!, "users", cred.user.uid));
+  if (userSnap.data()?.status === "disabled") {
+    await fbSignOut(auth);
+    throw new Error("auth.error.disabled");
+  }
   setSession({ uid: cred.user.uid, phoneNumber });
   return cred.user;
 }
