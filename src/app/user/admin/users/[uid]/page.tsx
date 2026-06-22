@@ -27,6 +27,7 @@ export default function AdminUserDetailPage() {
   const allRooms = useRooms();
   const t = useT();
   const [editing, setEditing] = useState(false);
+  const [confirmDisable, setConfirmDisable] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmDeleteRoom, setConfirmDeleteRoom] = useState<Room | null>(null);
   const [confirmReject, setConfirmReject] = useState<Room | null>(null);
@@ -227,7 +228,7 @@ export default function AdminUserDetailPage() {
             </button>
             <button
               type="button"
-              onClick={handleToggleStatus}
+              onClick={user.status === "active" ? () => setConfirmDisable(true) : handleToggleStatus}
               className="btn-secondary"
             >
               <Icon name="shield" className="h-4 w-4" />
@@ -259,7 +260,7 @@ export default function AdminUserDetailPage() {
           </button>
           <button
             type="button"
-            onClick={handleToggleStatus}
+            onClick={user.status === "active" ? () => setConfirmDisable(true) : handleToggleStatus}
             className="btn-secondary"
           >
             <Icon name="shield" className="h-4 w-4" />
@@ -318,6 +319,18 @@ export default function AdminUserDetailPage() {
           onSubmit={handleEditSave}
         />
       ) : null}
+
+      <ConfirmModal
+        open={confirmDisable}
+        title={t("admin.userDetail.disable.title")}
+        body={
+          <>
+            <b>{user.username}</b>{t("admin.userDetail.disable.body.suffix")}
+          </>
+        }
+        onCancel={() => setConfirmDisable(false)}
+        onConfirm={() => { setConfirmDisable(false); handleToggleStatus(); }}
+      />
 
       <ConfirmModal
         open={confirmDelete}

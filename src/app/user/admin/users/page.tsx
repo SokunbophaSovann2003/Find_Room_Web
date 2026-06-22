@@ -40,6 +40,7 @@ export default function AdminUsersPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [adding, setAdding] = useState(false);
+  const [confirmDisable, setConfirmDisable] = useState<AdminUser | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AdminUser | null>(null);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState<AdminUser[] | null>(null);
   const [page, setPage] = useState(1);
@@ -462,7 +463,7 @@ export default function AdminUsersPage() {
                       user={u}
                       onView={() => router.push(`/user/admin/users/${u.uid}`)}
                       onEdit={() => setEditing(u)}
-                      onToggle={() => handleToggleStatus(u)}
+                      onToggle={() => u.status === "active" ? setConfirmDisable(u) : handleToggleStatus(u)}
                       onDelete={() => setConfirmDelete(u)}
                       onSend={() =>
                         router.push(
@@ -618,6 +619,18 @@ export default function AdminUsersPage() {
           onSubmit={handleEditSave}
         />
       ) : null}
+
+      <ConfirmModal
+        open={!!confirmDisable}
+        title={t("admin.userDetail.disable.title")}
+        body={
+          confirmDisable ? (
+            <><b>{confirmDisable.username}</b>{t("admin.userDetail.disable.body.suffix")}</>
+          ) : null
+        }
+        onCancel={() => setConfirmDisable(null)}
+        onConfirm={() => { const u = confirmDisable!; setConfirmDisable(null); handleToggleStatus(u); }}
+      />
 
       <ConfirmModal
         open={!!confirmDelete}

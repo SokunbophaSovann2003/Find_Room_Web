@@ -638,6 +638,8 @@ const DICT: Dict = {
   "admin.userDetail.listings": { km: "បញ្ជី", en: "Listings" },
   "admin.userDetail.noListings.title": { km: "មិនទាន់មានបញ្ជី", en: "No listings yet" },
   "admin.userDetail.noListings.body": { km: "អ្នកប្រើប្រាស់នេះមិនទាន់បានផ្សាយបន្ទប់ណាមួយ។", en: "This user hasn't published any rooms." },
+  "admin.userDetail.disable.title": { km: "បិទគណនីអ្នកប្រើប្រាស់នេះ?", en: "Disable this account?" },
+  "admin.userDetail.disable.body.suffix": { km: " នឹងត្រូវបិទ។ ពួកគេនឹងមិនអាចចូលប្រព័ន្ធបានទេ ប៉ុន្តែអ្នកអាចបើកដំណើរការវិញបានគ្រប់ពេល។", en: " will be blocked from logging in. You can re-enable them at any time." },
   "admin.userDetail.delete.title": { km: "លុបអ្នកប្រើប្រាស់នេះ?", en: "Delete this user?" },
   "admin.userDetail.delete.body.suffix": { km: " នឹងត្រូវលុបចេញពីបញ្ជីអ្នកប្រើប្រាស់។ បញ្ជីរបស់ពួកគេនៅដដែលប៉ុន្តែបាត់បង់តំណម្ចាស់។", en: " will be removed from the user directory. Their listings stay but lose their owner link." },
   "admin.userDetail.month": { km: "/ ខែ", en: "/ month" },
