@@ -46,9 +46,14 @@ export const functions: Functions | null = firebaseApp ? getFunctions(firebaseAp
 if (firebaseApp && typeof window !== "undefined") {
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
   if (siteKey) {
-    initializeAppCheck(firebaseApp, {
-      provider: new ReCaptchaV3Provider(siteKey),
-      isTokenAutoRefreshEnabled: true
-    });
+    try {
+      initializeAppCheck(firebaseApp, {
+        provider: new ReCaptchaV3Provider(siteKey),
+        isTokenAutoRefreshEnabled: true
+      });
+    } catch {
+      // Already initialized or domain not yet registered — non-fatal,
+      // Firebase Auth and Firestore continue working normally.
+    }
   }
 }
