@@ -131,10 +131,10 @@ function PhoneField({
         </span>
         <input
           type="tel"
-          placeholder="12 345 678"
+          placeholder="097 353 1332"
           className="w-full bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-ink-soft"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value.replace(/^0+/, ""))}
           required
         />
       </div>
