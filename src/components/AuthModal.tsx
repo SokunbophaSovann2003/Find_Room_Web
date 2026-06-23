@@ -427,10 +427,13 @@ function RegisterForm({
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
     if (otp.replace(/\s/g, "").length < 6) { setError(t("auth.otp.error.invalid")); return; }
-    if (!await verifyOtp(`+855${digits}`, otp)) { setError(t("auth.otp.error.invalid")); return; }
     setLoading(true);
     setError(null);
     try {
+      if (!await verifyOtp(`+855${digits}`, otp)) {
+        setError(t("auth.otp.error.invalid"));
+        return;
+      }
       await registerWithPhone({ username: username.trim(), phoneNumber: `+855${digits}`, password });
       onSuccess?.();
     } catch (err) {
