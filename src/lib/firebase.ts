@@ -3,6 +3,7 @@ import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { getFunctions, type Functions } from "firebase/functions";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -38,3 +39,16 @@ export const auth: Auth | null = firebaseApp ? getAuth(firebaseApp) : null;
 export const db: Firestore | null = firebaseApp ? getFirestore(firebaseApp) : null;
 export const storage: FirebaseStorage | null = firebaseApp ? getStorage(firebaseApp) : null;
 export const functions: Functions | null = firebaseApp ? getFunctions(firebaseApp) : null;
+
+// App Check — prevents unauthorized API clients from calling Firebase directly.
+// Only active in the browser and only when the reCAPTCHA site key is provided.
+// In Firebase Console, start in "monitoring" mode, then enforce once traffic looks clean.
+if (firebaseApp && typeof window !== "undefined") {
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+  if (siteKey) {
+    initializeAppCheck(firebaseApp, {
+      provider: new ReCaptchaV3Provider(siteKey),
+      isTokenAutoRefreshEnabled: true
+    });
+  }
+}
