@@ -17,7 +17,7 @@ import {
   saveOverrides,
   type ProfileOverrides
 } from "@/lib/profile-overrides";
-import { getAdminSettings, useAdminSettings } from "@/lib/admin";
+import { getAdminSettings, updateAdminUser, useAdminSettings } from "@/lib/admin";
 import { isAutoOccupied, daysSinceActivity } from "@/lib/auto-occupy";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
@@ -585,6 +585,9 @@ export default function ProfilePage() {
               // shown; keep the modal open so they can retry or pick a smaller image.
               return;
             }
+            // Sync the display name to Firestore so the admin panel and other
+            // users see the updated name (profile-overrides is device-local only).
+            void updateAdminUser(session.uid, { username: next.username });
             setOverrides(merged);
             setEditing(null);
             toast.success(t("toast.profile.updated"));

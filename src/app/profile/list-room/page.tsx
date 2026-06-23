@@ -12,7 +12,7 @@ import { findRoomById } from "@/lib/mock-data";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { uploadRoomPhoto } from "@/lib/storage";
 import { loadOverrides } from "@/lib/profile-overrides";
-import { DEFAULT_AMENITIES, getAdminSettings, pushIncomingNotification } from "@/lib/admin";
+import { DEFAULT_AMENITIES, getAdminSettings, pushIncomingNotification, useIsAdmin } from "@/lib/admin";
 import ConfirmModal from "@/components/ConfirmModal";
 import SelectField from "@/components/SelectField";
 import {
@@ -87,6 +87,7 @@ const MAX_PHOTOS = 5;
 export default function ListRoomPage() {
   const router = useRouter();
   const session = useSession();
+  const { admin: isAdminUser } = useIsAdmin(session);
   const t = useT();
   const searchParams = useSearchParams();
   const editingId = searchParams?.get("editing") ?? null;
@@ -514,7 +515,7 @@ export default function ListRoomPage() {
         // so the admin re-reviews it. Published/pending listings keep their status.
         const resubmitStatus =
           existing?.status === "rejected"
-            ? (settings.autoPublishListings ? "published" : "pending")
+            ? (settings.autoPublishListings || isAdminUser ? "published" : "pending")
             : undefined;
         const patch: Partial<Room> = {
           ...(resubmitStatus ? { status: resubmitStatus, rejectionReason: undefined } : {}),
@@ -595,7 +596,7 @@ export default function ListRoomPage() {
         },
         createdAt: Date.now(),
         lastActivityAt: Date.now(),
-        status: settings.autoPublishListings ? "published" : "pending"
+        status: settings.autoPublishListings || isAdminUser ? "published" : "pending"
       };
 
       try {
