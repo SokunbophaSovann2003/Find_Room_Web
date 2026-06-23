@@ -118,7 +118,7 @@ function PhoneField({
   onChange: (v: string) => void;
 }) {
   const t = useT();
-  const digits = value.replace(/\D/g, "");
+  const digits = value.replace(/\D/g, "").replace(/^0/, "");
   const phoneOk = digits.length >= 8 && digits.length <= 9;
   const phoneTouched = digits.length > 0;
 
@@ -134,7 +134,7 @@ function PhoneField({
           placeholder="097 353 1332"
           className="w-full bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-ink-soft"
           value={value}
-          onChange={(e) => onChange(e.target.value.replace(/^0+/, ""))}
+          onChange={(e) => onChange(e.target.value)}
           required
         />
       </div>
@@ -306,7 +306,7 @@ function LoginForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const digits = phone.replace(/\D/g, "");
+    const digits = phone.replace(/\D/g, "").replace(/^0/, "");
     if (digits.length < 8 || digits.length > 9) {
       setError(t("auth.error.phone.invalid"));
       return;
@@ -394,7 +394,7 @@ function RegisterForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const digits = phone.replace(/\D/g, "");
+  const digits = phone.replace(/\D/g, "").replace(/^0/, "");
   const formattedPhone = `+855 ${digits}`;
 
   async function handleSubmitForm(e: React.FormEvent) {
@@ -573,7 +573,7 @@ function ForgotPasswordForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const digits = phone.replace(/\D/g, "");
+  const digits = phone.replace(/\D/g, "").replace(/^0/, "");
   const formattedPhone = `+855 ${digits}`;
 
   async function handleFindAccount(e: React.FormEvent) {
