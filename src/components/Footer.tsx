@@ -9,10 +9,12 @@ import { useViewMode } from "@/lib/view-mode";
 import { useT } from "@/lib/language";
 
 const CONTACT = {
-  phone: "+855 12 345 678",
-  telegram: "+855 12 345 678",
-  email: "hello@findroom.kh",
-  facebook: "findroom.kh"
+  phone: "097 353 1332",
+  phoneHref: "tel:+85597353 1332",
+  telegram: "088 432 0798",
+  telegramHref: "https://t.me/+855884320798",
+  email: "joul.kh.contact@gmail.com",
+  address: "Phnom Penh, Cambodia"
 };
 
 export default function Footer() {
@@ -20,8 +22,6 @@ export default function Footer() {
   const session = useSession();
   const viewMode = useViewMode();
   const t = useT();
-  const phoneDigits = CONTACT.phone.replace(/\D/g, "");
-  const telegramLink = `+${CONTACT.telegram.replace(/\D/g, "")}`;
 
   // Admin shell owns its own surface — drop the marketing footer.
   if (pathname?.startsWith("/user/admin")) return null;
@@ -65,12 +65,12 @@ export default function Footer() {
             <ContactRow
               icon="phone"
               label={CONTACT.phone}
-              href={`tel:${phoneDigits}`}
+              href={CONTACT.phoneHref}
             />
             <ContactRow
               icon="telegram"
-              label="Telegram"
-              href={`https://t.me/${telegramLink}`}
+              label={CONTACT.telegram}
+              href={CONTACT.telegramHref}
             />
             <ContactRow
               icon="email"
@@ -78,9 +78,9 @@ export default function Footer() {
               href={`mailto:${CONTACT.email}`}
             />
             <ContactRow
-              icon="facebook"
-              label="Facebook"
-              href={`https://facebook.com/${CONTACT.facebook}`}
+              icon="map-pin"
+              label={CONTACT.address}
+              href={`https://maps.google.com/?q=${encodeURIComponent(CONTACT.address)}`}
             />
           </ul>
         </div>
@@ -104,7 +104,7 @@ function ContactRow({
   label,
   href
 }: {
-  icon: "phone" | "telegram" | "email" | "facebook";
+  icon: "phone" | "telegram" | "email" | "map-pin";
   label: string;
   href: string;
 }) {
