@@ -1,20 +1,26 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
-import twilio from "twilio";
+import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 
 admin.initializeApp();
 const db = admin.firestore();
 
-const TWILIO_SID  = process.env.TWILIO_ACCOUNT_SID  ?? "";
-const TWILIO_AUTH = process.env.TWILIO_AUTH_TOKEN    ?? "";
-const TWILIO_FROM = process.env.TWILIO_FROM_NUMBER   ?? "";
-const twilioReady = Boolean(TWILIO_SID && TWILIO_AUTH && TWILIO_FROM);
-const twilioClient = twilioReady ? twilio(TWILIO_SID, TWILIO_AUTH) : null;
+const AWS_REGION = process.env.AWS_REGION ?? "ap-southeast-1";
+const snsReady = Boolean(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY);
+const sns = snsReady
+  ? new SNSClient({
+      region: AWS_REGION,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      },
+    })
+  : null;
 
-const OTP_TTL_MS       = 5  * 60 * 1000;  // 5 minutes
-const NONCE_TTL_MS     = 10 * 60 * 1000;  // 10 minutes
-const RESEND_COOLDOWN  = 60 * 1000;        // 60 seconds between sends
-const MAX_ATTEMPTS     = 5;
+const OTP_TTL_MS      = 5  * 60 * 1000;  // 5 minutes
+const NONCE_TTL_MS    = 10 * 60 * 1000;  // 10 minutes
+const RESEND_COOLDOWN = 60 * 1000;        // 60 seconds between sends
+const MAX_ATTEMPTS    = 5;
 
 function sixDigits(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -25,8 +31,19 @@ function hexNonce(len = 32): string {
   return Array.from({ length: len }, () => chars[Math.floor(Math.random() * 16)]).join("");
 }
 
+async function sendSms(phone: string, message: string): Promise<void> {
+  if (!sns) return;
+  await sns.send(new PublishCommand({
+    PhoneNumber: phone,
+    Message: message,
+    MessageAttributes: {
+      "AWS.SNS.SMS.SenderID": { DataType: "String", StringValue: "JoulKH" },
+      "AWS.SNS.SMS.SMSType":  { DataType: "String", StringValue: "Transactional" },
+    },
+  }));
+}
+
 // ─── sendVerificationCode ───────────────────────────────────────────────────
-// Generates a 6-digit OTP, stores it in Firestore, and sends it via Twilio.
 export const sendVerificationCode = onCall({ invoker: "public" }, async (request) => {
   const phone = request.data?.phone as string | undefined;
   if (!phone || typeof phone !== "string") {
@@ -43,28 +60,18 @@ export const sendVerificationCode = onCall({ invoker: "public" }, async (request
   }
 
   const code = sixDigits();
-  await ref.set({
-    code,
-    attempts: 0,
-    sentAt: Date.now(),
-    expiresAt: Date.now() + OTP_TTL_MS
-  });
+  await ref.set({ code, attempts: 0, sentAt: Date.now(), expiresAt: Date.now() + OTP_TTL_MS });
 
-  if (twilioClient) {
-    await twilioClient.messages.create({
-      body: `Your Joul.KH verification code is ${code}. Valid for 5 minutes.`,
-      from: TWILIO_FROM,
-      to: phone
-    });
+  if (sns) {
+    await sendSms(phone, `Your Joul.KH verification code is ${code}. Valid for 5 minutes.`);
     return { success: true };
   }
 
-  // Twilio not configured — return code so the client can show it in demo mode
+  // AWS SNS not configured — return code for demo mode
   return { success: true, demoCode: code };
 });
 
 // ─── verifyCode ─────────────────────────────────────────────────────────────
-// Validates and consumes an OTP for the Register flow.
 export const verifyCode = onCall({ invoker: "public" }, async (request) => {
   const { phone, code } = request.data as { phone?: string; code?: string };
   if (!phone || !code) {
@@ -96,8 +103,6 @@ export const verifyCode = onCall({ invoker: "public" }, async (request) => {
 });
 
 // ─── verifyCodeForReset ──────────────────────────────────────────────────────
-// Validates and consumes an OTP for the Forgot Password flow.
-// On success, stores a short-lived nonce in password_reset_tokens and returns it.
 export const verifyCodeForReset = onCall({ invoker: "public" }, async (request) => {
   const { phone, code } = request.data as { phone?: string; code?: string };
   if (!phone || !code) {
@@ -129,15 +134,13 @@ export const verifyCodeForReset = onCall({ invoker: "public" }, async (request) 
   const nonce = hexNonce();
   await db.collection("password_reset_tokens").doc(phone).set({
     nonce,
-    expiresAt: Date.now() + NONCE_TTL_MS
+    expiresAt: Date.now() + NONCE_TTL_MS,
   });
 
   return { nonce };
 });
 
 // ─── resetPassword ───────────────────────────────────────────────────────────
-// Validates the nonce issued by verifyCodeForReset, looks up the user by phone,
-// and updates their password via the Firebase Admin SDK.
 export const resetPassword = onCall({ invoker: "public" }, async (request) => {
   const { phone, nonce, newPassword } = request.data as {
     phone?: string;
@@ -165,7 +168,6 @@ export const resetPassword = onCall({ invoker: "public" }, async (request) => {
     throw new HttpsError("permission-denied", "auth.forgot.notFound");
   }
 
-  // Look up the Firebase Auth UID by phone number stored in Firestore users.
   const usersSnap = await db
     .collection("users")
     .where("phoneNumber", "==", phone)
