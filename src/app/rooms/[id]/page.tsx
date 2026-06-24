@@ -27,7 +27,7 @@ const REPORT_REASONS = [
 ] as const;
 type ReportReason = (typeof REPORT_REASONS)[number]["value"];
 
-type RoomState = Room | "loading" | "missing";
+type RoomState = Room | "loading" | "missing" | "error";
 
 export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -42,6 +42,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const [locationOpen, setLocationOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [authIntent, setAuthIntent] = useState<"contact" | "location" | null>(null);
   const [reportReason, setReportReason] = useState<ReportReason | null>(null);
   const [reportDetails, setReportDetails] = useState("");
   const [reportSent, setReportSent] = useState(false);
@@ -61,7 +62,9 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     if (!isFirebaseConfigured && findRoomById(params.id)) return;
-    void getRoomById(params.id).then((r) => setRoom(r ?? "missing"));
+    getRoomById(params.id)
+      .then((r) => setRoom(r ?? "missing"))
+      .catch(() => setRoom("error"));
   }, [params.id]);
 
   useEffect(() => {
@@ -102,6 +105,30 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
         <Link href="/explore" className="btn-primary mt-6">
           {t("room.notFound.cta")}
         </Link>
+      </div>
+    );
+  }
+  if (room === "error") {
+    return (
+      <div className="mx-auto max-w-md px-4 py-20 text-center">
+        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+          <Icon name="wifi-off" className="h-8 w-8" />
+        </span>
+        <h1 className="mt-5 text-xl font-extrabold tracking-tight">{t("room.error.title")}</h1>
+        <p className="mt-2 text-sm text-ink-muted">{t("room.error.body")}</p>
+        <button
+          type="button"
+          onClick={() => {
+            setRoom("loading");
+            getRoomById(params.id)
+              .then((r) => setRoom(r ?? "missing"))
+              .catch(() => setRoom("error"));
+          }}
+          className="btn-primary mt-6 gap-2"
+        >
+          <Icon name="refresh-cw" className="h-4 w-4" />
+          {t("common.tryAgain")}
+        </button>
       </div>
     );
   }
@@ -175,7 +202,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
         <LoginGate
           title={t("room.loginGate.location.title")}
           body={t("room.loginGate.location.body")}
-          onLogin={() => setAuthOpen(true)}
+          onLogin={() => { setAuthIntent("location"); setAuthOpen(true); }}
         />
       )}
     </section>
@@ -257,7 +284,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             <LoginGate
               title={t("room.loginGate.contact.title")}
               body={t("room.loginGate.contact.body")}
-              onLogin={() => setAuthOpen(true)}
+              onLogin={() => { setAuthIntent("contact"); setAuthOpen(true); }}
             />
           </div>
         )}
@@ -486,7 +513,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             </div>
             <button
               type="button"
-              onClick={() => session ? setLocationOpen(true) : setAuthOpen(true)}
+              onClick={() => session ? setLocationOpen(true) : (setAuthIntent("location"), setAuthOpen(true))}
               className="btn-secondary h-11 flex-1 justify-center px-3"
             >
               <Icon name="map-pin" className="h-4 w-4" />
@@ -494,7 +521,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
             </button>
             <button
               type="button"
-              onClick={() => session ? setContactOpen(true) : setAuthOpen(true)}
+              onClick={() => session ? setContactOpen(true) : (setAuthIntent("contact"), setAuthOpen(true))}
               className="btn-primary h-11 flex-1 justify-center px-3"
             >
               <Icon name="phone" className="h-4 w-4" />
@@ -507,7 +534,12 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
       <AuthModal
         open={authOpen}
         onClose={() => setAuthOpen(false)}
-        onSuccess={() => setAuthOpen(false)}
+        onSuccess={() => {
+          setAuthOpen(false);
+          if (authIntent === "contact") setContactOpen(true);
+          else if (authIntent === "location") setLocationOpen(true);
+          setAuthIntent(null);
+        }}
         defaultTab="register"
       />
 

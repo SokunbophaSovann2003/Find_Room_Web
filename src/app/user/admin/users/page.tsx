@@ -30,7 +30,7 @@ const MOBILE_PAGE_SIZE = 20;
 export default function AdminUsersPage() {
   const router = useRouter();
   const users = useAdminUsers();
-  const rooms = useRooms();
+  const { rooms } = useRooms();
   const t = useT();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");

@@ -6,6 +6,7 @@ import AdminFloatingNav from "@/components/admin/AdminFloatingNav";
 import Footer from "@/components/Footer";
 import Toaster from "@/components/Toaster";
 import HtmlLangSync from "@/components/HtmlLangSync";
+import OfflineBanner from "@/components/OfflineBanner";
 import "./globals.css";
 
 // next/font self-hosts the font files at build time. That avoids the
@@ -69,6 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </main>
         <Footer />
         <Toaster />
+        <OfflineBanner />
         <HtmlLangSync />
       </body>
     </html>

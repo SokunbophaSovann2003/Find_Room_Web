@@ -24,7 +24,7 @@ export default function AdminUserDetailPage() {
   const params = useParams<{ uid: string }>();
   const uid = decodeURIComponent(params.uid ?? "");
   const users = useAdminUsers();
-  const allRooms = useRooms();
+  const { rooms: allRooms } = useRooms();
   const t = useT();
   const [editing, setEditing] = useState(false);
   const [confirmDisable, setConfirmDisable] = useState(false);

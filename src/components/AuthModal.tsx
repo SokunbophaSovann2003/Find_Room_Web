@@ -16,7 +16,10 @@ function firebaseAuthKey(err: unknown): string {
   if (code === "auth/email-already-in-use") return "auth.error.phoneInUse";
   if (code === "auth/too-many-requests") return "auth.error.tooManyRequests";
   if (code === "auth/user-disabled") return "auth.error.disabled";
-  return err instanceof Error ? err.message : "auth.error.signInFailed";
+  if (code === "auth/network-request-failed") return "auth.error.networkFailed";
+  const msg = err instanceof Error ? err.message : "";
+  if (msg.startsWith("auth.")) return msg;
+  return "auth.error.signInFailed";
 }
 
 export default function AuthModal({

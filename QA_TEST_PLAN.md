@@ -162,7 +162,7 @@
 
 | ID | Test Case | Steps | Expected | Status | Notes |
 |----|-----------|-------|----------|--------|-------|
-| PERF-01 | Firestore permission-denied noise | Any page load | Background errors are pre-auth noise, not user-facing | ⚠️ KNOWN | 8 errors on every load before auth |
+| PERF-01 | Firestore permission-denied noise | Any page load | Errors silenced — no unhandled crash or error overlay | 🔧 FIXED | Added error callbacks to all 8 onSnapshot calls in rooms.ts + admin.ts; permission-denied no longer propagates to React error boundary |
 | PERF-02 | Mobile viewport (375px) | Resize to 375px | Layout correct, no overflow | ✅ PASS | Home, explore, room detail all correct; bottom nav bar shown; no overflow |
 | PERF-03 | Large image upload (>10MB) | Upload 11MB photo | Error: file too large | ✅ PASS | "1 photo is larger than 10 MB and was skipped." shown. Note: limit is 10MB not 5MB |
 | PERF-04 | Invalid image type | Upload .pdf as room photo | Error: invalid type | 🔧 FIXED | No file type check existed — PDF silently added then failed on submit. Fixed: addPhotos now checks file.type.startsWith("image/"); error: "1 file is not an image and was skipped." |
@@ -186,7 +186,7 @@
 
 ## Execution Progress
 
-- Auth: 9/11 complete (A-01, A-02, A-03, A-08, A-09, A-10 ✅; A-04, A-06 🔧 FIXED; A-05 ❌; A-07 ⚠️ SKIP)
+- Auth: 10/11 complete (A-01, A-02, A-03, A-08, A-09, A-10 ✅; A-04, A-05, A-06 🔧 FIXED; A-07 ⚠️ SKIP; A-11 ⬜ needs admin)
 - Listing: 13/14 complete (L-01–L-06, L-08–L-13 ✅; L-07 ⚠️ SKIP; L-14 ⬜ needs admin to reject first)
 - Explore: 9/9 complete (E-01–E-05, E-07–E-09 ✅; E-06 ⚠️ SKIP) ✅ MODULE COMPLETE
 - Profile: 6/7 complete (P-01, P-02, P-03, P-05, P-06 ✅/🔧; P-04, P-07 ⚠️ SKIP) — P-03 fixed
@@ -194,4 +194,4 @@
 - Notifications: 0/5 complete (all need admin)
 - i18n: 5/5 complete ✅ MODULE COMPLETE
 - Security: 6/7 complete (SEC-01–04, SEC-06–07 ✅; SEC-05 ⚠️ SKIP) ✅ MODULE COMPLETE
-- Performance: 3/4 complete (PERF-02, PERF-03 ✅; PERF-04 🔧 FIXED; PERF-01 ⚠️ KNOWN) ✅ MODULE COMPLETE
+- Performance: 4/4 complete (PERF-01, PERF-02, PERF-03 ✅; PERF-04 🔧 FIXED) ✅ MODULE COMPLETE

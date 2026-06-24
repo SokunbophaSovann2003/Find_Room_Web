@@ -21,7 +21,7 @@ type TypeFilter = "all" | PropertyType;
 const ADD_ROOM_PATH = "/profile/list-room";
 
 export default function AdminRoomsPage() {
-  const rooms = useRooms();
+  const { rooms } = useRooms();
   const users = useAdminUsers();
   const { autoOccupyDays } = useAdminSettings();
   const t = useT();

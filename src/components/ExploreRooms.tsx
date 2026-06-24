@@ -55,7 +55,7 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
     setView(v);
     router.replace(`?view=${v}`, { scroll: false });
   }
-  const localRooms = useRooms();
+  const { rooms: localRooms, loading, error, retry } = useRooms();
   const { filter } = useExploreFilter();
   const { autoOccupyDays } = useAdminSettings();
   const allRooms = useMemo(() => {
@@ -154,7 +154,23 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
         </div>
       ) : null}
 
-      {visibleRooms.length === 0 ? (
+      {loading && allRooms.length === 0 ? (
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }, (_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : error && allRooms.length === 0 ? (
+        <div className="card flex flex-col items-center gap-3 px-6 py-14 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-400">
+            <Icon name="wifi-off" className="h-6 w-6" />
+          </span>
+          <h3 className="text-base font-bold">{t("explore.error.title")}</h3>
+          <p className="max-w-sm text-sm text-ink-muted">{t("explore.error.body")}</p>
+          <button type="button" onClick={retry} className="btn-primary mt-1 gap-2">
+            <Icon name="refresh-cw" className="h-4 w-4" />
+            {t("common.tryAgain")}
+          </button>
+        </div>
+      ) : visibleRooms.length === 0 ? (
         <div className="card flex flex-col items-center gap-2 px-6 py-14 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 text-brand">
             <Icon name="search" className="h-6 w-6" />
@@ -182,6 +198,19 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
         </>
       )}
     </>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
+      <div className="aspect-[4/3] animate-pulse bg-slate-200" />
+      <div className="space-y-2 p-3">
+        <div className="h-3.5 w-3/4 animate-pulse rounded-full bg-slate-200" />
+        <div className="h-3 w-1/2 animate-pulse rounded-full bg-slate-200" />
+        <div className="h-4 w-1/3 animate-pulse rounded-full bg-slate-200" />
+      </div>
+    </div>
   );
 }
 

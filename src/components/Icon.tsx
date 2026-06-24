@@ -48,7 +48,9 @@ export type IconName =
   | "email"
   | "eye"
   | "eye-off"
-  | "arrows-up-down";
+  | "arrows-up-down"
+  | "wifi-off"
+  | "refresh-cw";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V10.5Z" />,
@@ -281,6 +283,25 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   "arrows-up-down": (
     <path d="M3 7.5 7.5 3m0 0 4.5 4.5M7.5 3v13.5m13.5 0L16.5 21m0 0-4.5-4.5m4.5 4.5V3" />
+  ),
+  "wifi-off": (
+    <>
+      <line x1="2" y1="2" x2="22" y2="22" />
+      <path d="M16.7 11.1A10.9 10.9 0 0 1 19 12.6" />
+      <path d="M5 12.6a10.9 10.9 0 0 1 5.2-2.4" />
+      <path d="M10.7 5A16 16 0 0 1 22.5 9" />
+      <path d="M1.4 9a15.9 15.9 0 0 1 4.7-2.9" />
+      <path d="M8.5 16.1a6 6 0 0 1 7 0" />
+      <circle cx="12" cy="20" r="1" fill="currentColor" stroke="none" />
+    </>
+  ),
+  "refresh-cw": (
+    <>
+      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+      <path d="M8 16H3v5" />
+    </>
   )
 };
 

@@ -31,7 +31,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const session = useSession();
   const t = useT();
-  const allLocalRooms = useRooms();
+  const { rooms: allLocalRooms, loading: roomsLoading } = useRooms();
   const { autoOccupyDays } = useAdminSettings();
   const [overrides, setOverrides] = useState<ProfileOverrides>({});
   const [editing, setEditing] = useState<"profile" | null>(null);
@@ -282,7 +282,20 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {listings.length === 0 ? (
+        {roomsLoading && listings.length === 0 ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }, (_, i) => (
+              <div key={i} className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
+                <div className="aspect-[4/3] animate-pulse bg-slate-200" />
+                <div className="space-y-2 p-3">
+                  <div className="h-3.5 w-3/4 animate-pulse rounded-full bg-slate-200" />
+                  <div className="h-3 w-1/2 animate-pulse rounded-full bg-slate-200" />
+                  <div className="h-4 w-1/3 animate-pulse rounded-full bg-slate-200" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : listings.length === 0 ? (
           <div className="card flex flex-col items-center gap-3 px-6 py-14 text-center">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand">
               <Icon name="home" className="h-7 w-7" />

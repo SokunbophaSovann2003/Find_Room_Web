@@ -108,12 +108,22 @@ export async function getRoomById(id: string): Promise<Room | undefined> {
   return toRoom(snap.id, snap.data());
 }
 
-export function useRooms(): Room[] {
+export interface UseRoomsResult {
+  rooms: Room[];
+  loading: boolean;
+  error: boolean;
+  retry: () => void;
+}
+
+export function useRooms(): UseRoomsResult {
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (!isFirebaseConfigured || !db) {
-      const sync = () => setRooms(getLocalRooms());
+      const sync = () => { setRooms(getLocalRooms()); setLoading(false); };
       sync();
       window.addEventListener("findroom:local-rooms-change", sync);
       window.addEventListener("storage", sync);
@@ -123,12 +133,25 @@ export function useRooms(): Room[] {
       };
     }
 
+    setLoading(true);
+    setError(false);
     const q = query(roomsCol(), orderBy("createdAt", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
-      setRooms(snap.docs.map((d) => toRoom(d.id, d.data())));
-    }, () => {});
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setRooms(snap.docs.map((d) => toRoom(d.id, d.data())));
+        setLoading(false);
+        setError(false);
+      },
+      () => {
+        setLoading(false);
+        setError(true);
+      }
+    );
     return unsub;
-  }, []);
+  // tick is incremented by retry() to re-subscribe after a failure
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick]);
 
-  return rooms;
+  return { rooms, loading, error, retry: () => setTick((n) => n + 1) };
 }

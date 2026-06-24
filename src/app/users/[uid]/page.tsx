@@ -23,7 +23,7 @@ export default function HostProfilePage() {
   const params = useParams<{ uid: string }>();
   const uid = decodeURIComponent(params.uid ?? "");
   const t = useT();
-  const localRooms = useRooms();
+  const { rooms: localRooms } = useRooms();
   const { autoOccupyDays } = useAdminSettings();
 
   // Merge mock + local rooms the same way ExploreRooms does so admin-edited
