@@ -31,6 +31,8 @@ export default function ListingEditModal({
   const [ownerUid, setOwnerUid] = useState(room.owner.id);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [priceError, setPriceError] = useState<string | null>(null);
   const t = useT();
 
   useEffect(() => {
@@ -64,10 +66,11 @@ export default function ListingEditModal({
     e.preventDefault();
     if (saving) return;
     const priceNum = Number(price);
-    if (!title.trim() || !Number.isFinite(priceNum) || priceNum < 0) {
-      setError(t("admin.listingEdit.error.required"));
-      return;
-    }
+    const newTitleError = !title.trim() ? t("common.required") : null;
+    const newPriceError = (!Number.isFinite(priceNum) || priceNum < 0) ? t("common.required") : null;
+    setTitleError(newTitleError);
+    setPriceError(newPriceError);
+    if (newTitleError || newPriceError) return;
     setError(null);
     setSaving(true);
     try {
@@ -112,9 +115,12 @@ export default function ListingEditModal({
               id="l-title"
               className="input"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => { setTitle(e.target.value); setTitleError(null); }}
               required
             />
+            {titleError ? (
+              <p className="mt-1 text-xs text-red-600">{titleError}</p>
+            ) : null}
           </div>
           <div>
             <label className="label" htmlFor="l-price">{t("admin.listingEdit.field.price")}</label>
@@ -124,9 +130,12 @@ export default function ListingEditModal({
               min={0}
               className="input"
               value={price}
-              onChange={(e) => setPrice(e.target.value)}
+              onChange={(e) => { setPrice(e.target.value); setPriceError(null); }}
               required
             />
+            {priceError ? (
+              <p className="mt-1 text-xs text-red-600">{priceError}</p>
+            ) : null}
           </div>
           <div>
             <label className="label" htmlFor="l-owner">{t("admin.listingEdit.field.owner")}</label>

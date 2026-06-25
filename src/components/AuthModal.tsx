@@ -306,16 +306,18 @@ function LoginForm({
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const digits = phone.replace(/\D/g, "").replace(/^0/, "");
     if (digits.length < 8 || digits.length > 9) {
-      setError(t("auth.error.phone.invalid"));
+      setPhoneError(t("auth.error.phone.invalid"));
       return;
     }
     setLoading(true);
     setError(null);
+    setPhoneError(null);
     try {
       await loginWithPhone(`+855${digits}`, password);
       onSuccess?.();
@@ -332,7 +334,12 @@ function LoginForm({
       <p className="text-sm text-ink-muted">{t("auth.login.subtitle")}</p>
 
       <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
-        <PhoneField value={phone} onChange={setPhone} />
+        <div>
+          <PhoneField value={phone} onChange={(v) => { setPhone(v); setPhoneError(null); }} />
+          {phoneError ? (
+            <p className="mt-1 text-xs text-red-600">{phoneError}</p>
+          ) : null}
+        </div>
 
         <PasswordField
           label={t("auth.field.password")}
@@ -397,19 +404,25 @@ function RegisterForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
 
   const digits = phone.replace(/\D/g, "").replace(/^0/, "");
   const formattedPhone = `+855 ${digits}`;
 
   async function handleSubmitForm(e: React.FormEvent) {
     e.preventDefault();
-    if (!username.trim()) { setError(t("auth.error.name.required")); return; }
+    if (!username.trim()) { setNameError(t("auth.error.name.required")); return; }
     if (digits.length < 8 || digits.length > 9) { setPhoneError(t("auth.error.phone.invalid")); return; }
-    if (password.length < 8) { setError(t("auth.error.password.tooShort")); return; }
-    if (password !== confirmPassword) { setError(t("auth.error.confirmPassword.mismatch")); return; }
+    if (password.length < 8) { setPasswordError(t("auth.error.password.tooShort")); return; }
+    if (password !== confirmPassword) { setConfirmPasswordError(t("auth.error.confirmPassword.mismatch")); return; }
     setLoading(true);
     setError(null);
     setPhoneError(null);
+    setNameError(null);
+    setPasswordError(null);
+    setConfirmPasswordError(null);
     try {
       // Demo mode: check locally. Firebase mode: the Cloud Function checks
       // server-side before sending the OTP, so the error surfaces here.
@@ -511,9 +524,12 @@ function RegisterForm({
             placeholder={t("auth.field.fullName.placeholder")}
             className="input"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => { setUsername(e.target.value); setNameError(null); }}
             required
           />
+          {nameError ? (
+            <p className="mt-1 text-xs text-red-600">{nameError}</p>
+          ) : null}
         </div>
 
         <div>
@@ -523,21 +539,31 @@ function RegisterForm({
           ) : null}
         </div>
 
-        <PasswordField
-          label={t("auth.field.password")}
-          placeholder={t("auth.field.password.placeholder.short")}
-          value={password}
-          onChange={setPassword}
-          minLength={8}
-        />
+        <div>
+          <PasswordField
+            label={t("auth.field.password")}
+            placeholder={t("auth.field.password.placeholder.short")}
+            value={password}
+            onChange={(v) => { setPassword(v); setPasswordError(null); }}
+            minLength={8}
+          />
+          {passwordError ? (
+            <p className="mt-1 text-xs text-red-600">{passwordError}</p>
+          ) : null}
+        </div>
 
-        <PasswordField
-          label={t("auth.field.confirmPassword")}
-          placeholder={t("auth.field.password.placeholder.short")}
-          value={confirmPassword}
-          onChange={setConfirmPassword}
-          minLength={8}
-        />
+        <div>
+          <PasswordField
+            label={t("auth.field.confirmPassword")}
+            placeholder={t("auth.field.password.placeholder.short")}
+            value={confirmPassword}
+            onChange={(v) => { setConfirmPassword(v); setConfirmPasswordError(null); }}
+            minLength={8}
+          />
+          {confirmPasswordError ? (
+            <p className="mt-1 text-xs text-red-600">{confirmPasswordError}</p>
+          ) : null}
+        </div>
 
         {error ? (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
@@ -583,15 +609,19 @@ function ForgotPasswordForm({
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const digits = phone.replace(/\D/g, "").replace(/^0/, "");
   const formattedPhone = `+855 ${digits}`;
 
   async function handleFindAccount(e: React.FormEvent) {
     e.preventDefault();
-    if (digits.length < 8 || digits.length > 9) { setError(t("auth.error.phone.invalid")); return; }
+    if (digits.length < 8 || digits.length > 9) { setPhoneError(t("auth.error.phone.invalid")); return; }
     setLoading(true);
     setError(null);
+    setPhoneError(null);
     try {
       // In Firebase mode the existence check is skipped — the resetPassword
       // Cloud Function returns auth.forgot.notFound at the end if the account
@@ -612,15 +642,16 @@ function ForgotPasswordForm({
 
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
-    if (otp.replace(/\s/g, "").length < 6) { setError(t("auth.otp.error.invalid")); return; }
+    if (otp.replace(/\s/g, "").length < 6) { setOtpError(t("auth.otp.error.invalid")); return; }
     setLoading(true);
     setError(null);
+    setOtpError(null);
     try {
       const nonce = await verifyOtpForReset(`+855${digits}`, otp);
       setResetNonce(nonce);
       setStep("newPassword");
     } catch (err) {
-      setError(err instanceof Error ? t(err.message) : t("auth.otp.error.invalid"));
+      setOtpError(err instanceof Error ? t(err.message) : t("auth.otp.error.invalid"));
     } finally {
       setLoading(false);
     }
@@ -628,10 +659,11 @@ function ForgotPasswordForm({
 
   async function handleSetPassword(e: React.FormEvent) {
     e.preventDefault();
-    if (newPassword.length < 8) { setError(t("auth.error.password.tooShort")); return; }
+    if (newPassword.length < 8) { setPasswordError(t("auth.error.password.tooShort")); return; }
     if (!resetNonce) { setError(t("auth.forgot.notFound")); return; }
     setLoading(true);
     setError(null);
+    setPasswordError(null);
     try {
       await resetPassword(`+855${digits}`, resetNonce, newPassword);
       setStep("done");
@@ -653,11 +685,12 @@ function ForgotPasswordForm({
     if (step === "phone") {
       switchToLogin();
     } else {
-      // From otp or newPassword: go back to phone so user can restart with a fresh OTP
       setStep("phone");
       setOtp("");
       setDemoCode(null);
       setError(null);
+      setOtpError(null);
+      setPasswordError(null);
     }
   }
 
@@ -698,7 +731,12 @@ function ForgotPasswordForm({
 
       {step === "phone" ? (
         <form className="mt-4 space-y-3" onSubmit={handleFindAccount}>
-          <PhoneField value={phone} onChange={setPhone} />
+          <div>
+            <PhoneField value={phone} onChange={(v) => { setPhone(v); setPhoneError(null); }} />
+            {phoneError ? (
+              <p className="mt-1 text-xs text-red-600">{phoneError}</p>
+            ) : null}
+          </div>
 
           {error ? (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
@@ -710,7 +748,12 @@ function ForgotPasswordForm({
         </form>
       ) : step === "otp" ? (
         <form className="mt-5 space-y-4" onSubmit={handleVerifyOtp}>
-          <OtpField value={otp} onChange={setOtp} />
+          <div>
+            <OtpField value={otp} onChange={(v) => { setOtp(v); setOtpError(null); }} />
+            {otpError ? (
+              <p className="mt-2 text-center text-xs text-red-600">{otpError}</p>
+            ) : null}
+          </div>
 
           {demoCode ? (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-700">
@@ -719,10 +762,6 @@ function ForgotPasswordForm({
           ) : null}
 
           <ResendTimer onResend={handleResend} />
-
-          {error ? (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
-          ) : null}
 
           <button
             type="submit"
@@ -735,13 +774,18 @@ function ForgotPasswordForm({
         </form>
       ) : (
         <form className="mt-4 space-y-3" onSubmit={handleSetPassword}>
-          <PasswordField
-            label={t("auth.forgot.newPassword")}
-            placeholder={t("auth.field.password.placeholder.short")}
-            value={newPassword}
-            onChange={setNewPassword}
-            minLength={8}
-          />
+          <div>
+            <PasswordField
+              label={t("auth.forgot.newPassword")}
+              placeholder={t("auth.field.password.placeholder.short")}
+              value={newPassword}
+              onChange={(v) => { setNewPassword(v); setPasswordError(null); }}
+              minLength={8}
+            />
+            {passwordError ? (
+              <p className="mt-1 text-xs text-red-600">{passwordError}</p>
+            ) : null}
+          </div>
 
           {error ? (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>

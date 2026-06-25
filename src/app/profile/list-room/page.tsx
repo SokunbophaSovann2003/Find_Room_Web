@@ -342,6 +342,11 @@ export default function ListRoomPage() {
   // On submit they're concatenated with newly-uploaded photos.
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [rentError, setRentError] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const errorRef = useRef<HTMLParagraphElement | null>(null);
 
@@ -362,19 +367,19 @@ export default function ListRoomPage() {
       accepted.push(file);
     }
     if (invalidType > 0) {
-      setError(
+      setPhotoError(
         invalidType === 1
           ? t("listRoom.photos.invalidType.one")
           : t("listRoom.photos.invalidType.many", { n: invalidType })
       );
     } else if (oversized > 0) {
-      setError(
+      setPhotoError(
         oversized === 1
           ? t("listRoom.photos.oversized.one")
           : t("listRoom.photos.oversized.many", { n: oversized })
       );
     } else {
-      setError(null);
+      setPhotoError(null);
     }
     if (accepted.length === 0) return;
     const items: PhotoItem[] = accepted.map((file) => ({
@@ -392,6 +397,7 @@ export default function ListRoomPage() {
       if (target) URL.revokeObjectURL(target.url);
       return prev.filter((p) => p.id !== id);
     });
+    setPhotoError(null);
   }
 
   function toggle(a: string) {
@@ -405,6 +411,7 @@ export default function ListRoomPage() {
 
   function updateFee(id: number, patch: Partial<FeeRow>) {
     setFees((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+    setRentError(null);
   }
   function removeFee(id: number) {
     setFees((prev) => prev.filter((f) => f.id !== id));
@@ -441,6 +448,11 @@ export default function ListRoomPage() {
     setContactPhones(session?.phoneNumber ? [session.phoneNumber] : [""]);
     setTelegramPhones([""]);
     setError(null);
+    setTitleError(null);
+    setDescriptionError(null);
+    setLocationError(null);
+    setRentError(null);
+    setPhotoError(null);
     // Also discard the persisted prefs so the cleared state sticks across
     // visits — otherwise the next mount would re-hydrate what we just wiped.
     if (session?.uid) clearListRoomPrefs(session.uid);
@@ -462,14 +474,15 @@ export default function ListRoomPage() {
       setError(t("listRoom.error.signInRequired"));
       return;
     }
-    if (!title.trim()) return failWith(t("listRoom.error.titleRequired"));
-    if (!description.trim()) return failWith(t("listRoom.error.descriptionRequired"));
-    if (!location.province) return failWith(t("listRoom.error.provinceRequired"));
+    if (!title.trim()) { setTitleError(t("listRoom.error.titleRequired")); return; }
+    if (!description.trim()) { setDescriptionError(t("listRoom.error.descriptionRequired")); return; }
+    if (!location.province) { setLocationError(t("listRoom.error.provinceRequired")); return; }
 
     const rentFee = fees.find((f) => f.type === "rent");
     const rentValue = Number(rentFee?.price);
     if (!rentFee || !Number.isFinite(rentValue) || rentValue <= 0) {
-      return failWith(t("listRoom.error.rentRequired"));
+      setRentError(t("listRoom.error.rentRequired"));
+      return;
     }
 
     setSubmitting(true);
@@ -748,6 +761,9 @@ export default function ListRoomPage() {
                 </li>
               ))}
             </ul>
+            {photoError ? (
+              <p className="mt-2 text-xs text-red-600">{photoError}</p>
+            ) : null}
           </section>
 
           {/* Title */}
@@ -758,10 +774,13 @@ export default function ListRoomPage() {
             <input
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => { setTitle(e.target.value); setTitleError(null); }}
               placeholder={t("listRoom.titleField.placeholder")}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink placeholder:text-ink-soft transition hover:border-slate-300 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
             />
+            {titleError ? (
+              <p className="mt-1 text-xs text-red-600">{titleError}</p>
+            ) : null}
           </section>
 
           {/* Property details — stats row + edit button */}
@@ -811,11 +830,14 @@ export default function ListRoomPage() {
             </h2>
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => { setDescription(e.target.value); setDescriptionError(null); }}
               placeholder={t("listRoom.about.placeholder")}
               rows={4}
               className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-relaxed text-ink placeholder:text-ink-soft transition hover:border-slate-300 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
             />
+            {descriptionError ? (
+              <p className="mt-1 text-xs text-red-600">{descriptionError}</p>
+            ) : null}
           </section>
 
           {/* Amenities */}
@@ -913,6 +935,9 @@ export default function ListRoomPage() {
                 </div>
               );
             })()}
+            {rentError ? (
+              <p className="mt-2 text-xs text-red-600">{rentError}</p>
+            ) : null}
           </section>
 
           {/* Contact */}
@@ -1021,6 +1046,9 @@ export default function ListRoomPage() {
                 ) : null}
               </div>
             </div>
+            {locationError ? (
+              <p className="mt-2 text-xs text-red-600">{locationError}</p>
+            ) : null}
           </section>
 
 
@@ -1092,7 +1120,7 @@ export default function ListRoomPage() {
         open={locationOpen}
         onClose={() => setLocationOpen(false)}
         value={location}
-        onChange={(next) => setLocation(next)}
+        onChange={(next) => { setLocation(next); setLocationError(null); }}
         intent="select"
       />
 

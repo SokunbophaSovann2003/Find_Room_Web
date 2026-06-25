@@ -32,6 +32,8 @@ export default function UserFormModal({
   const [status, setStatus] = useState<AdminUser["status"]>(initial?.status ?? "active");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const t = useT();
 
   useEffect(() => {
@@ -45,10 +47,11 @@ export default function UserFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (saving) return;
-    if (!username.trim() || !phoneNumber.trim()) {
-      setError(t("admin.userForm.error.required"));
-      return;
-    }
+    const newUsernameError = !username.trim() ? t("common.required") : null;
+    const newPhoneError = !phoneNumber.trim() ? t("common.required") : null;
+    setUsernameError(newUsernameError);
+    setPhoneError(newPhoneError);
+    if (newUsernameError || newPhoneError) return;
     setError(null);
     setSaving(true);
     try {
@@ -94,9 +97,12 @@ export default function UserFormModal({
               id="u-name"
               className="input"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => { setUsername(e.target.value); setUsernameError(null); }}
               required
             />
+            {usernameError ? (
+              <p className="mt-1 text-xs text-red-600">{usernameError}</p>
+            ) : null}
           </div>
           <div>
             <label className="label" htmlFor="u-phone">{t("admin.userForm.field.phone")}</label>
@@ -104,11 +110,14 @@ export default function UserFormModal({
               id="u-phone"
               className="input"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={(e) => { setPhoneNumber(e.target.value); setPhoneError(null); }}
               placeholder="+855 12 345 678"
               inputMode="tel"
               required
             />
+            {phoneError ? (
+              <p className="mt-1 text-xs text-red-600">{phoneError}</p>
+            ) : null}
           </div>
           <div>
             <label className="label" htmlFor="u-email">{t("admin.userForm.field.email")}</label>
