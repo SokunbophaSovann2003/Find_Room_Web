@@ -396,6 +396,7 @@ function RegisterForm({
   const [demoCode, setDemoCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const digits = phone.replace(/\D/g, "").replace(/^0/, "");
   const formattedPhone = `+855 ${digits}`;
@@ -403,16 +404,17 @@ function RegisterForm({
   async function handleSubmitForm(e: React.FormEvent) {
     e.preventDefault();
     if (!username.trim()) { setError(t("auth.error.name.required")); return; }
-    if (digits.length < 8 || digits.length > 9) { setError(t("auth.error.phone.invalid")); return; }
+    if (digits.length < 8 || digits.length > 9) { setPhoneError(t("auth.error.phone.invalid")); return; }
     if (password.length < 8) { setError(t("auth.error.password.tooShort")); return; }
     if (password !== confirmPassword) { setError(t("auth.error.confirmPassword.mismatch")); return; }
     setLoading(true);
     setError(null);
+    setPhoneError(null);
     try {
       // Demo mode: check locally. Firebase mode: the Cloud Function checks
       // server-side before sending the OTP, so the error surfaces here.
       if (!isFirebaseConfigured && await checkPhoneAccountExists(`+855${digits}`)) {
-        setError(t("auth.error.phoneInUse"));
+        setPhoneError(t("auth.error.phoneInUse"));
         return;
       }
       const { demoCode: code } = await sendOtp(`+855${digits}`, "register");
@@ -420,7 +422,9 @@ function RegisterForm({
       setOtp("");
       setStep("otp");
     } catch (err) {
-      setError(t(firebaseAuthKey(err)));
+      const key = firebaseAuthKey(err);
+      if (key === "auth.error.phoneInUse") setPhoneError(t(key));
+      else setError(t(key));
     } finally {
       setLoading(false);
     }
@@ -512,7 +516,12 @@ function RegisterForm({
           />
         </div>
 
-        <PhoneField value={phone} onChange={setPhone} />
+        <div>
+          <PhoneField value={phone} onChange={(v) => { setPhone(v); setPhoneError(null); }} />
+          {phoneError ? (
+            <p className="mt-1 text-xs text-red-600">{phoneError}</p>
+          ) : null}
+        </div>
 
         <PasswordField
           label={t("auth.field.password")}
