@@ -409,14 +409,13 @@ function RegisterForm({
     setLoading(true);
     setError(null);
     try {
-      // In demo mode we can check for duplicates before burning an OTP.
-      // In Firebase mode the users collection is auth-gated; the duplicate is
-      // caught post-OTP when createUserWithEmailAndPassword throws.
+      // Demo mode: check locally. Firebase mode: the Cloud Function checks
+      // server-side before sending the OTP, so the error surfaces here.
       if (!isFirebaseConfigured && await checkPhoneAccountExists(`+855${digits}`)) {
         setError(t("auth.error.phoneInUse"));
         return;
       }
-      const { demoCode: code } = await sendOtp(`+855${digits}`);
+      const { demoCode: code } = await sendOtp(`+855${digits}`, "register");
       setDemoCode(code);
       setOtp("");
       setStep("otp");

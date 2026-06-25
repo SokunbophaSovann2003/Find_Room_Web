@@ -50,6 +50,18 @@ export const sendVerificationCode = onCall({ invoker: "public" }, async (request
     throw new HttpsError("invalid-argument", "phone is required");
   }
 
+  // For registration, check if phone already exists before burning an OTP.
+  const purpose = request.data?.purpose as string | undefined;
+  if (purpose === "register") {
+    const usersSnap = await db.collection("users")
+      .where("phoneNumber", "==", phone)
+      .limit(1)
+      .get();
+    if (!usersSnap.empty) {
+      throw new HttpsError("already-exists", "auth.error.phoneInUse");
+    }
+  }
+
   const ref = db.collection("otp_codes").doc(phone);
   const existing = await ref.get();
   if (existing.exists) {

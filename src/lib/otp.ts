@@ -21,11 +21,11 @@ function randomSixDigits(): string {
 // Send an OTP to the given phone number.
 // Firebase mode: real SMS via Twilio Cloud Function — demoCode is null.
 // Demo mode: in-memory code displayed in the UI — demoCode is the code string.
-export async function sendOtp(phone: string): Promise<{ demoCode: string | null }> {
+export async function sendOtp(phone: string, purpose?: "register" | "reset"): Promise<{ demoCode: string | null }> {
   if (isFirebaseConfigured && functions) {
-    const result = await httpsCallable<{ phone: string }, { success: boolean; demoCode?: string }>(
+    const result = await httpsCallable<{ phone: string; purpose?: string }, { success: boolean; demoCode?: string }>(
       functions, "sendVerificationCode"
-    )({ phone });
+    )({ phone, ...(purpose ? { purpose } : {}) });
     return { demoCode: result.data.demoCode ?? null };
   }
   const code = randomSixDigits();
