@@ -32,9 +32,29 @@ export const metadata: Metadata = {
   title: "Joul.KH — Find your perfect room rental in Cambodia",
   description:
     "Browse verified rooms for rent across Phnom Penh and all of Cambodia, or list your own room in minutes.",
-  // PWA wiring: the manifest tells the browser this site is installable.
-  // When the user picks "Add to Home Screen", Android opens it in standalone
-  // mode — no URL bar, no scroll-to-top button, no overlap with our FAB.
+  keywords: ["room for rent", "ជួលបន្ទប់", "Phnom Penh room rental", "Cambodia room", "find room Cambodia", "joulkh"],
+  metadataBase: new URL("https://joulkh.com"),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Joul.KH — Find your perfect room rental in Cambodia",
+    description: "Browse verified rooms for rent across Phnom Penh and all of Cambodia, or list your own room in minutes.",
+    url: "https://joulkh.com",
+    siteName: "Joul.KH",
+    locale: "km_KH",
+    alternateLocale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Joul.KH — Find your perfect room rental in Cambodia",
+    description: "Browse verified rooms for rent across Phnom Penh and all of Cambodia.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   manifest: "/manifest.json",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
