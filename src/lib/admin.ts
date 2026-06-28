@@ -88,7 +88,9 @@ const LEGACY_OWNER_TO_DEMO_UID: Record<string, string> = {
   pisey: "demo-85578552200",
   ratha: "demo-85581449720",
   vannak: "demo-85589320117",
-  channary: "demo-85592666808"
+  channary: "demo-85592666808",
+  makara: "demo-85572334556",
+  bunna: "demo-85598112447"
 };
 
 // Look up the demo-* uid that owns a given mock-data owner id (or pass-through
@@ -131,7 +133,7 @@ const USERS_SEEDED_FLAG = "findroom.admin-users-seeded";
 // Bump when new demo users are added to seedUsers(). On upgrade, missing seed
 // users are merged into already-seeded browsers by uid, without clobbering any
 // admin edits to existing rows.
-const USERS_SEED_VERSION = 2;
+const USERS_SEED_VERSION = 3;
 
 function seedUsers(): AdminUser[] {
   const now = Date.now();
@@ -330,6 +332,103 @@ function seedUsers(): AdminUser[] {
       role: "user",
       status: "active",
       createdAt: now - day * 2
+    },
+    {
+      uid: "demo-85572334556",
+      username: "Makara Keo",
+      phoneNumber: "+855 72 334 556",
+      email: "makara.keo@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=35",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 88
+    },
+    {
+      uid: "demo-85598112447",
+      username: "Bunna Hout",
+      phoneNumber: "+855 98 112 447",
+      email: "bunna.hout@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=17",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 72
+    },
+    {
+      uid: "demo-85583556228",
+      username: "Theary Mong",
+      phoneNumber: "+855 83 556 228",
+      avatarUrl: "https://i.pravatar.cc/160?img=36",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 58
+    },
+    {
+      uid: "demo-85561779334",
+      username: "Lyda Kem",
+      phoneNumber: "+855 61 779 334",
+      email: "lyda.kem@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=21",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 50
+    },
+    {
+      uid: "demo-85537112889",
+      username: "Samnang Ros",
+      phoneNumber: "+855 37 112 889",
+      email: "samnang.ros@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=57",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 43
+    },
+    {
+      uid: "demo-85590221667",
+      username: "Dalin Chan",
+      phoneNumber: "+855 90 221 667",
+      avatarUrl: "https://i.pravatar.cc/160?img=37",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 35
+    },
+    {
+      uid: "demo-85580889223",
+      username: "Kimly Heng",
+      phoneNumber: "+855 80 889 223",
+      email: "kimly.heng@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=58",
+      role: "user",
+      status: "disabled",
+      createdAt: now - day * 28
+    },
+    {
+      uid: "demo-85575334001",
+      username: "Virak Seng",
+      phoneNumber: "+855 75 334 001",
+      email: "virak.seng@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=18",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 20
+    },
+    {
+      uid: "demo-85564556782",
+      username: "Nary Leng",
+      phoneNumber: "+855 64 556 782",
+      avatarUrl: "https://i.pravatar.cc/160?img=24",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 12
+    },
+    {
+      uid: "demo-85584112339",
+      username: "Sokhom Nheth",
+      phoneNumber: "+855 84 112 339",
+      email: "sokhom.nheth@example.com",
+      avatarUrl: "https://i.pravatar.cc/160?img=62",
+      role: "user",
+      status: "active",
+      createdAt: now - day * 4
     }
   ];
 }
@@ -341,10 +440,14 @@ function seedUsers(): AdminUser[] {
 const LISTINGS_SEEDED_FLAG = "findroom.admin-listings-seeded";
 const LOCAL_ROOMS_KEY = "findroom.local-rooms";
 const LOCAL_ROOMS_EVENT = "findroom:local-rooms-change";
+// Bump when new rooms are added to MOCK_ROOMS. Existing browsers merge in the
+// new entries without losing any admin edits to already-seeded rows.
+const LISTINGS_SEED_VERSION = 2;
 
 export function seedMockListings() {
   if (typeof window === "undefined") return;
-  if (window.localStorage.getItem(LISTINGS_SEEDED_FLAG)) return;
+
+  const seededVersion = Number(window.localStorage.getItem(LISTINGS_SEEDED_FLAG) ?? 0);
 
   let existing: Room[] = [];
   try {
@@ -353,9 +456,12 @@ export function seedMockListings() {
   } catch {
     existing = [];
   }
+
+  if (seededVersion >= LISTINGS_SEED_VERSION) return;
+
   const existingIds = new Set(existing.map((r) => r.id));
 
-  const seeded: Room[] = MOCK_ROOMS.filter((r) => !existingIds.has(`mock-${r.id}`)).map((r) => ({
+  const additions: Room[] = MOCK_ROOMS.filter((r) => !existingIds.has(`mock-${r.id}`)).map((r) => ({
     ...r,
     id: `mock-${r.id}`,
     owner: {
@@ -364,9 +470,9 @@ export function seedMockListings() {
     }
   }));
 
-  const merged = [...seeded, ...existing];
+  const merged = [...additions, ...existing];
   window.localStorage.setItem(LOCAL_ROOMS_KEY, JSON.stringify(merged));
-  window.localStorage.setItem(LISTINGS_SEEDED_FLAG, "1");
+  window.localStorage.setItem(LISTINGS_SEEDED_FLAG, String(LISTINGS_SEED_VERSION));
   window.dispatchEvent(new Event(LOCAL_ROOMS_EVENT));
 }
 

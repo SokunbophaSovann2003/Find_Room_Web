@@ -882,12 +882,20 @@ export default function ListRoomPage() {
                     <>
                       <div className="flex items-center gap-3 px-4 py-2.5">
                         <span className="flex-1 text-sm text-ink">{t("listRoom.fees.rentLabel")}</span>
-                        <span className="text-sm font-semibold text-ink">
-                          ${rentFee?.price || "0"}
-                        </span>
-                        <span className="whitespace-nowrap text-xs text-ink-muted">
-                          {t(`room.suffix.${rentPeriod}`)}
-                        </span>
+                        {hasRent ? (
+                          <>
+                            <span className="text-sm font-semibold text-ink">
+                              ${rentFee!.price}
+                            </span>
+                            <span className="whitespace-nowrap text-xs text-ink-muted">
+                              {t(`room.suffix.${rentPeriod}`)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs font-medium text-red-500">
+                            {t("listRoom.error.rentRequired")}
+                          </span>
+                        )}
                       </div>
                       {filledExtras.map((f) => {
                         const meta = FEE_TYPES.find((ft) => ft.value === f.type);
@@ -1355,7 +1363,7 @@ function FeesSheet({
               <span className="flex items-center px-2 text-sm font-semibold text-ink-muted">$</span>
               <input
                 type="number"
-                min={0}
+                min={1}
                 step="0.01"
                 value={rentFee?.price ?? ""}
                 onChange={(e) => rentFee && updateFee(rentFee.id, { price: e.target.value })}

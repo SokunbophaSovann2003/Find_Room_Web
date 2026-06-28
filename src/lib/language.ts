@@ -322,7 +322,7 @@ const DICT: Dict = {
   "room.fee.rent.yearly": { km: "ថ្លៃជួលប្រចាំឆ្នាំ", en: "Yearly rent" },
   "room.fee.deposit": { km: "ប្រាក់កក់ (មុនចូលនៅ)", en: "Deposit (before move-in)" },
   "room.fee.electricity": { km: "អគ្គិសនី", en: "Electricity" },
-  "room.fee.electricity.unit": { km: "/ កវ៉ាត់ម៉ោង", en: "/ kWh" },
+  "room.fee.electricity.unit": { km: "/ គីឡូវ៉ាត់ម៉ោង", en: "/ kWh" },
   "room.fee.water": { km: "ទឹក", en: "Water" },
   "room.fee.water.unit": { km: "/ ម៉ែត្រគូប", en: "/ m³" },
   "room.fee.wifi": { km: "វ៉ាយហ្វាយ", en: "Wi-Fi" },

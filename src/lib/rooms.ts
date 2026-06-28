@@ -27,7 +27,6 @@ import {
   deleteLocalRoom as localDeleteRoom,
   getLocalRoomById
 } from "./local-rooms";
-
 export { seedSampleListings } from "./local-rooms";
 
 function roomDoc(id: string) {

@@ -197,12 +197,6 @@ export default function AdminRoomsPage() {
           hint={stats.occupied === 0 ? t("admin.rooms.stat.noneOccupied") : t("admin.rooms.stat.currentlyRented")}
           icon="check"
         />
-        <StatCard
-          label={t("admin.rooms.stat.types")}
-          value={stats.types}
-          hint={stats.types === 0 ? t("admin.rooms.stat.noRooms") : t("admin.rooms.stat.distinctCategories")}
-          icon="bed"
-        />
       </section>
 
       <div className="card flex flex-col gap-3 p-3 lg:grid lg:grid-cols-[minmax(0,1fr)_140px_140px_160px_auto_auto_auto] lg:items-center">

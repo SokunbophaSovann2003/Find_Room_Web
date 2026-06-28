@@ -25,6 +25,7 @@ export default function PropertyTypePicker({
   onPick: (type: PropertyType) => void;
 }) {
   const t = useT();
+  const [pending, setPending] = useState<PropertyType | null>(null);
   // Track active property types reactively so the list updates in real time
   // when an admin changes the settings (e.g. in another tab or the admin panel
   // while the sheet is already open).
@@ -50,7 +51,7 @@ export default function PropertyTypePicker({
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setPending(null); return; }
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
@@ -98,9 +99,15 @@ export default function PropertyTypePicker({
               <li key={p.value}>
                 <button
                   type="button"
-                  onClick={() => onPick(p.value)}
-                  className="flex h-full w-full flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-brand hover:bg-brand/5"
+                  disabled={pending !== null}
+                  onClick={() => { setPending(p.value); onPick(p.value); }}
+                  className="relative flex h-full w-full flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-brand hover:bg-brand/5 disabled:pointer-events-none"
                 >
+                  {pending === p.value ? (
+                    <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/80">
+                      <span className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+                    </span>
+                  ) : null}
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
                     <Icon name={propertyIcon(p.value)} className="h-5 w-5" />
                   </span>

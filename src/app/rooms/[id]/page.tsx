@@ -151,9 +151,9 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const priceSuffix = t(`room.suffix.${pricePeriod}`);
   const rentLabel = t(`room.fee.rent.${pricePeriod}`);
 
-  const fullAddress = [room.address, room.area, room.district, room.city]
+  const fullAddress = [room.area, room.district, room.city]
     .filter(Boolean)
-    .join(", ");
+    .join(", ") || room.address;
 
   const locationCard = (
     <section>

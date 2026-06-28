@@ -618,7 +618,7 @@ export default function ProfilePage() {
       />
 
       {confirmLogout ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 backdrop-blur-sm sm:items-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-2xl">
             <h2 className="text-base font-bold text-ink">{t("profile.logOut.confirm.title")}</h2>
             <p className="text-sm text-ink-muted">{t("profile.logOut.confirm.body")}</p>
