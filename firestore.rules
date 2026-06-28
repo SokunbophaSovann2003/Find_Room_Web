@@ -4,9 +4,13 @@ service cloud.firestore {
 
     // Returns true if the caller is a signed-in, active admin.
     // Checks both role and status so a disabled admin loses access server-side.
+    // Guards against missing user doc (u == null) to fail closed, not crash.
     function isAdmin() {
       let u = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      return request.auth != null && u.role == "admin" && u.status == "active";
+      return request.auth != null
+        && u != null
+        && u.get('role', '') == "admin"
+        && u.get('status', '') == "active";
     }
 
     // Fields that only an admin may set on a user document.
@@ -58,10 +62,18 @@ service cloud.firestore {
     }
 
     // ─── Admin incoming notifications ─────────────────────────────────────
-    // Any signed-in user may create (e.g. registration / listing events).
+    // Signed-in users may only create events of known system kinds and must
+    // supply the required fields. This prevents spam / arbitrary writes while
+    // still allowing client-side registration and listing events.
     // Only admins may read, update, or delete.
     match /admin_notifications/{notifId} {
-      allow create: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.kind in [
+             'user-registered', 'listing-posted',
+             'listing-pending', 'listing-flagged'
+           ]
+        && request.resource.data.keys().hasAll(['kind', 'title', 'body', 'createdAt', 'read'])
+        && request.resource.data.read == false;
       allow read, update, delete: if isAdmin();
     }
 

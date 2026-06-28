@@ -13,6 +13,12 @@ export interface Session {
   uid: string;
   username?: string;
   phoneNumber?: string;
+  // Set only when the user authenticated through the /user/admin login form.
+  // Admin routes require this flag in addition to the Firestore role check.
+  adminSession?: boolean;
+  // Unix ms timestamp of when the admin session was created. Used to expire
+  // admin access after ADMIN_SESSION_TTL_MS regardless of browser activity.
+  adminSessionAt?: number;
 }
 
 export function getSession(): Session | null {

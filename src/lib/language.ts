@@ -243,6 +243,7 @@ const DICT: Dict = {
   // Edit profile modal
   "profile.edit.title": { km: "កែប្រែប្រវត្តិរូប", en: "Edit profile" },
   "profile.edit.name": { km: "ឈ្មោះ", en: "Name" },
+  "profile.edit.name.placeholder": { km: "បញ្ចូលឈ្មោះរបស់អ្នក", en: "Enter your name" },
   "profile.edit.loginPhone": { km: "លេខទូរស័ព្ទចូល", en: "Login phone" },
   "profile.edit.loginPhone.hint": { km: "អ្នកចូលដោយលេខនេះ។ ការប្តូរវាមិនប៉ះពាល់ដល់ព័ត៌មានទាក់ទងលើបញ្ជីទេ។", en: "You sign in with this number. Changing it doesn't affect the contact info you publish on listings." },
   "profile.edit.photo.upload": { km: "ផ្ទុករូបភាព", en: "Upload photo" },
@@ -479,6 +480,9 @@ const DICT: Dict = {
   },
   "admin.denied.backToExplore": { km: "ត្រឡប់ទៅទំព័រស្វែងរក", en: "Back to explore" },
   "admin.denied.switchAccount": { km: "ប្តូរគណនី", en: "Switch account" },
+  "admin.login.title": { km: "ចូលប្រើសម្រាប់អ្នកគ្រប់គ្រង", en: "Admin sign in" },
+  "admin.login.subtitle": { km: "តំបន់នេះមានតែសម្រាប់អ្នកគ្រប់គ្រង Joul ប៉ុណ្ណោះ។", en: "This area is for Joul administrators only." },
+  "admin.login.notAuthorized": { km: "គណនីនេះមិនមានសិទ្ធិចូលប្រើជាអ្នកគ្រប់គ្រង។", en: "This account does not have admin access." },
 
   // --- Admin: shared filter labels ---
   "admin.filter.anyStatus": { km: "គ្រប់ស្ថានភាព", en: "Any status" },

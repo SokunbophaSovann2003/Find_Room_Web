@@ -314,12 +314,12 @@ export default function ProfilePage() {
           </div>
         ) : (
           <>
-            <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card sm:hidden">
+            <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-card sm:hidden">
               {shownListings.map((room) => {
                 const autoOccupied = isAutoOccupied(room, autoOccupyDays);
                 const days = daysSinceActivity(room);
                 return (
-                  <li key={room.id} className="relative">
+                  <li key={room.id} className="relative overflow-hidden first:rounded-t-2xl last:rounded-b-2xl has-[[aria-expanded='true']]:overflow-visible has-[[aria-expanded='true']]:z-30">
                     <Link
                       href={`/rooms/${room.id}`}
                       className="flex items-center gap-3 p-3 pr-12 transition hover:bg-slate-50"
@@ -446,8 +446,8 @@ export default function ProfilePage() {
                 })}
               </div>
             ) : (
-              <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card sm:block">
-                <div className="grid grid-cols-[88px_minmax(0,2.5fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-4 border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ink-muted">
+              <div className="hidden rounded-2xl border border-slate-200 bg-white shadow-card sm:block">
+                <div className="grid grid-cols-[88px_minmax(0,2.5fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-4 overflow-hidden rounded-t-2xl border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ink-muted">
                   <span aria-hidden />
                   <span>{t("profile.list.col.title")}</span>
                   <span>{t("profile.list.col.status")}</span>
@@ -463,7 +463,7 @@ export default function ProfilePage() {
                     return (
                       <li
                         key={room.id}
-                        className="relative has-[[aria-expanded='true']]:z-30"
+                        className="relative overflow-hidden last:rounded-b-2xl has-[[aria-expanded='true']]:overflow-visible has-[[aria-expanded='true']]:z-30"
                       >
                         <Link
                           href={`/rooms/${room.id}`}
@@ -576,7 +576,7 @@ export default function ProfilePage() {
       {editing === "profile" ? (
         <EditProfileModal
           initial={{
-            username,
+            username: overrides.username ?? session.username ?? "",
             loginPhone,
             avatarUrl: avatarUrl ?? ""
           }}
@@ -824,6 +824,7 @@ function EditProfileModal({
               className="input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              placeholder={t("profile.edit.name.placeholder")}
               required
             />
           </div>

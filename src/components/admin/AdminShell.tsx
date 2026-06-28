@@ -1,16 +1,17 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Icon from "@/components/Icon";
-import AuthModal from "@/components/AuthModal";
-import { getSession, subscribeSession, type Session } from "@/lib/session";
-import { useIsAdmin, seedMockListings } from "@/lib/admin";
-import { signOut } from "@/lib/auth";
+import { getSession, setSession, subscribeSession, type Session } from "@/lib/session";
+import { useIsAdmin, isAdmin, seedMockListings } from "@/lib/admin";
+import { loginWithPhone, signOut } from "@/lib/auth";
+import { isFirebaseConfigured } from "@/lib/firebase";
 import { useT } from "@/lib/language";
 
 type Status = "checking" | "denied" | "ok";
+
+// Admin sessions expire after 8 hours of inactivity regardless of browser state.
+const ADMIN_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>("checking");
@@ -24,9 +25,17 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     if (loading) return;
-    if (!session) setStatus("denied");
-    else if (!admin) setStatus("denied");
-    else setStatus("ok");
+    if (!session) { setStatus("denied"); return; }
+    if (!admin) { setStatus("denied"); return; }
+    if (!session.adminSession) { setStatus("denied"); return; }
+    // Expire the admin session after TTL — sign out silently.
+    const age = Date.now() - (session.adminSessionAt ?? 0);
+    if (age > ADMIN_SESSION_TTL_MS) {
+      void signOut();
+      setStatus("denied");
+      return;
+    }
+    setStatus("ok");
   }, [session, admin, loading]);
 
   if (status === "checking") {
@@ -42,9 +51,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   if (status === "denied") {
     return (
-      <DeniedScreen
+      <AdminLoginScreen
         session={session}
-        onAuthSuccess={(s) => setSessionState(s)}
+        onSessionChange={(s) => setSessionState(s)}
       />
     );
   }
@@ -52,72 +61,168 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   return <AdminFrame>{children}</AdminFrame>;
 }
 
-function DeniedScreen({
+// Maps Firebase error codes to i18n keys.
+function firebaseAuthKey(err: unknown): string {
+  const code = (err as { code?: string }).code ?? "";
+  if (code === "auth/invalid-credential" || code === "auth/wrong-password") return "auth.error.invalidCredential";
+  if (code === "auth/too-many-requests") return "auth.error.tooManyRequests";
+  if (code === "auth/user-disabled") return "auth.error.disabled";
+  if (code === "auth/network-request-failed") return "auth.error.networkFailed";
+  const msg = err instanceof Error ? err.message : "";
+  if (msg.startsWith("auth.")) return msg;
+  return "auth.error.signInFailed";
+}
+
+function AdminLoginScreen({
   session,
-  onAuthSuccess
+  onSessionChange
 }: {
   session: Session | null;
-  onAuthSuccess: (s: Session | null) => void;
+  onSessionChange: (s: Session | null) => void;
 }) {
-  const router = useRouter();
   const t = useT();
-  // Open the login modal whenever the user is signed out — this covers both
-  // "never logged in" and "switched account" flows so they don't have to find
-  // the login button themselves.
-  const [authOpen, setAuthOpen] = useState(!session);
-
-  useEffect(() => {
-    if (!session) setAuthOpen(true);
-  }, [session]);
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSwitchAccount() {
     await signOut();
-    // Session change subscription will repaint the screen; opening the modal
-    // here lets the user log in inline.
-    setAuthOpen(true);
+    onSessionChange(null);
+    setError("");
   }
 
-  return (
-    <>
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setPhoneError("");
+    setError("");
+
+    const digits = phone.replace(/\D/g, "").replace(/^0/, "");
+    if (digits.length < 8 || digits.length > 9) {
+      setPhoneError(t("auth.error.phone.invalid"));
+      return;
+    }
+    if (password.length < 8) {
+      setError(t("auth.error.password.tooShort"));
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await loginWithPhone(`+855${digits}`, password);
+      const s = getSession();
+
+      let isAdminUser = false;
+      if (isFirebaseConfigured) {
+        // One-shot Firestore read to verify role before granting access.
+        const { db } = await import("@/lib/firebase");
+        if (db && s) {
+          const { getDoc, doc } = await import("firebase/firestore");
+          const snap = await getDoc(doc(db, "users", s.uid));
+          const data = snap.data();
+          isAdminUser = data?.role === "admin" && data?.status === "active";
+        }
+      } else {
+        isAdminUser = isAdmin(s);
+      }
+
+      if (!isAdminUser) {
+        await signOut();
+        onSessionChange(null);
+        setError(t("admin.login.notAuthorized"));
+      } else {
+        // Stamp the session so AdminShell knows this login came through the
+        // admin form — not from the regular user AuthModal. Record the time
+        // so the session can be expired after ADMIN_SESSION_TTL_MS.
+        const adminStampedSession = {
+          ...s!,
+          adminSession: true as const,
+          adminSessionAt: Date.now(),
+        };
+        setSession(adminStampedSession);
+        onSessionChange(adminStampedSession);
+      }
+    } catch (err: unknown) {
+      setError(t(firebaseAuthKey(err)));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Logged in but not an admin — show a minimal "not authorized" screen.
+  if (session) {
+    return (
       <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 px-4 py-12 text-center">
         <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
           <Icon name="shield" className="h-7 w-7" />
         </span>
         <h1 className="text-xl font-extrabold">{t("admin.denied.title")}</h1>
-        <p className="text-sm text-ink-muted">
-          {session
-            ? t("admin.denied.body.signedIn")
-            : t("admin.denied.body.signedOut")}
-        </p>
-        <div className="flex gap-2">
-          <Link href="/explore" className="btn-secondary">
-            {t("admin.denied.backToExplore")}
-          </Link>
-          {session ? (
-            <button type="button" className="btn-danger" onClick={handleSwitchAccount}>
-              {t("admin.denied.switchAccount")}
-            </button>
-          ) : (
-            <button type="button" className="btn-primary" onClick={() => setAuthOpen(true)}>
-              <Icon name="log-out" className="h-4 w-4 rotate-180" />
-              {t("auth.login.submit")}
-            </button>
-          )}
-        </div>
+        <p className="text-sm text-ink-muted">{t("admin.denied.body.signedIn")}</p>
+        <button type="button" className="btn-danger" onClick={handleSwitchAccount}>
+          {t("admin.denied.switchAccount")}
+        </button>
       </div>
-      <AuthModal
-        open={authOpen}
-        dismissible
-        onClose={() => {
-          setAuthOpen(false);
-          if (!session) router.replace("/explore");
-        }}
-        onSuccess={() => {
-          setAuthOpen(false);
-          onAuthSuccess(getSession());
-        }}
-      />
-    </>
+    );
+  }
+
+  // Not logged in — show the dedicated admin login form.
+  return (
+    <div className="mx-auto flex min-h-[60vh] max-w-sm flex-col justify-center px-4 py-12">
+      <div className="mb-8 text-center">
+        <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10">
+          <Icon name="shield" className="h-7 w-7 text-brand" />
+        </span>
+        <h1 className="text-xl font-extrabold">{t("admin.login.title")}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t("admin.login.subtitle")}</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <label className="label">{t("auth.field.phone")}</label>
+          <div className={`flex overflow-hidden rounded-xl border bg-white focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 ${phoneError ? "border-red-400" : "border-slate-200"}`}>
+            <span className="flex items-center border-r border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-ink-muted">
+              +855
+            </span>
+            <input
+              type="tel"
+              placeholder="097 353 1332"
+              className="w-full bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-ink-soft"
+              value={phone}
+              onChange={(e) => { setPhone(e.target.value); setPhoneError(""); }}
+              disabled={submitting}
+              autoComplete="tel"
+            />
+          </div>
+          {phoneError && <p className="mt-1 text-xs text-red-500">{phoneError}</p>}
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="label">{t("auth.field.password")}</label>
+          <input
+            className="input w-full"
+            type="password"
+            placeholder={t("auth.field.password.placeholder.short")}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={submitting}
+            autoComplete="current-password"
+          />
+        </div>
+
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+        )}
+
+        <button
+          type="submit"
+          className="btn-primary w-full justify-center"
+          disabled={submitting}
+        >
+          {submitting ? t("auth.login.submitting") : t("auth.login.submit")}
+        </button>
+      </form>
+    </div>
   );
 }
 

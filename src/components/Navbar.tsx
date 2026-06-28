@@ -10,7 +10,7 @@ import PropertyTypePicker from "./PropertyTypePicker";
 import { useSession } from "@/lib/session";
 import { loadOverrides, subscribeOverrides } from "@/lib/profile-overrides";
 import { useIsAdmin, useAdminNotifications, useUserNotifications } from "@/lib/admin";
-import { setViewMode, useViewMode } from "@/lib/view-mode";
+import { useViewMode } from "@/lib/view-mode";
 import { useT } from "@/lib/language";
 
 const LIST_ROOM_PATH = "/profile/list-room";
@@ -83,8 +83,6 @@ export default function Navbar() {
           <div className="flex-1" />
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Demo affordance: hop between User and Admin views without logging out. */}
-            <ViewSwitch onAdmin={onAdmin} />
 
             {/* Notifications bell — user bell in user view, admin bell in admin view. */}
             {session && (onAdmin ? <AdminNotificationBell /> : <NotificationBell />)}
@@ -95,13 +93,13 @@ export default function Navbar() {
             {session ? (
               // Desktop-only: on mobile the bottom-nav Profile tab handles this.
               <Link
-                href="/profile"
+                href={onAdmin ? `/user/admin/users/${session.uid}` : "/profile"}
                 aria-label={t("nav.profile")}
                 onClick={() => {
                   if (pathname === LIST_ROOM_PATH)
                     sessionStorage.setItem(FROM_LIST_ROOM_KEY, "1");
                 }}
-                className="hidden h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 transition hover:ring-2 hover:ring-brand/30 sm:block"
+                className={`${onAdmin ? "block" : "hidden sm:block"} h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 transition hover:ring-2 hover:ring-brand/30`}
               >
                 {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -236,42 +234,4 @@ function AdminNotificationBell() {
   );
 }
 
-function ViewSwitch({ onAdmin }: { onAdmin: boolean }) {
-  const router = useRouter();
-  const session = useSession();
-  const t = useT();
-  const { admin: isAdminUser } = useIsAdmin(session);
-
-  if (!isAdminUser) return null;
-
-  function toggle() {
-    if (onAdmin) {
-      setViewMode("user");
-      router.push("/explore");
-    } else {
-      setViewMode("admin");
-      router.push("/user/admin");
-    }
-  }
-
-  const currentLabel = onAdmin ? t("nav.view.admin") : t("nav.view.user");
-  const nextLabel = onAdmin ? t("nav.view.user") : t("nav.view.admin");
-
-  return (
-    <button
-      type="button"
-      onClick={toggle}
-      title={t("nav.view.toggle.title", { current: currentLabel, next: nextLabel })}
-      aria-label={t("nav.view.toggle.aria", { current: currentLabel, next: nextLabel })}
-      aria-pressed={onAdmin}
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border shadow-sm transition hover:ring-2 hover:ring-brand/30 ${
-        onAdmin
-          ? "border-brand bg-brand text-white"
-          : "border-slate-200 bg-white text-ink-muted"
-      }`}
-    >
-      <Icon name={onAdmin ? "shield" : "user"} className="h-4 w-4" />
-    </button>
-  );
-}
 
