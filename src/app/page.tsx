@@ -1,5 +1,1 @@
-import { permanentRedirect } from "next/navigation";
-
-export default function Home() {
-  permanentRedirect("/explore");
-}
+export { default } from "./explore/page";
