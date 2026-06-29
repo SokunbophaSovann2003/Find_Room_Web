@@ -1,5 +1,18 @@
 "use client";
 
+function applyWatermark(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  const fontSize = Math.round(Math.min(w, h) * 0.09);
+  ctx.save();
+  ctx.font = `bold ${fontSize}px 'Poppins', Arial, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = "rgba(0,0,0,0.25)";
+  ctx.shadowBlur = fontSize * 0.2;
+  ctx.fillStyle = "rgba(255,255,255,0.38)";
+  ctx.fillText("Joul.KH", w / 2, h / 2);
+  ctx.restore();
+}
+
 export async function downscaleToBlob(
   file: File,
   maxDim = 1024,
@@ -29,6 +42,7 @@ export async function downscaleToBlob(
     return res.blob();
   }
   ctx.drawImage(img, 0, 0, w, h);
+  applyWatermark(ctx, w, h);
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("toBlob failed"))),
@@ -64,5 +78,6 @@ export async function downscalePhoto(
   const ctx = canvas.getContext("2d");
   if (!ctx) return dataUrl;
   ctx.drawImage(img, 0, 0, w, h);
+  applyWatermark(ctx, w, h);
   return canvas.toDataURL("image/jpeg", quality);
 }
