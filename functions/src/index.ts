@@ -75,7 +75,7 @@ export const sendVerificationCode = onCall({ invoker: "public" }, async (request
   await ref.set({ code, attempts: 0, sentAt: Date.now(), expiresAt: Date.now() + OTP_TTL_MS });
 
   if (sns) {
-    await sendSms(phone, `Your Joul.KH verification code is ${code}. Valid for 5 minutes.`);
+    await sendSms(phone, `Your JoulKH verification code is ${code}. Valid for 5 minutes.`);
     return { success: true };
   }
 

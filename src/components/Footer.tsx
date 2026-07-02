@@ -88,7 +88,7 @@ export default function Footer() {
 
       <div className="relative border-t border-slate-200/70">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-ink-soft sm:flex-row sm:px-6">
-          <span>© {new Date().getFullYear()} Joul.KH</span>
+          <span>© {new Date().getFullYear()} JoulKH</span>
           <span className="inline-flex items-center gap-1.5">
             <Icon name="map-pin" className="h-3.5 w-3.5" />
             {t("footer.madeIn")}

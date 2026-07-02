@@ -9,7 +9,7 @@ function applyWatermark(ctx: CanvasRenderingContext2D, w: number, h: number): vo
   ctx.shadowColor = "rgba(0,0,0,0.25)";
   ctx.shadowBlur = fontSize * 0.2;
   ctx.fillStyle = "rgba(255,255,255,0.38)";
-  ctx.fillText("Joul.KH", w / 2, h / 2);
+  ctx.fillText("JoulKH", w / 2, h / 2);
   ctx.restore();
 }
 

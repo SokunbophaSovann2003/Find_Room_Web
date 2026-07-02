@@ -29,7 +29,7 @@ const notoKhmer = Noto_Sans_Khmer({
 });
 
 export const metadata: Metadata = {
-  title: "Joul.KH — Find your perfect room rental in Cambodia",
+  title: "JoulKH — Find your perfect room rental in Cambodia",
   description:
     "Browse verified rooms for rent across Phnom Penh and all of Cambodia, or list your own room in minutes.",
   keywords: ["room for rent", "ជួលបន្ទប់", "Phnom Penh room rental", "Cambodia room", "find room Cambodia", "joulkh"],
@@ -38,17 +38,17 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "Joul.KH — Find your perfect room rental in Cambodia",
+    title: "JoulKH — Find your perfect room rental in Cambodia",
     description: "Browse verified rooms for rent across Phnom Penh and all of Cambodia, or list your own room in minutes.",
     url: "https://joulkh.com",
-    siteName: "Joul.KH",
+    siteName: "JoulKH",
     locale: "km_KH",
     alternateLocale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Joul.KH — Find your perfect room rental in Cambodia",
+    title: "JoulKH — Find your perfect room rental in Cambodia",
     description: "Browse verified rooms for rent across Phnom Penh and all of Cambodia.",
   },
   robots: {

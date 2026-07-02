@@ -1359,7 +1359,7 @@ export const DEFAULT_AMENITIES: string[] = [
 ];
 
 const DEFAULT_SETTINGS: AdminSettings = {
-  siteName: "Joul.KH",
+  siteName: "JoulKH",
   supportEmail: "support@findroom.kh",
   supportPhone: "+855 12 000 000",
   defaultCurrency: "USD",

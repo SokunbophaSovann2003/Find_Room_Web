@@ -204,8 +204,8 @@ const DICT: Dict = {
   // Profile page
   "profile.editProfile": { km: "កែប្រែប្រវត្តិរូប", en: "Edit profile" },
   "profile.share": { km: "ចែករំលែកព័ត៌មាន", en: "Share profile" },
-  "profile.share.title": { km: "ប្រវត្តិរូបរបស់ {name} នៅ Joul.KH", en: "{name} on Joul.KH" },
-  "profile.share.text": { km: "មើលបន្ទប់ដែលផ្សាយដោយ {name} នៅ Joul.KH។", en: "Check out rooms listed by {name} on Joul.KH." },
+  "profile.share.title": { km: "ប្រវត្តិរូបរបស់ {name} នៅ JoulKH", en: "{name} on JoulKH" },
+  "profile.share.text": { km: "មើលបន្ទប់ដែលផ្សាយដោយ {name} នៅ JoulKH។", en: "Check out rooms listed by {name} on JoulKH." },
   "profile.logOut": { km: "ចេញ", en: "Log out" },
   "profile.loggingOut": { km: "កំពុងចេញ…", en: "Logging out…" },
   "profile.logOut.confirm.title": { km: "ចេញពីគណនី?", en: "Log out?" },
