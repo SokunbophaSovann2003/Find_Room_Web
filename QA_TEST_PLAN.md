@@ -1,4 +1,4 @@
-# Joul.KH — QA Test Plan
+# JoulKH — QA Test Plan
 **Role:** QA Engineer  
 **Date:** 2026-06-21  
 **Environment:** Firebase (production project `joul-kh`), localhost:3000  

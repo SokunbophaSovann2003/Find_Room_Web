@@ -1,4 +1,4 @@
-# Joul.KH — Project Status
+# JoulKH — Project Status
 
 _Last updated: 2026-05-28. Source of truth: actual code in `src/`._
 

@@ -1,6 +1,6 @@
-# Joul.KH — Web
+# JoulKH — Web
 
-Website for Joul.KH, a room rental platform for Cambodia. (Project directory and Firebase backend keep the `findroom` name for storage compatibility; only the user-facing brand is "Joul".) Shares its backend with the `findroom_kh` Flutter mobile app.
+Website for JoulKH, a room rental platform for Cambodia. (Project directory and Firebase backend keep the `findroom` name for storage compatibility; only the user-facing brand is "Joul".) Shares its backend with the `findroom_kh` Flutter mobile app.
 
 ## Stack
 
