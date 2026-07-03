@@ -30,25 +30,26 @@ export default function AdminNotificationsPage() {
         <p className="mt-1 text-sm text-ink-muted">{t("admin.notifications.subtitle")}</p>
       </header>
 
-      <button
-        type="button"
-        onClick={() => router.push("/user/admin/notifications/compose")}
-        className="btn-primary w-full sm:w-auto"
-      >
-        <Icon name="plus" className="h-4 w-4" />
-        {t("admin.notifications.compose.new")}
-      </button>
-
       <section className="card p-4 sm:p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-bold">{t("admin.notifications.history.title")}</h2>
-          <span className="text-xs text-ink-soft">
-            {campaigns.length === 0
-              ? t("admin.notifications.history.empty")
-              : campaigns.length === 1
-                ? t("admin.notifications.history.campaigns.one", { n: campaigns.length })
-                : t("admin.notifications.history.campaigns.many", { n: campaigns.length })}
-          </span>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-base font-bold">{t("admin.notifications.history.title")}</h2>
+            <span className="text-xs text-ink-soft">
+              {campaigns.length === 0
+                ? t("admin.notifications.history.empty")
+                : campaigns.length === 1
+                  ? t("admin.notifications.history.campaigns.one", { n: campaigns.length })
+                  : t("admin.notifications.history.campaigns.many", { n: campaigns.length })}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push("/user/admin/notifications/compose")}
+            className="btn-primary shrink-0"
+          >
+            <Icon name="plus" className="h-4 w-4" />
+            {t("admin.notifications.compose.new")}
+          </button>
         </div>
         {campaigns.length === 0 ? (
           <p className="text-sm text-ink-muted">{t("admin.notifications.history.empty.body")}</p>
