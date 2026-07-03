@@ -15,10 +15,13 @@ import { useT } from "@/lib/language";
 
 const HISTORY_PAGE_SIZE = 20;
 
+type MessageTab = "history" | "automated";
+
 export default function AdminNotificationsPage() {
   const t = useT();
   const router = useRouter();
   const campaigns = useOutboundCampaigns();
+  const [tab, setTab] = useState<MessageTab>("history");
   const [confirmDeleteCampaign, setConfirmDeleteCampaign] = useState<AdminOutboundCampaign | null>(null);
   const [viewCampaign, setViewCampaign] = useState<AdminOutboundCampaign | null>(null);
   const [historyVisible, setHistoryVisible] = useState(HISTORY_PAGE_SIZE);
@@ -31,6 +34,28 @@ export default function AdminNotificationsPage() {
         <p className="mt-1 text-sm text-ink-muted">{t("admin.notifications.subtitle")}</p>
       </header>
 
+      <div className="flex gap-1 rounded-xl bg-slate-100 p-1 sm:inline-flex">
+        <button
+          type="button"
+          onClick={() => setTab("history")}
+          className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition sm:flex-none ${
+            tab === "history" ? "bg-white text-ink shadow-sm" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          {t("admin.notifications.history.title")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("automated")}
+          className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition sm:flex-none ${
+            tab === "automated" ? "bg-white text-ink shadow-sm" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          {t("admin.settings.autoMessages.title")}
+        </button>
+      </div>
+
+      {tab === "history" ? (
       <section className="card p-4 sm:p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-baseline gap-2">
@@ -140,8 +165,9 @@ export default function AdminNotificationsPage() {
           </>
         )}
       </section>
-
-      <AutomatedMessages />
+      ) : (
+        <AutomatedMessages />
+      )}
 
       {viewCampaign ? (
         <CampaignDetailModal
