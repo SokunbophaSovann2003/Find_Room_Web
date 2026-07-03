@@ -44,7 +44,7 @@ export default function Footer() {
 
       <div className="relative mx-auto grid max-w-5xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr] md:py-14">
         <div>
-          <Link href="/explore" className="inline-flex items-center gap-2">
+          <Link href={isAdmin(session) ? "/user/admin" : "/explore"} className="inline-flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white shadow-sm">
               <Icon name="home" className="h-5 w-5" />
             </span>
