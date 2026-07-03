@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Icon, { type IconName } from "@/components/Icon";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -17,8 +16,6 @@ import type { PropertyType, Room } from "@/lib/types";
 
 type StatusFilter = "all" | "pending" | "available" | "occupied";
 type TypeFilter = "all" | PropertyType;
-
-const ADD_ROOM_PATH = "/profile/list-room";
 
 export default function AdminRoomsPage() {
   const { rooms } = useRooms();
@@ -299,11 +296,6 @@ export default function AdminRoomsPage() {
             }}
           />
         </div>
-
-        <Link href={ADD_ROOM_PATH} className="btn-primary justify-center">
-          <Icon name="plus" className="h-4 w-4" />
-          {t("admin.rooms.addRoom")}
-        </Link>
       </div>
 
       <AdminRoomsList
