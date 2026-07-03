@@ -334,27 +334,41 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
     // admin pill stays at every breakpoint, so keep the cushion when adminViewActive.
     <div className={adminViewActive ? "pb-28" : "pb-24 sm:pb-0"}>
       <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6 sm:pt-8">
-        <button
-          type="button"
-          onClick={() => {
-            // router.back() is a no-op when the user opened this page from a
-            // direct link (no history). Fall back to /explore so the button
-            // always does something visible.
-            if (typeof window !== "undefined" && window.history.length > 1) {
-              router.back();
-            } else {
-              router.push("/explore");
-            }
-          }}
-          // h-9 gives a 36px touch target (a bit closer to Apple's 44px guideline
-          // than the original ~20px text-only target). touch-action: manipulation
-          // eliminates the 300ms tap delay that older mobile Safari versions add.
-          style={{ touchAction: "manipulation" }}
-          className="mb-3 -ml-2 inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-sm font-medium text-ink-muted transition hover:bg-slate-100 hover:text-brand active:scale-[0.98]"
-        >
-          <Icon name="arrow-right" className="h-4 w-4 rotate-180" />
-          {t("common.back")}
-        </button>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              // router.back() is a no-op when the user opened this page from a
+              // direct link (no history). Fall back to /explore so the button
+              // always does something visible.
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push("/explore");
+              }
+            }}
+            // h-9 gives a 36px touch target (a bit closer to Apple's 44px guideline
+            // than the original ~20px text-only target). touch-action: manipulation
+            // eliminates the 300ms tap delay that older mobile Safari versions add.
+            style={{ touchAction: "manipulation" }}
+            className="-ml-2 inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-sm font-medium text-ink-muted transition hover:bg-slate-100 hover:text-brand active:scale-[0.98]"
+          >
+            <Icon name="arrow-right" className="h-4 w-4 rotate-180" />
+            {t("common.back")}
+          </button>
+
+          {!isOwner && !adminViewActive ? (
+            <button
+              type="button"
+              onClick={openReport}
+              style={{ touchAction: "manipulation" }}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-ink-soft transition hover:bg-red-50 hover:text-red-600 active:scale-[0.98]"
+            >
+              <Icon name="shield" className="h-4 w-4" />
+              {t("room.report.title")}
+            </button>
+          ) : null}
+        </div>
 
         <ImageGallery images={room.images} title={room.title} typeLabel={room.type} />
 
@@ -447,19 +461,6 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               {hostCard}
               {locationCard}
             </div>
-
-            {!isOwner && !adminViewActive ? (
-              <div className="border-t border-slate-100 pt-4">
-                <button
-                  type="button"
-                  onClick={openReport}
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft transition hover:text-red-600"
-                >
-                  <Icon name="shield" className="h-4 w-4" />
-                  {t("room.report.title")}
-                </button>
-              </div>
-            ) : null}
           </div>
 
           <aside className="hidden space-y-4 lg:block">
