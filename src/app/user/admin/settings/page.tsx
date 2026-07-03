@@ -10,6 +10,7 @@ import {
   type AutoMessage,
   type AutoMessageKey
 } from "@/lib/admin";
+import { getAutoPublishSetting, setAutoPublishSetting } from "@/lib/rooms";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
 import type { PropertyType } from "@/lib/types";
@@ -44,9 +45,6 @@ const AUTO_MSG_META: Record<AutoMessageKey, { labelKey: string; hintKey: string 
 
 function settingsEqual(a: AdminSettings, b: AdminSettings): boolean {
   return (
-    a.autoPublishListings === b.autoPublishListings &&
-    a.requirePhoneVerification === b.requirePhoneVerification &&
-    a.emailAlertsOnReports === b.emailAlertsOnReports &&
     a.activePropertyTypes.join("|") === b.activePropertyTypes.join("|") &&
     a.amenities.join("|") === b.amenities.join("|") &&
     a.autoOccupyDays === b.autoOccupyDays &&
@@ -60,11 +58,29 @@ export default function AdminSettingsPage() {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const t = useT();
 
+  // Auto-publish is a GLOBAL policy stored in Firestore (not localStorage), so
+  // it is tracked separately from the rest of the localStorage-backed draft.
+  const [autoPublish, setAutoPublish] = useState(false);
+  const [loadedAutoPublish, setLoadedAutoPublish] = useState(false);
+
   useEffect(() => {
     setDraft(stored);
   }, [stored]);
 
-  const dirty = !settingsEqual(draft, stored);
+  useEffect(() => {
+    let cancelled = false;
+    getAutoPublishSetting().then((v) => {
+      if (!cancelled) {
+        setAutoPublish(v);
+        setLoadedAutoPublish(v);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dirty = !settingsEqual(draft, stored) || autoPublish !== loadedAutoPublish;
   const [openMsg, setOpenMsg] = useState<AutoMessageKey | null>(null);
 
   function updateAutoMessage(index: number, patch: Partial<AutoMessage>) {
@@ -74,8 +90,15 @@ export default function AdminSettingsPage() {
     }));
   }
 
-  function handleSave() {
+  async function handleSave() {
     saveAdminSettings(draft);
+    try {
+      await setAutoPublishSetting(autoPublish);
+      setLoadedAutoPublish(autoPublish);
+    } catch {
+      toast.error(t("toast.admin.settings.saveFailed"));
+      return;
+    }
     setSavedAt(Date.now());
     setTimeout(() => setSavedAt(null), 2500);
     toast.success(t("toast.admin.settings.saved"));
@@ -150,20 +173,8 @@ export default function AdminSettingsPage() {
           <ToggleRow
             label={t("admin.settings.moderation.autoPublish")}
             hint={t("admin.settings.moderation.autoPublish.hint")}
-            on={draft.autoPublishListings}
-            onChange={(v) => setDraft({ ...draft, autoPublishListings: v })}
-          />
-          <ToggleRow
-            label={t("admin.settings.moderation.phoneVerification")}
-            hint={t("admin.settings.moderation.phoneVerification.hint")}
-            on={draft.requirePhoneVerification}
-            onChange={(v) => setDraft({ ...draft, requirePhoneVerification: v })}
-          />
-          <ToggleRow
-            label={t("admin.settings.moderation.emailAlerts")}
-            hint={t("admin.settings.moderation.emailAlerts.hint")}
-            on={draft.emailAlertsOnReports}
-            onChange={(v) => setDraft({ ...draft, emailAlertsOnReports: v })}
+            on={autoPublish}
+            onChange={setAutoPublish}
           />
         </div>
         <div>

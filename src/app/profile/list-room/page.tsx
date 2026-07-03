@@ -7,7 +7,7 @@ import Icon, { amenityIcon } from "@/components/Icon";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import ContactListEditor from "@/components/ContactListEditor";
 import { useSession } from "@/lib/session";
-import { addRoom, generateRoomId, getRoomById, updateRoom } from "@/lib/rooms";
+import { addRoom, generateRoomId, getAutoPublishSetting, getRoomById, updateRoom } from "@/lib/rooms";
 import { findRoomById } from "@/lib/mock-data";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { uploadRoomPhoto } from "@/lib/storage";
@@ -520,7 +520,8 @@ export default function ListRoomPage() {
           };
         });
 
-      const settings = getAdminSettings();
+      // Global, server-backed moderation policy (same for every user/device).
+      const autoPublish = await getAutoPublishSetting();
 
       if (editingId) {
         const existing = await getRoomById(editingId);
@@ -528,7 +529,7 @@ export default function ListRoomPage() {
         // so the admin re-reviews it. Published/pending listings keep their status.
         const resubmitStatus =
           existing?.status === "rejected"
-            ? (settings.autoPublishListings || isAdminUser ? "published" : "pending")
+            ? (autoPublish || isAdminUser ? "published" : "pending")
             : undefined;
         const patch: Partial<Room> = {
           ...(resubmitStatus ? { status: resubmitStatus, rejectionReason: undefined } : {}),
@@ -609,7 +610,7 @@ export default function ListRoomPage() {
         },
         createdAt: Date.now(),
         lastActivityAt: Date.now(),
-        status: settings.autoPublishListings || isAdminUser ? "published" : "pending"
+        status: autoPublish || isAdminUser ? "published" : "pending"
       };
 
       try {

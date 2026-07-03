@@ -857,6 +857,7 @@ const DICT: Dict = {
   "toast.admin.user.enabled": { km: "\"{name}\" ត្រូវបានបើកឡើងវិញ។", en: "\"{name}\" re-enabled." },
   "toast.admin.user.listingsHidden": { km: "បញ្ជី {n} ត្រូវបានសម្គាល់ថាមានអ្នកជួល។", en: "{n} listing(s) marked as occupied." },
   "toast.admin.settings.saved": { km: "ការកំណត់ត្រូវបានរក្សាទុក។", en: "Settings saved." },
+  "toast.admin.settings.saveFailed": { km: "រក្សាទុកការកំណត់មិនបានសម្រេច។ សូមព្យាយាមម្តងទៀត។", en: "Could not save settings. Please try again." },
   "toast.admin.settings.reset": { km: "ទិន្នន័យមូលដ្ឋានត្រូវបានកំណត់ឡើងវិញ។", en: "Local data reset." },
   "toast.admin.send.one": { km: "បានផ្ញើទៅអ្នកទទួល ១ នាក់។", en: "Sent to 1 recipient." },
   "toast.admin.send.many": { km: "បានផ្ញើទៅអ្នកទទួល {n} នាក់។", en: "Sent to {n} recipients." },

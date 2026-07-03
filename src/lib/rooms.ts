@@ -37,6 +37,35 @@ function roomsCol() {
   return collection(db!, "rooms");
 }
 
+// ─── Moderation policy (GLOBAL) ────────────────────────────────────────────
+// Whether new listings publish immediately or wait for admin approval must be
+// the same for every user on every device, so it lives in Firestore at
+// config/moderation — NOT localStorage. The listing-creation flow reads this
+// to decide "published" vs "pending".
+function moderationDoc() {
+  return doc(db!, "config", "moderation");
+}
+
+// Returns true if new listings should go live immediately (no review).
+// Defaults to false (review-first) when the doc is unset or unreadable, so the
+// safe default is that listings wait for admin approval. In demo mode (no
+// Firebase) there is no moderation backend, so listings publish immediately.
+export async function getAutoPublishSetting(): Promise<boolean> {
+  if (!isFirebaseConfigured || !db) return true;
+  try {
+    const snap = await getDoc(moderationDoc());
+    return snap.exists() ? Boolean(snap.data().autoPublishListings) : false;
+  } catch {
+    return false;
+  }
+}
+
+// Persists the global auto-publish policy. Admin-only per Firestore rules.
+export async function setAutoPublishSetting(value: boolean): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await setDoc(moderationDoc(), { autoPublishListings: value }, { merge: true });
+}
+
 // Recursively remove undefined values so Firestore setDoc/updateDoc never
 // receives them (the SDK throws on undefined field values).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

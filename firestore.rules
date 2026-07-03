@@ -91,6 +91,15 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ─── Platform config (moderation policy, etc.) ────────────────────────
+    // Public read: the listing-creation flow (any signed-in user) must read the
+    // auto-publish policy to decide whether a new room is pending or published.
+    // The values here are non-sensitive. Only admins may change them.
+    match /config/{docId} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
     // ─── OTP codes & password-reset tokens ────────────────────────────────
     // These are written and read exclusively by Cloud Functions (Admin SDK
     // bypasses rules). Clients must never access them directly.
