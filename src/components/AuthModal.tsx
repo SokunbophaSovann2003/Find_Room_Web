@@ -91,7 +91,7 @@ export default function AuthModal({
             <Icon name="home" className="h-5 w-5" />
           </span>
           <span className="text-base font-extrabold tracking-tight">
-            Joul<span className="text-brand">.KH</span>
+            Joul<span className="text-brand">KH</span>
           </span>
         </div>
 

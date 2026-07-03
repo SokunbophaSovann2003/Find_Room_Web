@@ -49,7 +49,7 @@ export default function Footer() {
               <Icon name="home" className="h-5 w-5" />
             </span>
             <span className="text-lg font-extrabold tracking-tight">
-              Joul<span className="text-brand">.KH</span>
+              Joul<span className="text-brand">KH</span>
             </span>
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-ink-muted">
