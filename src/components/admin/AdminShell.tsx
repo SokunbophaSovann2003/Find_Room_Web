@@ -186,7 +186,7 @@ function AdminLoginScreen({
             </span>
             <input
               type="tel"
-              placeholder="097 353 1332"
+              placeholder="098 765 4321"
               className="w-full bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-ink-soft"
               value={phone}
               onChange={(e) => { setPhone(e.target.value); setPhoneError(""); }}
