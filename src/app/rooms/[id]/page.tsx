@@ -42,7 +42,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const [locationOpen, setLocationOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [authIntent, setAuthIntent] = useState<"contact" | "location" | null>(null);
+  const [authIntent, setAuthIntent] = useState<"contact" | "location" | "report" | null>(null);
   const [reportReason, setReportReason] = useState<ReportReason | null>(null);
   const [reportDetails, setReportDetails] = useState("");
   const [reportSent, setReportSent] = useState(false);
@@ -293,6 +293,21 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
     </section>
   );
 
+  // Reporting requires a signed-in account so reports are accountable and
+  // spam is discouraged. Resets the form each time so a prior success screen
+  // doesn't linger when reopened.
+  function openReport() {
+    if (!session) {
+      setAuthIntent("report");
+      setAuthOpen(true);
+      return;
+    }
+    setReportReason(null);
+    setReportDetails("");
+    setReportSent(false);
+    setReportOpen(true);
+  }
+
   function handleSubmitReport() {
     if (!reportReason) return;
     const reporter = session?.username ?? session?.phoneNumber ?? t("room.report.guestName");
@@ -432,6 +447,19 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
               {hostCard}
               {locationCard}
             </div>
+
+            {!isOwner && !adminViewActive ? (
+              <div className="border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={openReport}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft transition hover:text-red-600"
+                >
+                  <Icon name="shield" className="h-4 w-4" />
+                  {t("room.report.title")}
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <aside className="hidden space-y-4 lg:block">
@@ -538,6 +566,12 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
           setAuthOpen(false);
           if (authIntent === "contact") setContactOpen(true);
           else if (authIntent === "location") setLocationOpen(true);
+          else if (authIntent === "report") {
+            setReportReason(null);
+            setReportDetails("");
+            setReportSent(false);
+            setReportOpen(true);
+          }
           setAuthIntent(null);
         }}
         defaultTab="register"
