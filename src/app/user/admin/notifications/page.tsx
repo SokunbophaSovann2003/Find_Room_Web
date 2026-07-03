@@ -5,6 +5,7 @@ import { useState } from "react";
 import Icon from "@/components/Icon";
 import ConfirmModal from "@/components/ConfirmModal";
 import LoadMoreSentinel from "@/components/admin/LoadMoreSentinel";
+import AutomatedMessages from "@/components/admin/AutomatedMessages";
 import {
   deleteOutboundCampaign,
   useOutboundCampaigns,
@@ -139,6 +140,8 @@ export default function AdminNotificationsPage() {
           </>
         )}
       </section>
+
+      <AutomatedMessages />
 
       {viewCampaign ? (
         <CampaignDetailModal
