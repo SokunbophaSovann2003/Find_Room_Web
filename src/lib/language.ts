@@ -787,6 +787,8 @@ const DICT: Dict = {
   "admin.notifications.compose.confirm.body.many": { km: "នេះនឹងផ្ញើការជូនដំណឹងទៅអ្នកទទួល {n} នាក់។ រឿងនេះមិនអាចត្រឡប់វិញបានទេ។", en: "This will send the notification to {n} recipients. This cannot be undone." },
   "admin.notifications.compose.confirm.label": { km: "បញ្ជាក់ & ផ្ញើ", en: "Confirm & send" },
   "admin.notifications.history.title": { km: "ប្រវត្តិការផ្ញើ", en: "Sent history" },
+  "admin.notifications.tab.manual": { km: "សារផ្ញើដោយដៃ", en: "Manual Messages" },
+  "admin.notifications.tab.automated": { km: "សារស្វ័យប្រវត្តិ", en: "Automated Messages" },
   "admin.notifications.history.empty": { km: "មិនទាន់បានផ្ញើអ្វី", en: "Nothing sent yet" },
   "admin.notifications.history.empty.body": { km: "នៅពេលអ្នកផ្ញើការជូនដំណឹង វានឹងត្រូវបានកត់ត្រានៅទីនេះ។", en: "When you send a notification, it will be logged here." },
   "admin.notifications.history.campaigns.one": { km: "{n} ការផ្សព្វផ្សាយ", en: "{n} campaign" },

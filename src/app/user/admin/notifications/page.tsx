@@ -42,7 +42,7 @@ export default function AdminNotificationsPage() {
             tab === "history" ? "bg-white text-ink shadow-sm" : "text-ink-muted hover:text-ink"
           }`}
         >
-          {t("admin.notifications.history.title")}
+          {t("admin.notifications.tab.manual")}
         </button>
         <button
           type="button"
@@ -51,7 +51,7 @@ export default function AdminNotificationsPage() {
             tab === "automated" ? "bg-white text-ink shadow-sm" : "text-ink-muted hover:text-ink"
           }`}
         >
-          {t("admin.settings.autoMessages.title")}
+          {t("admin.notifications.tab.automated")}
         </button>
       </div>
 
