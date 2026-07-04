@@ -131,6 +131,19 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // ─── "I want this type of room" demand posts ──────────────────────────
+    // A signed-in renter posts what they're looking for (renterId must be their
+    // own uid). Any signed-in user may READ active posts — landlords match them
+    // against their own rooms client-side. Only the renter who created it (or an
+    // admin) may edit/close/delete it.
+    match /room_wanted/{wantedId} {
+      allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.renterId;
+      allow read:   if isSignedIn();
+      allow update, delete: if isSignedIn()
+        && (request.auth.uid == resource.data.renterId || isAdmin());
+    }
+
     // ─── Platform config (moderation policy, etc.) ────────────────────────
     // Public read: the listing-creation flow (any signed-in user) must read the
     // auto-publish policy to decide whether a new room is pending or published.

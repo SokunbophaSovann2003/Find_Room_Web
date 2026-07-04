@@ -32,6 +32,7 @@ const DICT: Dict = {
     en: "Search for your perfect home by location, type, and price. Contact the host directly."
   },
   "explore.findRoom.cta": { km: "មិនមានពេលស្វែងរក? ឱ្យយើងជួយស្វែងរកបន្ទប់ឱ្យអ្នក", en: "No time to search? Let us find a room for you" },
+  "explore.wantRoom.cta": { km: "ខ្ញុំចង់បានបន្ទប់បែបនេះ — ម្ចាស់បន្ទប់ដែលសាកសមនឹងទាក់ទងទៅអ្នក", en: "I want this type of room — matching landlords will contact you" },
 
   // "Help me find a room" — renter request form
   "findRoom.title.before": { km: "ជួយខ្ញុំ", en: "Help me find" },
@@ -63,6 +64,29 @@ const DICT: Dict = {
   "findRoom.notif.title": { km: "សំណើស្វែងរកបន្ទប់ថ្មី", en: "New room request" },
   "findRoom.notif.body": { km: "{name} កំពុងស្វែងរកបន្ទប់។ ថវិកា៖ {budget}។ ទីតាំង៖ {location}។", en: "{name} is looking for a room. Budget: {budget}. Location: {location}." },
   "toast.request.submitted": { km: "បានផ្ញើសំណើ!", en: "Request sent!" },
+
+  // "I want this type of room" — renter demand post
+  "wantRoom.title.before": { km: "ខ្ញុំចង់បាន", en: "I want" },
+  "wantRoom.title.highlight": { km: "បន្ទប់បែបនេះ", en: "this type of room" },
+  "wantRoom.subtitle": { km: "ប្រាប់ពីអ្វីដែលអ្នកកំពុងស្វែងរក។ ម្ចាស់បន្ទប់ដែលមានបន្ទប់សាកសម (តំបន់ តម្លៃ ប្រភេទ) នឹងឃើញ ហើយទាក់ទងទៅអ្នកផ្ទាល់។", en: "Tell us what you're looking for. Landlords with a matching room (location, price, type) will see it and contact you directly." },
+  "wantRoom.login.title": { km: "សូមចូលគណនីដើម្បីបង្ហោះ", en: "Sign in to post" },
+  "wantRoom.login.body": { km: "យើងត្រូវការគណនីរបស់អ្នក ដើម្បីឱ្យម្ចាស់បន្ទប់ទាក់ទងទៅអ្នកវិញ។", en: "We need your account so landlords can contact you back." },
+  "wantRoom.field.telegram": { km: "តេលេក្រាម (ស្រេចចិត្ត)", en: "Telegram (optional)" },
+  "wantRoom.field.telegram.placeholder": { km: "ឧ. 012 345 678", en: "e.g. 012 345 678" },
+  "wantRoom.submit": { km: "បង្ហោះសំណើ", en: "Post request" },
+  "wantRoom.success.title": { km: "បានបង្ហោះសំណើ!", en: "Your request is posted!" },
+  "wantRoom.success.body": { km: "ម្ចាស់បន្ទប់ដែលមានបន្ទប់សាកសមនឹងឃើញសំណើរបស់អ្នក ហើយទាក់ទងទៅអ្នកផ្ទាល់។", en: "Landlords with a matching room will see your request and contact you directly." },
+  "wantRoom.toast.posted": { km: "បានបង្ហោះសំណើ!", en: "Request posted!" },
+
+  // Landlord matches view (/matches)
+  "matches.title": { km: "អ្នកជួលកំពុងស្វែងរកបន្ទប់ដូចរបស់អ្នក", en: "Renters looking for rooms like yours" },
+  "matches.subtitle": { km: "សំណើទាំងនេះត្រូវនឹងបញ្ជីបន្ទប់របស់អ្នក (តំបន់ តម្លៃ ប្រភេទ)។ ទាក់ទងទៅអ្នកជួលដោយផ្ទាល់។", en: "These requests match your listings (location, price, type). Contact the renter directly." },
+  "matches.empty": { km: "មិនទាន់មានសំណើត្រូវនឹងបន្ទប់របស់អ្នកនៅឡើយទេ។", en: "No requests match your rooms yet." },
+  "matches.login.title": { km: "សូមចូលគណនី", en: "Sign in" },
+  "matches.login.body": { km: "សូមចូលគណនីដើម្បីមើលអ្នកជួលដែលកំពុងស្វែងរកបន្ទប់ដូចរបស់អ្នក។", en: "Sign in to see renters looking for rooms like yours." },
+  "matches.banner": { km: "អ្នកជួល {n} នាក់កំពុងស្វែងរកបន្ទប់ដូចរបស់អ្នក", en: "{n} renter(s) are looking for a room like yours" },
+  "matches.contact.call": { km: "ហៅទូរស័ព្ទ", en: "Call renter" },
+  "matches.contact.telegram": { km: "តេលេក្រាម", en: "Telegram" },
 
   // Search bar
   "search.location.placeholder": { km: "ស្វែងរកនៅទីណា? ខេត្ត ស្រុក តំបន់…", en: "Where to? Province, district, area…" },
