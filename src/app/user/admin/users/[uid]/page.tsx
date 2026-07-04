@@ -15,6 +15,8 @@ import {
   type AdminUser
 } from "@/lib/admin";
 import { deleteRoom, updateRoom, useRooms } from "@/lib/rooms";
+import { useSession } from "@/lib/session";
+import { signOut } from "@/lib/auth";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
 import type { Room } from "@/lib/types";
@@ -25,6 +27,7 @@ export default function AdminUserDetailPage() {
   const uid = decodeURIComponent(params.uid ?? "");
   const users = useAdminUsers();
   const { rooms: allRooms } = useRooms();
+  const session = useSession();
   const t = useT();
   const [editing, setEditing] = useState(false);
   const [confirmDisable, setConfirmDisable] = useState(false);
@@ -60,6 +63,15 @@ export default function AdminUserDetailPage() {
         </Link>
       </div>
     );
+  }
+
+  // Viewing your own profile: offer Log out, and hide the self-destructive
+  // Disable/Delete actions (they would lock you out of the console).
+  const isSelf = session?.uid === user.uid;
+
+  async function handleLogout() {
+    await signOut();
+    router.replace("/explore");
   }
 
   function handleEditSave(values: UserFormValues) {
@@ -215,17 +227,64 @@ export default function AdminUserDetailPage() {
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            {!isSelf && (
+              <Link
+                href={`/user/admin/notifications/compose?to=${encodeURIComponent(user.uid)}`}
+                className="btn-secondary"
+              >
+                <Icon name="message" className="h-4 w-4" />
+                {t("admin.userDetail.sendNotification")}
+              </Link>
+            )}
+            <button type="button" onClick={() => setEditing(true)} className="btn-secondary">
+              <Icon name="pencil" className="h-4 w-4" />
+              {t("admin.userDetail.edit")}
+            </button>
+            {!isSelf && (
+              <button
+                type="button"
+                onClick={user.status === "active" ? () => setConfirmDisable(true) : handleToggleStatus}
+                className="btn-secondary"
+              >
+                <Icon name="shield" className="h-4 w-4" />
+                {user.status === "active" ? t("admin.userDetail.disable") : t("admin.userDetail.enable")}
+              </button>
+            )}
+            {!isSelf && (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="btn-danger"
+              >
+                <Icon name="trash" className="h-4 w-4" />
+                {t("admin.userDetail.delete")}
+              </button>
+            )}
+            {isSelf && (
+              <button type="button" onClick={handleLogout} className="btn-danger">
+                <Icon name="log-out" className="h-4 w-4" />
+                {t("admin.userDetail.logout")}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile action row */}
+        <div className="mt-4 flex flex-wrap justify-center gap-2 sm:hidden">
+          {!isSelf && (
             <Link
               href={`/user/admin/notifications/compose?to=${encodeURIComponent(user.uid)}`}
               className="btn-secondary"
             >
               <Icon name="message" className="h-4 w-4" />
-              {t("admin.userDetail.sendNotification")}
+              {t("admin.userDetail.send")}
             </Link>
-            <button type="button" onClick={() => setEditing(true)} className="btn-secondary">
-              <Icon name="pencil" className="h-4 w-4" />
-              {t("admin.userDetail.edit")}
-            </button>
+          )}
+          <button type="button" onClick={() => setEditing(true)} className="btn-secondary">
+            <Icon name="pencil" className="h-4 w-4" />
+            {t("admin.userDetail.edit")}
+          </button>
+          {!isSelf && (
             <button
               type="button"
               onClick={user.status === "active" ? () => setConfirmDisable(true) : handleToggleStatus}
@@ -234,6 +293,8 @@ export default function AdminUserDetailPage() {
               <Icon name="shield" className="h-4 w-4" />
               {user.status === "active" ? t("admin.userDetail.disable") : t("admin.userDetail.enable")}
             </button>
+          )}
+          {!isSelf && (
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
@@ -242,38 +303,13 @@ export default function AdminUserDetailPage() {
               <Icon name="trash" className="h-4 w-4" />
               {t("admin.userDetail.delete")}
             </button>
-          </div>
-        </div>
-
-        {/* Mobile action row */}
-        <div className="mt-4 flex flex-wrap justify-center gap-2 sm:hidden">
-          <Link
-            href={`/user/admin/notifications/compose?to=${encodeURIComponent(user.uid)}`}
-            className="btn-secondary"
-          >
-            <Icon name="message" className="h-4 w-4" />
-            {t("admin.userDetail.send")}
-          </Link>
-          <button type="button" onClick={() => setEditing(true)} className="btn-secondary">
-            <Icon name="pencil" className="h-4 w-4" />
-            {t("admin.userDetail.edit")}
-          </button>
-          <button
-            type="button"
-            onClick={user.status === "active" ? () => setConfirmDisable(true) : handleToggleStatus}
-            className="btn-secondary"
-          >
-            <Icon name="shield" className="h-4 w-4" />
-            {user.status === "active" ? t("admin.userDetail.disable") : t("admin.userDetail.enable")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmDelete(true)}
-            className="btn-danger"
-          >
-            <Icon name="trash" className="h-4 w-4" />
-            {t("admin.userDetail.delete")}
-          </button>
+          )}
+          {isSelf && (
+            <button type="button" onClick={handleLogout} className="btn-danger">
+              <Icon name="log-out" className="h-4 w-4" />
+              {t("admin.userDetail.logout")}
+            </button>
+          )}
         </div>
       </section>
 

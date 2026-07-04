@@ -729,6 +729,7 @@ const DICT: Dict = {
   "admin.userDetail.disable": { km: "បិទ", en: "Disable" },
   "admin.userDetail.enable": { km: "បើក", en: "Enable" },
   "admin.userDetail.delete": { km: "លុប", en: "Delete" },
+  "admin.userDetail.logout": { km: "ចេញពីគណនី", en: "Log out" },
   "admin.userDetail.listings": { km: "បញ្ជី", en: "Listings" },
   "admin.userDetail.noListings.title": { km: "មិនទាន់មានបញ្ជី", en: "No listings yet" },
   "admin.userDetail.noListings.body": { km: "អ្នកប្រើប្រាស់នេះមិនទាន់បានផ្សាយបន្ទប់ណាមួយ។", en: "This user hasn't published any rooms." },
