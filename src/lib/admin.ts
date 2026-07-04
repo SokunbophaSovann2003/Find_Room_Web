@@ -661,7 +661,8 @@ export type AdminNotificationKind =
   | "user-registered"
   | "listing-posted"
   | "listing-pending"
-  | "listing-flagged";
+  | "listing-flagged"
+  | "room-request";
 
 export interface AdminNotification {
   id: string;

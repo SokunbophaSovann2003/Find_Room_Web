@@ -101,7 +101,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.kind in [
              'user-registered', 'listing-posted',
-             'listing-pending', 'listing-flagged'
+             'listing-pending', 'listing-flagged', 'room-request'
            ]
         && request.resource.data.keys().hasAll(['kind', 'title', 'body', 'createdAt', 'read'])
         && request.resource.data.read == false;
@@ -120,6 +120,15 @@ service cloud.firestore {
     match /notification_campaigns/{campaignId} {
       allow read:  if isSignedIn();
       allow write: if isAdmin();
+    }
+
+    // ─── "Help me find a room" requests ───────────────────────────────────
+    // A signed-in renter may create a request for themselves (requesterId must
+    // be their own uid). Only admins may read, update, or delete them.
+    match /room_requests/{requestId} {
+      allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.requesterId;
+      allow read, update, delete: if isAdmin();
     }
 
     // ─── Platform config (moderation policy, etc.) ────────────────────────

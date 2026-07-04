@@ -14,11 +14,12 @@ import {
 } from "@/lib/admin";
 import { useT } from "@/lib/language";
 
-const KIND_META: Record<AdminNotificationKind, { icon: "user" | "building" | "shield" | "message"; tone: string }> = {
+const KIND_META: Record<AdminNotificationKind, { icon: "user" | "building" | "shield" | "message" | "search"; tone: string }> = {
   "user-registered": { icon: "user", tone: "bg-brand/10 text-brand" },
   "listing-posted": { icon: "building", tone: "bg-emerald-50 text-emerald-700" },
   "listing-pending": { icon: "building", tone: "bg-sky-50 text-sky-700" },
   "listing-flagged": { icon: "shield", tone: "bg-amber-50 text-amber-700" },
+  "room-request": { icon: "search", tone: "bg-violet-50 text-violet-700" },
 };
 
 type TypeFilter = "all" | "listing-posted" | "user-registered";
@@ -189,6 +190,7 @@ function NotificationRow({ notification }: { notification: AdminNotification }) 
   const destination = useMemo<string | null>(() => {
     if (!notification.relatedId) return null;
     if (notification.kind === "user-registered") return `/user/admin/users/${notification.relatedId}`;
+    if (notification.kind === "room-request") return `/user/admin/requests`;
     // All room-related events (new listing, pending approval, or a user report)
     // open the admin moderation view of that room.
     if (

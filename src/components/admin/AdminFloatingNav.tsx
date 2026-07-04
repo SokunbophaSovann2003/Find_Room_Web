@@ -10,6 +10,7 @@ import { useT } from "@/lib/language";
 
 const NAV: { href: string; labelKey: string; icon: IconName; exact?: boolean }[] = [
   { href: "/user/admin", labelKey: "admin.nav.rooms", icon: "home", exact: true },
+  { href: "/user/admin/requests", labelKey: "admin.nav.requests", icon: "search" },
   { href: "/user/admin/users", labelKey: "admin.nav.users", icon: "user" },
   { href: "/user/admin/notifications", labelKey: "admin.nav.notifications", icon: "message" },
   { href: "/user/admin/settings", labelKey: "admin.nav.settings", icon: "shield" }
@@ -68,7 +69,7 @@ export default function AdminFloatingNav() {
           aria-label={t("admin.nav.aria")}
           // Mobile: edge-to-edge bar with a top border (same chrome as the
           // user BottomNav). Desktop: floating rounded pill.
-          className="pointer-events-auto grid w-full grid-cols-4 items-start gap-1 border-t border-slate-200 bg-white/95 px-4 pb-2 pt-2.5 backdrop-blur sm:max-w-md sm:items-center sm:rounded-2xl sm:border sm:px-2 sm:py-2 sm:shadow-cardHover sm:mb-3"
+          className="pointer-events-auto grid w-full grid-cols-5 items-start gap-1 border-t border-slate-200 bg-white/95 px-2 pb-2 pt-2.5 backdrop-blur sm:max-w-lg sm:items-center sm:rounded-2xl sm:border sm:px-2 sm:py-2 sm:shadow-cardHover sm:mb-3"
         >
           {NAV.map((item) => {
             const active = isActive(pathname, item);

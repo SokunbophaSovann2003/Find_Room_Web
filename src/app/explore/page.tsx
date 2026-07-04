@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import SearchBar from "@/components/SearchBar";
 import ExploreRooms from "@/components/ExploreRooms";
 import ExploreHero from "@/components/ExploreHero";
+import FindRoomCta from "@/components/FindRoomCta";
 import { ExploreFilterProvider } from "@/components/ExploreFilterContext";
 import { MOCK_ROOMS } from "@/lib/mock-data";
 import { isFirebaseConfigured } from "@/lib/firebase";
@@ -26,6 +27,8 @@ export default function ExplorePage() {
             <div className="mx-auto mt-8 max-w-4xl">
               <SearchBar />
             </div>
+
+            <FindRoomCta />
           </div>
         </section>
 
