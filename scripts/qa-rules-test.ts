@@ -8,7 +8,7 @@
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import {
   getFirestore, doc, getDoc, updateDoc, getDocs, collection, setDoc, deleteDoc
 } from "firebase/firestore";
@@ -76,8 +76,19 @@ async function expectAllowed(label: string, fn: () => Promise<unknown>) {
     getDocs(collection(db, "notification_templates")));
   await expectDenied("read OTP codes", () =>
     getDoc(doc(db, "otp_codes", "+855912345678")));
+  await expectDenied("read password_reset_tokens", () =>
+    getDoc(doc(db, "password_reset_tokens", "+855912345678")));
   await expectDenied("write platform config (moderation)", () =>
     setDoc(doc(db, "config", "moderation"), { autoPublishListings: true }, { merge: true }));
+
+  console.log("\nCross-user tampering (another owner's room must be untouchable):");
+  const OTHER_ROOM = "yyiRY2SLVvctPNRIPD5q"; // owned by the admin account
+  await expectDenied("edit another owner's room (price)", () =>
+    updateDoc(doc(db, "rooms", OTHER_ROOM), { price: 999999 }));
+  await expectDenied("hijack another owner's room (owner.id)", () =>
+    updateDoc(doc(db, "rooms", OTHER_ROOM), { owner: { id: myUid } }));
+  await expectDenied("delete another owner's room", () =>
+    deleteDoc(doc(db, "rooms", OTHER_ROOM)));
 
   console.log("\nModeration integrity — a normal user must NOT publish without review:");
   const roomBase = (status: string) => ({
@@ -115,6 +126,33 @@ async function expectAllowed(label: string, fn: () => Promise<unknown>) {
   for (const id of createdIds) {
     await deleteDoc(doc(db, "rooms", id)).catch(() => {});
   }
-  console.log(`\nCleaned up ${createdIds.length} test room(s). Done.`);
+
+  // ── Admin flow — prove the moderation rules change did NOT break legit ops ──
+  console.log("\nAdmin moderation flow (must still work under the new rules):");
+  await signOut(auth);
+  const adminCred = await signInWithEmailAndPassword(auth, "855973531332@findroom.app", "Sokunbopha@22")
+    .catch(() => null);
+  if (!adminCred) {
+    console.log("  ⚠️  could not sign in as admin (skipping admin-flow checks)");
+  } else {
+    const adminUid = adminCred.user.uid;
+    const adminIds: string[] = [];
+    await expectAllowed("admin creates a pending listing", async () => {
+      const ref = doc(collection(db, "rooms"));
+      await setDoc(ref, { ...roomBase("pending"), owner: { id: adminUid, name: "Admin", phoneNumbers: [], memberSince: "2026-01-01", listingsCount: 1 } });
+      adminIds.push(ref.id);
+    });
+    if (adminIds[0]) {
+      await expectAllowed("admin APPROVES listing (pending -> published)", () =>
+        updateDoc(doc(db, "rooms", adminIds[0]), { status: "published" }));
+      await expectAllowed("admin REJECTS listing (-> rejected)", () =>
+        updateDoc(doc(db, "rooms", adminIds[0]), { status: "rejected" }));
+      await expectAllowed("admin reads admin_notifications", () =>
+        getDocs(collection(db, "admin_notifications")));
+    }
+    for (const id of adminIds) await deleteDoc(doc(db, "rooms", id)).catch(() => {});
+  }
+
+  console.log(`\nDone.`);
   process.exit(0);
 })().catch((e) => { console.error("Test harness error:", e); process.exit(1); });
