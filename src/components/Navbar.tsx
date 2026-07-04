@@ -10,7 +10,6 @@ import PropertyTypePicker from "./PropertyTypePicker";
 import { useSession } from "@/lib/session";
 import { loadOverrides, subscribeOverrides } from "@/lib/profile-overrides";
 import { useIsAdmin, useAdminNotifications, useUserNotifications } from "@/lib/admin";
-import { useViewMode } from "@/lib/view-mode";
 import { useT } from "@/lib/language";
 
 const LIST_ROOM_PATH = "/profile/list-room";
@@ -59,19 +58,18 @@ export default function Navbar() {
     }
   }
 
-  // onAdmin drives header chrome (admin pill, hide "List room"). Path always
-  // wins inside /user/admin/*, otherwise the sticky viewMode preference lets
-  // an admin keep their admin context on shared routes like /rooms/[id].
-  const viewMode = useViewMode();
+  // onAdmin drives all header chrome (logo target, notification bell, profile
+  // link, hiding "List room"). A signed-in admin is ALWAYS in admin context so
+  // every nav element points to admin destinations consistently — never a mix
+  // of admin logo + user bell/profile. Non-admins never get admin chrome.
   const { admin: isAdminUser } = useIsAdmin(session);
-  const pathOnAdmin = pathname?.startsWith("/user/admin") ?? false;
-  const onAdmin = pathOnAdmin || (viewMode === "admin" && isAdminUser);
+  const onAdmin = isAdminUser;
 
   return (
     <>
       <header className="sticky top-0 z-[1050] border-b border-slate-200/70 bg-white/80 backdrop-blur">
         <nav className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
-          <Link href={isAdminUser ? "/user/admin" : "/explore"} className="flex items-center gap-2">
+          <Link href={onAdmin ? "/user/admin" : "/explore"} className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white">
               <Icon name="home" className="h-5 w-5" />
             </span>

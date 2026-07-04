@@ -8,8 +8,7 @@ import AuthModal from "./AuthModal";
 import PropertyTypePicker from "./PropertyTypePicker";
 import { useSession } from "@/lib/session";
 import { useKeyboardOpen } from "@/lib/use-keyboard-open";
-import { isAdmin } from "@/lib/admin";
-import { useViewMode } from "@/lib/view-mode";
+import { useIsAdmin } from "@/lib/admin";
 import { useT } from "@/lib/language";
 
 const LIST_ROOM_PATH = "/profile/list-room";
@@ -35,13 +34,16 @@ export default function BottomNav() {
   const [authNext, setAuthNext] = useState<string | null>(null);
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const keyboardOpen = useKeyboardOpen();
-  const viewMode = useViewMode();
+  const { admin: isAdminUser } = useIsAdmin(session);
   const t = useT();
 
   if (shouldHide(pathname)) return null;
-  // Don't stack with the admin floating nav when the signed-in admin is in
-  // "Admin" view mode — the AdminFloatingNav owns the bottom slot there.
-  if (viewMode === "admin" && isAdmin(session)) return null;
+  // Admins never see the user bottom nav — they operate entirely in admin
+  // chrome (AdminFloatingNav inside /user/admin/*, admin top nav elsewhere).
+  // This keeps the admin and user experiences completely separate. Uses the
+  // useIsAdmin hook (real Firestore check) rather than isAdmin(session), which
+  // relies on a users cache that isn't populated outside the admin console.
+  if (isAdminUser) return null;
 
   const onHome = pathname === "/" || pathname?.startsWith("/explore");
   const onProfile = pathname === "/profile";

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import Icon, { type IconName } from "@/components/Icon";
 import { useIsAdmin, useAdminNotifications } from "@/lib/admin";
 import { useSession } from "@/lib/session";
-import { useViewMode } from "@/lib/view-mode";
 import { useKeyboardOpen } from "@/lib/use-keyboard-open";
 import { useT } from "@/lib/language";
 
@@ -27,7 +26,6 @@ function isActive(pathname: string | null, item: (typeof NAV)[number]): boolean 
 // the AdminShell renders this and view-mode is implied).
 export default function AdminFloatingNav() {
   const session = useSession();
-  const viewMode = useViewMode();
   const pathname = usePathname();
   const keyboardOpen = useKeyboardOpen();
   const notifications = useAdminNotifications();
@@ -40,7 +38,9 @@ export default function AdminFloatingNav() {
   const inIncomingNotifications = pathname === "/user/admin/notifications/incoming";
   const inComposeNotification = pathname === "/user/admin/notifications/compose";
   const { admin: isAdminUser } = useIsAdmin(session);
-  const shouldRender = isAdminUser && (inAdminRoute || viewMode === "admin");
+  // The admin bottom nav belongs to the admin console only (/user/admin/*).
+  // On public pages an admin navigates via the admin top-nav chrome instead.
+  const shouldRender = isAdminUser && inAdminRoute;
 
   // Pages that own their own bottom action bar suppress the global tabbed nav
   // so the two don't stack on top of each other.
