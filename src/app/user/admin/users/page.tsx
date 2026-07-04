@@ -18,6 +18,7 @@ import {
   type AdminUser
 } from "@/lib/admin";
 import { updateRoom, useRooms } from "@/lib/rooms";
+import { useSession } from "@/lib/session";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
 
@@ -31,6 +32,8 @@ export default function AdminUsersPage() {
   const router = useRouter();
   const users = useAdminUsers();
   const { rooms } = useRooms();
+  const session = useSession();
+  const selfUid = session?.uid ?? null;
   const t = useT();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -179,10 +182,15 @@ export default function AdminUsersPage() {
 
   function handleBulkDelete() {
     if (!confirmBulkDelete) return;
-    const n = confirmBulkDelete.length;
-    for (const u of confirmBulkDelete) void deleteAdminUser(u.uid);
+    // Never delete your own account — it would lock you out of the console.
+    const targets = confirmBulkDelete.filter((u) => u.uid !== selfUid);
+    const n = targets.length;
+    for (const u of targets) void deleteAdminUser(u.uid);
     setConfirmBulkDelete(null);
-    toast.success(t("toast.admin.user.bulkDeleted", { n }));
+    if (n > 0) toast.success(t("toast.admin.user.bulkDeleted", { n }));
+    if (targets.length < confirmBulkDelete.length) {
+      toast.error(t("admin.users.error.cannotDeleteSelf"));
+    }
   }
 
   function handleAdd(values: UserFormValues) {
@@ -200,6 +208,12 @@ export default function AdminUsersPage() {
 
   function handleDelete() {
     if (!confirmDelete) return;
+    // Never delete your own account — it would lock you out of the console.
+    if (confirmDelete.uid === selfUid) {
+      setConfirmDelete(null);
+      toast.error(t("admin.users.error.cannotDeleteSelf"));
+      return;
+    }
     const name = confirmDelete.username;
     void deleteAdminUser(confirmDelete.uid);
     setConfirmDelete(null);
@@ -461,6 +475,7 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3">
                     <RowActions
                       user={u}
+                      isSelf={u.uid === selfUid}
                       onView={() => router.push(`/user/admin/users/${u.uid}`)}
                       onEdit={() => setEditing(u)}
                       onToggle={() => u.status === "active" ? setConfirmDisable(u) : handleToggleStatus(u)}
@@ -572,6 +587,7 @@ export default function AdminUsersPage() {
                 </div>
                 <RowActions
                   user={u}
+                  isSelf={u.uid === selfUid}
                   onView={() => (window.location.href = `/user/admin/users/${u.uid}`)}
                   onEdit={() => setEditing(u)}
                   onToggle={() => handleToggleStatus(u)}
@@ -790,6 +806,7 @@ function StatusPill({ status }: { status: AdminUser["status"] }) {
 
 function RowActions({
   user,
+  isSelf = false,
   onView,
   onEdit,
   onToggle,
@@ -797,6 +814,7 @@ function RowActions({
   onSend
 }: {
   user: AdminUser;
+  isSelf?: boolean;
   onView: () => void;
   onEdit: () => void;
   onToggle: () => void;
@@ -824,12 +842,18 @@ function RowActions({
           <MenuItem icon="user" label={t("admin.users.action.viewProfile")} onClick={onView} />
           <MenuItem icon="message" label={t("admin.users.action.sendNotification")} onClick={onSend} />
           <MenuItem icon="pencil" label={t("admin.users.action.edit")} onClick={onEdit} />
-          <MenuItem
-            icon="shield"
-            label={user.status === "active" ? t("admin.users.action.disable") : t("admin.users.action.enable")}
-            onClick={onToggle}
-          />
-          <MenuItem icon="trash" label={t("admin.users.action.delete")} danger onClick={onDelete} />
+          {/* An admin can't disable or delete their own account — doing so
+              would lock them out of the console. Hide both for the self row. */}
+          {!isSelf ? (
+            <MenuItem
+              icon="shield"
+              label={user.status === "active" ? t("admin.users.action.disable") : t("admin.users.action.enable")}
+              onClick={onToggle}
+            />
+          ) : null}
+          {!isSelf ? (
+            <MenuItem icon="trash" label={t("admin.users.action.delete")} danger onClick={onDelete} />
+          ) : null}
         </div>
       ) : null}
     </div>

@@ -563,6 +563,12 @@ export async function updateAdminUser(uid: string, patch: Partial<Omit<AdminUser
 }
 
 export async function deleteAdminUser(uid: string) {
+  // Guard against self-deletion. Deleting your own user document removes the
+  // admin role check target while leaving the Firebase Auth account intact —
+  // which silently locks you out of the admin console. Refuse it outright.
+  if (auth?.currentUser?.uid === uid) {
+    throw new Error("admin.users.error.cannotDeleteSelf");
+  }
   if (isFirebaseConfigured && db) {
     await deleteDoc(doc(db, "users", uid));
     return;
@@ -573,6 +579,10 @@ export async function deleteAdminUser(uid: string) {
 export async function toggleAdminUserStatus(uid: string) {
   const user = getAdminUserById(uid);
   const nextStatus = user?.status === "active" ? "disabled" : "active";
+  // Disabling your own account fails the admin status check and locks you out.
+  if (auth?.currentUser?.uid === uid && nextStatus === "disabled") {
+    throw new Error("admin.users.error.cannotDisableSelf");
+  }
   if (isFirebaseConfigured && db) {
     await updateDoc(doc(db, "users", uid), { status: nextStatus });
     return;

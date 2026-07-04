@@ -616,6 +616,8 @@ const DICT: Dict = {
   "admin.users.action.disable": { km: "បិទ", en: "Disable" },
   "admin.users.action.enable": { km: "បើក", en: "Enable" },
   "admin.users.action.delete": { km: "លុប", en: "Delete" },
+  "admin.users.error.cannotDeleteSelf": { km: "អ្នកមិនអាចលុបគណនីផ្ទាល់ខ្លួនរបស់អ្នកបានទេ។", en: "You can't delete your own account." },
+  "admin.users.error.cannotDisableSelf": { km: "អ្នកមិនអាចបិទគណនីផ្ទាល់ខ្លួនរបស់អ្នកបានទេ។", en: "You can't disable your own account." },
   "admin.users.delete.title": { km: "លុបអ្នកប្រើប្រាស់?", en: "Delete user?" },
   "admin.users.delete.body.prefix": { km: "នេះនឹងលុប ", en: "This removes " },
   "admin.users.delete.body.suffix": { km: " ចេញពីបញ្ជីអ្នកគ្រប់គ្រង។ បញ្ជីរបស់ពួកគេនៅដដែលប៉ុន្តែនឹងគ្មានម្ចាស់។ មិនអាចសង្គ្រោះបានក្នុងទិន្នន័យសាកល្បង។", en: " from the admin user list. Their listings stay in place but become unowned. This can't be undone in the mock data." },
