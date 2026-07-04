@@ -10,7 +10,7 @@ import { resolve } from "path";
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import {
-  getFirestore, doc, getDoc, updateDoc, getDocs, collection, setDoc
+  getFirestore, doc, getDoc, updateDoc, getDocs, collection, setDoc, deleteDoc
 } from "firebase/firestore";
 
 // Parse .env.local for the web config.
@@ -79,10 +79,42 @@ async function expectAllowed(label: string, fn: () => Promise<unknown>) {
   await expectDenied("write platform config (moderation)", () =>
     setDoc(doc(db, "config", "moderation"), { autoPublishListings: true }, { merge: true }));
 
+  console.log("\nModeration integrity — a normal user must NOT publish without review:");
+  const roomBase = (status: string) => ({
+    title: "QA TEST ROOM", description: "qa", price: 1, currency: "USD", type: "room",
+    address: "x", city: "Phnom Penh", district: "", area: "", bedrooms: 1,
+    images: [], amenities: [], createdAt: Date.now(), lastActivityAt: Date.now(),
+    owner: { id: myUid, name: "QA", phoneNumbers: [], memberSince: "2026-01-01", listingsCount: 1 },
+    status,
+  });
+  const createdIds: string[] = [];
+  await expectDenied("create a room already marked 'published' (skip review)", async () => {
+    const ref = doc(collection(db, "rooms"));
+    await setDoc(ref, roomBase("published"));
+    createdIds.push(ref.id);
+  });
+  // Legit: create a pending room, then try to self-approve it.
+  let pendingId: string | null = null;
+  await expectAllowed("create a room as 'pending' (legit)", async () => {
+    const ref = doc(collection(db, "rooms"));
+    await setDoc(ref, roomBase("pending"));
+    pendingId = ref.id; createdIds.push(ref.id);
+  });
+  if (pendingId) {
+    await expectDenied("self-approve own room (pending -> published)", () =>
+      updateDoc(doc(db, "rooms", pendingId!), { status: "published" }));
+    await expectAllowed("edit own room content (title), status unchanged", () =>
+      updateDoc(doc(db, "rooms", pendingId!), { title: "QA edited" }));
+  }
+
   console.log("\nSanity — legitimate user actions (should be allowed):");
   await expectAllowed("read own user doc", () => getDoc(doc(db, "users", myUid)));
   await expectAllowed("read public rooms", () => getDocs(collection(db, "rooms")));
 
-  console.log("\nDone.");
+  // Cleanup any rooms this test managed to create.
+  for (const id of createdIds) {
+    await deleteDoc(doc(db, "rooms", id)).catch(() => {});
+  }
+  console.log(`\nCleaned up ${createdIds.length} test room(s). Done.`);
   process.exit(0);
 })().catch((e) => { console.error("Test harness error:", e); process.exit(1); });

@@ -79,8 +79,14 @@ export const sendVerificationCode = onCall({ invoker: "public" }, async (request
     return { success: true };
   }
 
-  // AWS SNS not configured — return code for demo mode
-  return { success: true, demoCode: code };
+  // Demo mode must be OPT-IN. Returning the code in the response bypasses SMS
+  // verification entirely, so only do it when explicitly enabled — never as a
+  // silent fallback when SMS credentials happen to be missing (fail closed).
+  if (process.env.ALLOW_DEMO_OTP === "true") {
+    return { success: true, demoCode: code };
+  }
+  await ref.delete();
+  throw new HttpsError("unavailable", "auth.otp.error.smsUnavailable");
 });
 
 // ─── verifyCode ─────────────────────────────────────────────────────────────

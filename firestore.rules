@@ -24,6 +24,21 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Global moderation policy. Mirrors getAutoPublishSetting() on the client:
+    // true only when config/moderation.autoPublishListings is explicitly true;
+    // defaults to false (review-first) when the doc is missing/unreadable.
+    function autoPublishOn() {
+      return exists(/databases/$(database)/documents/config/moderation)
+        && get(/databases/$(database)/documents/config/moderation).data.get('autoPublishListings', false) == true;
+    }
+
+    // The only status a non-admin may assign to their own listing: 'published'
+    // when the platform is in auto-publish mode, otherwise 'pending'. This is
+    // what stops a user from self-publishing to skip review.
+    function allowedSelfStatus() {
+      return autoPublishOn() ? 'published' : 'pending';
+    }
+
     // ─── Rooms ───────────────────────────────────────────────────────────────
     // Public read: listings are intentionally public (room rental platform).
     // Authenticated users may create rooms they own.
@@ -31,11 +46,27 @@ service cloud.firestore {
     match /rooms/{roomId} {
       allow read: if true;
 
-      allow create: if isSignedIn() &&
-        request.auth.uid == request.resource.data.owner.id;
+      // Create your own listing. A non-admin may only set the moderation-
+      // approved status (pending, or published when auto-publish is on) — so
+      // a user can't create a listing already marked "published" to skip review.
+      allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.owner.id
+        && (isAdmin() || request.resource.data.status == allowedSelfStatus());
 
+      // Owner may edit their own listing but may NOT self-approve: status can
+      // only stay the same, drop to 'pending' (resubmit), or become 'published'
+      // when auto-publish is on. Only an admin can set 'published'/'rejected'
+      // otherwise, and ownership can never be transferred by a non-admin.
       allow update: if isSignedIn() && (
-        request.auth.uid == resource.data.owner.id || isAdmin()
+        isAdmin() || (
+          request.auth.uid == resource.data.owner.id
+          && request.resource.data.owner.id == resource.data.owner.id
+          && (
+            request.resource.data.status == resource.data.status
+            || request.resource.data.status == 'pending'
+            || (autoPublishOn() && request.resource.data.status == 'published')
+          )
+        )
       );
 
       allow delete: if isSignedIn() && (

@@ -199,6 +199,7 @@ const DICT: Dict = {
   "auth.otp.resend": { km: "ផ្ញើលេខកូដម្តងទៀត", en: "Resend code" },
   "auth.otp.resendIn": { km: "ផ្ញើម្តងទៀតក្នុង {n}វ.", en: "Resend in {n}s" },
   "auth.otp.error.invalid": { km: "លេខកូដមិនត្រឹមត្រូវ ឬផុតកំណត់ពេល។ សូមព្យាយាមម្តងទៀត។", en: "Invalid or expired code. Please try again." },
+  "auth.otp.error.smsUnavailable": { km: "សេវាផ្ញើសារ SMS មិនអាចប្រើបានទេ។ សូមព្យាយាមម្តងទៀតនៅពេលក្រោយ។", en: "SMS service is temporarily unavailable. Please try again later." },
   "auth.otp.demo.hint": { km: "លេខកូដបង្ហាញ (ការធ្វើតេស្ត)៖ {code}", en: "Demo code: {code}" },
 
   // Profile page
