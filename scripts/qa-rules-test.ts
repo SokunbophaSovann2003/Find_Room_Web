@@ -139,6 +139,31 @@ async function expectAllowed(label: string, fn: () => Promise<unknown>) {
       deleteDoc(doc(db, "room_requests", reqIds[0])));
   }
 
+  console.log("\n'I want this type of room' demand posts:");
+  const OTHER_WANTED = "qa-other-wanted"; // pre-seeded, owned by the admin
+  let myWantedId: string | null = null;
+  await expectAllowed("create my OWN demand post", async () => {
+    const ref = doc(collection(db, "room_wanted"));
+    await setDoc(ref, { renterId: myUid, renterName: "QA", renterPhone: "012", renterTelegram: "", budgetMin: null, budgetMax: null, province: "", district: "", area: "", propertyType: "any", bedrooms: null, notes: "qa", status: "active", createdAt: Date.now() });
+    myWantedId = ref.id;
+  });
+  await expectDenied("create a post impersonating another user (forged renterId)", async () => {
+    const ref = doc(collection(db, "room_wanted"));
+    await setDoc(ref, { renterId: ADMIN_UID, renterName: "forged", renterPhone: "012", renterTelegram: "", budgetMin: null, budgetMax: null, province: "", district: "", area: "", propertyType: "any", bedrooms: null, notes: "x", status: "active", createdAt: Date.now() });
+  });
+  // NOTE: read IS allowed by design (landlords match posts client-side). This
+  // asserts the intended behaviour and documents the privacy exposure.
+  await expectAllowed("read demand posts (public to signed-in — matching needs it)", () =>
+    getDocs(collection(db, "room_wanted")));
+  await expectDenied("edit ANOTHER renter's demand post", () =>
+    updateDoc(doc(db, "room_wanted", OTHER_WANTED), { notes: "hacked" }));
+  await expectDenied("delete ANOTHER renter's demand post", () =>
+    deleteDoc(doc(db, "room_wanted", OTHER_WANTED)));
+  if (myWantedId) {
+    await expectAllowed("edit my OWN demand post", () => updateDoc(doc(db, "room_wanted", myWantedId!), { notes: "updated" }));
+    await expectAllowed("delete my OWN demand post (cleanup)", () => deleteDoc(doc(db, "room_wanted", myWantedId!)));
+  }
+
   console.log("\nSanity — legitimate user actions (should be allowed):");
   await expectAllowed("read own user doc", () => getDoc(doc(db, "users", myUid)));
   await expectAllowed("read public rooms", () => getDocs(collection(db, "rooms")));
