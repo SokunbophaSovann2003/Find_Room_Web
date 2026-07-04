@@ -118,6 +118,27 @@ async function expectAllowed(label: string, fn: () => Promise<unknown>) {
       updateDoc(doc(db, "rooms", pendingId!), { title: "QA edited" }));
   }
 
+  console.log("\n'Help me find a room' requests (own create ok; reading/managing others = admin-only):");
+  const reqIds: string[] = [];
+  await expectAllowed("create my OWN room request", async () => {
+    const ref = doc(collection(db, "room_requests"));
+    await setDoc(ref, { requesterId: myUid, requesterName: "QA", requesterPhone: "012", budgetMin: null, budgetMax: null, province: "", district: "", area: "", propertyType: "any", bedrooms: null, moveInDate: "", notes: "qa", status: "open", createdAt: Date.now() });
+    reqIds.push(ref.id);
+  });
+  await expectDenied("create a request in SOMEONE ELSE's name (forged requesterId)", async () => {
+    const ref = doc(collection(db, "room_requests"));
+    await setDoc(ref, { requesterId: ADMIN_UID, requesterName: "forged", requesterPhone: "012", budgetMin: null, budgetMax: null, province: "", district: "", area: "", propertyType: "any", bedrooms: null, moveInDate: "", notes: "x", status: "open", createdAt: Date.now() });
+    reqIds.push(ref.id);
+  });
+  await expectDenied("read the room_requests inbox", () =>
+    getDocs(collection(db, "room_requests")));
+  if (reqIds[0]) {
+    await expectDenied("update a request (self-mark handled)", () =>
+      updateDoc(doc(db, "room_requests", reqIds[0]), { status: "handled" }));
+    await expectDenied("delete a request", () =>
+      deleteDoc(doc(db, "room_requests", reqIds[0])));
+  }
+
   console.log("\nSanity — legitimate user actions (should be allowed):");
   await expectAllowed("read own user doc", () => getDoc(doc(db, "users", myUid)));
   await expectAllowed("read public rooms", () => getDocs(collection(db, "rooms")));
@@ -151,6 +172,8 @@ async function expectAllowed(label: string, fn: () => Promise<unknown>) {
         getDocs(collection(db, "admin_notifications")));
     }
     for (const id of adminIds) await deleteDoc(doc(db, "rooms", id)).catch(() => {});
+    // Admin cleans up any room_requests the normal-user section created.
+    for (const id of reqIds) await deleteDoc(doc(db, "room_requests", id)).catch(() => {});
   }
 
   console.log(`\nDone.`);

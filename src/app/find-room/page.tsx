@@ -85,19 +85,25 @@ export default function FindRoomPage() {
     }
     setSubmitting(true);
     try {
+      // Safe non-negative integer, or null. Guards against NaN/Infinity if a
+      // value ever arrives from outside the number inputs.
+      const posInt = (s: string): number | null => {
+        const n = Math.round(Number(s));
+        return s.trim() && Number.isFinite(n) ? Math.max(0, n) : null;
+      };
       const id = await submitRoomRequest({
         requesterId: session!.uid,
-        requesterName: name.trim() || t("common.anonymousUser"),
-        requesterPhone: phone.trim(),
-        budgetMin: budgetMin.trim() ? Math.max(0, Math.round(Number(budgetMin))) : null,
-        budgetMax: budgetMax.trim() ? Math.max(0, Math.round(Number(budgetMax))) : null,
+        requesterName: (name.trim() || t("common.anonymousUser")).slice(0, 100),
+        requesterPhone: phone.trim().slice(0, 32),
+        budgetMin: posInt(budgetMin),
+        budgetMax: posInt(budgetMax),
         province: location.province ?? "",
         district: location.district ?? "",
         area: location.area ?? "",
         propertyType,
-        bedrooms: bedrooms.trim() ? Math.max(0, Math.round(Number(bedrooms))) : null,
+        bedrooms: posInt(bedrooms),
         moveInDate: moveInDate || "",
-        notes: notes.trim(),
+        notes: notes.trim().slice(0, 2000),
       });
       void pushIncomingNotification({
         kind: "room-request",
