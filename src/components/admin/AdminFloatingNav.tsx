@@ -35,6 +35,7 @@ export default function AdminFloatingNav() {
 
   const inAdminRoute = pathname?.startsWith("/user/admin") ?? false;
   const inRoomDetail = pathname?.startsWith("/rooms/") ?? false;
+  const inAdminRoomDetail = pathname?.startsWith("/user/admin/rooms/") ?? false;
   const inListRoom = pathname === "/profile/list-room";
   const inIncomingNotifications = pathname === "/user/admin/notifications/incoming";
   const inComposeNotification = pathname === "/user/admin/notifications/compose";
@@ -44,6 +45,8 @@ export default function AdminFloatingNav() {
   // Pages that own their own bottom action bar suppress the global tabbed nav
   // so the two don't stack on top of each other.
   if (shouldRender && (inRoomDetail || inListRoom) && !inAdminRoute) return null;
+  // The admin room detail page owns its own moderation action bar.
+  if (shouldRender && inAdminRoomDetail) return null;
   if (shouldRender && (inIncomingNotifications || inComposeNotification)) return null;
 
   if (!shouldRender) return null;

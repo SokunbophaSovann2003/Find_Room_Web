@@ -195,7 +195,7 @@ export default function AdminRoomsList({
   function rowClickHandler(roomId: string) {
     return (e: React.MouseEvent<HTMLElement>) => {
       if ((e.target as HTMLElement).closest("a, button")) return;
-      router.push(`/rooms/${roomId}`);
+      router.push(`/user/admin/rooms/${roomId}`);
     };
   }
 
@@ -364,7 +364,7 @@ export default function AdminRoomsList({
                     </td>
                   ) : null}
                   <td className="px-4 py-3">
-                    <Link href={`/rooms/${room.id}`} className="flex items-center gap-3">
+                    <Link href={`/user/admin/rooms/${room.id}`} className="flex items-center gap-3">
                       <div className="flex h-10 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
                         {room.images[0] ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -458,7 +458,7 @@ export default function AdminRoomsList({
             >
               <div className="flex items-start gap-3">
                 <Link
-                  href={`/rooms/${room.id}`}
+                  href={`/user/admin/rooms/${room.id}`}
                   className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100"
                 >
                   {room.images[0] ? (
@@ -470,7 +470,7 @@ export default function AdminRoomsList({
                 </Link>
                 <div className="min-w-0 flex-1">
                   <Link
-                    href={`/rooms/${room.id}`}
+                    href={`/user/admin/rooms/${room.id}`}
                     className="block truncate text-sm font-semibold text-ink"
                   >
                     {room.title}

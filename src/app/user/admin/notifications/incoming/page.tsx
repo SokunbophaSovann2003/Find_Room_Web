@@ -189,7 +189,15 @@ function NotificationRow({ notification }: { notification: AdminNotification }) 
   const destination = useMemo<string | null>(() => {
     if (!notification.relatedId) return null;
     if (notification.kind === "user-registered") return `/user/admin/users/${notification.relatedId}`;
-    if (notification.kind === "listing-posted") return `/rooms/${notification.relatedId}`;
+    // All room-related events (new listing, pending approval, or a user report)
+    // open the admin moderation view of that room.
+    if (
+      notification.kind === "listing-posted" ||
+      notification.kind === "listing-pending" ||
+      notification.kind === "listing-flagged"
+    ) {
+      return `/user/admin/rooms/${notification.relatedId}`;
+    }
     return null;
   }, [notification.kind, notification.relatedId]);
 
