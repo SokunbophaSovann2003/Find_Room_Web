@@ -32,6 +32,7 @@ export default function AdminUserDetailPage() {
   const [editing, setEditing] = useState(false);
   const [confirmDisable, setConfirmDisable] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [confirmDeleteRoom, setConfirmDeleteRoom] = useState<Room | null>(null);
   const [confirmReject, setConfirmReject] = useState<Room | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -70,8 +71,10 @@ export default function AdminUserDetailPage() {
   const isSelf = session?.uid === user.uid;
 
   async function handleLogout() {
+    setConfirmLogout(false);
     await signOut();
-    router.replace("/explore");
+    // Return to the admin login screen (AdminShell shows it when signed out).
+    router.replace("/user/admin");
   }
 
   function handleEditSave(values: UserFormValues) {
@@ -261,7 +264,7 @@ export default function AdminUserDetailPage() {
               </button>
             )}
             {isSelf && (
-              <button type="button" onClick={handleLogout} className="btn-danger">
+              <button type="button" onClick={() => setConfirmLogout(true)} className="btn-danger">
                 <Icon name="log-out" className="h-4 w-4" />
                 {t("admin.userDetail.logout")}
               </button>
@@ -378,6 +381,15 @@ export default function AdminUserDetailPage() {
         }
         onCancel={() => setConfirmDelete(false)}
         onConfirm={handleDelete}
+      />
+
+      <ConfirmModal
+        open={confirmLogout}
+        title={t("admin.userDetail.logout.confirm.title")}
+        body={t("admin.userDetail.logout.confirm.body")}
+        confirmLabel={t("admin.userDetail.logout")}
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={handleLogout}
       />
 
       <ConfirmModal

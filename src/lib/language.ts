@@ -730,6 +730,8 @@ const DICT: Dict = {
   "admin.userDetail.enable": { km: "បើក", en: "Enable" },
   "admin.userDetail.delete": { km: "លុប", en: "Delete" },
   "admin.userDetail.logout": { km: "ចេញពីគណនី", en: "Log out" },
+  "admin.userDetail.logout.confirm.title": { km: "ចេញពីគណនី?", en: "Log out?" },
+  "admin.userDetail.logout.confirm.body": { km: "តើអ្នកប្រាកដទេថាចង់ចេញពីគណនីអ្នកគ្រប់គ្រង? អ្នកនឹងត្រូវចូលម្តងទៀត។", en: "Are you sure you want to log out of the admin account? You'll need to sign in again." },
   "admin.userDetail.listings": { km: "បញ្ជី", en: "Listings" },
   "admin.userDetail.noListings.title": { km: "មិនទាន់មានបញ្ជី", en: "No listings yet" },
   "admin.userDetail.noListings.body": { km: "អ្នកប្រើប្រាស់នេះមិនទាន់បានផ្សាយបន្ទប់ណាមួយ។", en: "This user hasn't published any rooms." },
