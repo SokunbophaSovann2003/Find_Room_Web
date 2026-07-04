@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon from "./Icon";
-import { isAdmin } from "@/lib/admin";
+import { useIsAdmin } from "@/lib/admin";
 import { useSession } from "@/lib/session";
-import { useViewMode } from "@/lib/view-mode";
 import { useT } from "@/lib/language";
 
 const CONTACT = {
@@ -20,22 +19,16 @@ const CONTACT = {
 export default function Footer() {
   const pathname = usePathname();
   const session = useSession();
-  const viewMode = useViewMode();
+  const { admin: isAdminUser } = useIsAdmin(session);
   const t = useT();
 
   // Admin shell owns its own surface — drop the marketing footer.
   if (pathname?.startsWith("/user/admin")) return null;
   // The list-room form owns the full bottom area with its own action bar.
   if (pathname === "/profile/list-room") return null;
-  // Admins reviewing a listing through admin chrome don't need the marketing
-  // footer below the listing — keep the surface focused on moderation.
-  if (
-    pathname?.startsWith("/rooms/") &&
-    viewMode === "admin" &&
-    isAdmin(session)
-  ) {
-    return null;
-  }
+  // Admins don't get the marketing footer on public room pages either — keep
+  // their surface focused. (Reliable useIsAdmin check, not the cache-based one.)
+  if (pathname?.startsWith("/rooms/") && isAdminUser) return null;
 
   return (
     <footer className="relative mt-20 hidden shrink-0 overflow-hidden bg-gradient-to-br from-brand-50 via-white to-amber-50 sm:block">
@@ -44,7 +37,7 @@ export default function Footer() {
 
       <div className="relative mx-auto grid max-w-5xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr] md:py-14">
         <div>
-          <Link href={isAdmin(session) ? "/user/admin" : "/explore"} className="inline-flex items-center gap-2">
+          <Link href={isAdminUser ? "/user/admin" : "/explore"} className="inline-flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white shadow-sm">
               <Icon name="home" className="h-5 w-5" />
             </span>
