@@ -157,11 +157,6 @@ export default function SearchBar() {
           onChange={(next) => setFilter({ ...filter, sort: next })}
         />
       </div>
-
-      <button type="submit" className="btn-primary lg:px-6">
-        <Icon name="search" className="h-4 w-4" />
-        {t("search.submit")}
-      </button>
     </form>
   );
 }
