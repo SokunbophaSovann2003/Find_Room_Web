@@ -32,7 +32,7 @@ const DICT: Dict = {
     en: "Search for your perfect home by location, type, and price. Contact the host directly."
   },
   "explore.findRoom.cta": { km: "ស្វែងរកឱ្យខ្ញុំ", en: "Find for Me" },
-  "explore.wantRoom.cta": { km: "ប្រកាសស្វែងរក", en: "Post a Room Request" },
+  "explore.wantRoom.cta": { km: "ប្រកាសស្វែងរក", en: "Post a Request" },
 
   // "Help me find a room" — renter request form
   "findRoom.title.before": { km: "ជួយខ្ញុំ", en: "Help me find" },
