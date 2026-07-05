@@ -69,14 +69,19 @@ export async function loginWithPhone(phoneNumber: string, password: string) {
 
   const cred = await signInWithEmailAndPassword(auth, phoneToEmail(phoneNumber), password);
   // Check Firestore status directly — the in-memory cache is empty on fresh page loads.
-  // Wrap in try-catch: a network hiccup or App Check token failure should not
-  // block a valid login. Only a confirmed "disabled" status should reject.
+  // Also read the account's display name so it lands in the session (used by the
+  // request forms, profile, etc.). Wrap in try-catch: a network hiccup or App
+  // Check token failure should not block a valid login. Only a confirmed
+  // "disabled" status should reject.
+  let username: string | undefined;
   try {
     const userSnap = await getDoc(doc(db!, "users", cred.user.uid));
-    if (userSnap.data()?.status === "disabled") {
+    const data = userSnap.data();
+    if (data?.status === "disabled") {
       await fbSignOut(auth);
       throw new Error("auth.error.disabled");
     }
+    if (typeof data?.username === "string") username = data.username;
   } catch (firestoreErr) {
     const code = (firestoreErr as { code?: string }).code;
     if (code === undefined && (firestoreErr as Error).message === "auth.error.disabled") {
@@ -86,7 +91,7 @@ export async function loginWithPhone(phoneNumber: string, password: string) {
     // authenticated user through. A disabled user might slip in for one session
     // during an outage, which is an acceptable tradeoff vs. locking everyone out.
   }
-  setSession({ uid: cred.user.uid, phoneNumber });
+  setSession({ uid: cred.user.uid, phoneNumber, username });
   return cred.user;
 }
 

@@ -19,7 +19,6 @@ export default function FindRoomPage() {
   const session = useSession();
   const t = useT();
 
-  const [name, setName] = useState(session?.username ?? "");
   const [phones, setPhones] = useState<string[]>([session?.phoneNumber ?? ""]);
   const [telegrams, setTelegrams] = useState<string[]>([""]);
   const [budgetMin, setBudgetMin] = useState("");
@@ -87,9 +86,11 @@ export default function FindRoomPage() {
         const n = Math.round(Number(s));
         return s.trim() && Number.isFinite(n) ? Math.max(0, n) : null;
       };
+      // Name comes from the signed-in account, not a form field.
+      const requesterName = (getSession()?.username || t("common.anonymousUser")).slice(0, 100);
       const id = await submitRoomRequest({
         requesterId: session!.uid,
-        requesterName: (name.trim() || t("common.anonymousUser")).slice(0, 100),
+        requesterName,
         requesterPhones: cleanPhones,
         requesterTelegrams: cleanTelegrams,
         budgetMin: posInt(budgetMin),
@@ -106,7 +107,7 @@ export default function FindRoomPage() {
         kind: "room-request",
         title: t("findRoom.notif.title"),
         body: t("findRoom.notif.body", {
-          name: name.trim() || t("common.anonymousUser"),
+          name: requesterName,
           budget: budgetLabel(),
           location: locationLabel || t("findRoom.field.anyLocation"),
         }),
@@ -133,10 +134,6 @@ export default function FindRoomPage() {
         {/* Contact — add as many phone numbers / Telegram handles as needed */}
         <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
           <h2 className="text-base font-semibold text-ink">{t("findRoom.contact.title")}</h2>
-          <label className="block">
-            <span className="label">{t("findRoom.field.name")}</span>
-            <input className="input mt-1" value={name} onChange={(e) => setName(e.target.value)} />
-          </label>
           <div>
             <ContactListEditor
               label={t("listRoom.contact.phones.heading")}

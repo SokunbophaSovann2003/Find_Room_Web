@@ -18,7 +18,6 @@ export default function WantRoomPage() {
   const session = useSession();
   const t = useT();
 
-  const [name, setName] = useState(session?.username ?? "");
   const [phones, setPhones] = useState<string[]>([session?.phoneNumber ?? ""]);
   const [telegrams, setTelegrams] = useState<string[]>([""]);
   const [budgetMin, setBudgetMin] = useState("");
@@ -77,7 +76,7 @@ export default function WantRoomPage() {
       };
       await submitRoomWanted({
         renterId: session!.uid,
-        renterName: (name.trim() || t("common.anonymousUser")).slice(0, 100),
+        renterName: (getSession()?.username || t("common.anonymousUser")).slice(0, 100),
         renterPhones: cleanPhones,
         renterTelegrams: cleanTelegrams,
         budgetMin: posInt(budgetMin),
@@ -110,10 +109,6 @@ export default function WantRoomPage() {
         {/* Contact — add as many phone numbers / Telegram handles as needed */}
         <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
           <h2 className="text-base font-semibold text-ink">{t("findRoom.contact.title")}</h2>
-          <label className="block">
-            <span className="label">{t("findRoom.field.name")}</span>
-            <input className="input mt-1" value={name} onChange={(e) => setName(e.target.value)} />
-          </label>
           <div>
             <ContactListEditor
               label={t("listRoom.contact.phones.heading")}
