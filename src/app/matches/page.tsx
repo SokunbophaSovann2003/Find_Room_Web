@@ -62,7 +62,6 @@ function MatchCard({ w }: { w: RoomWanted }) {
     : w.budgetMin != null ? `$${w.budgetMin}+` : `≤ $${w.budgetMax}`;
   const location = [w.area, w.district, w.province].filter(Boolean).join(", ") || t("findRoom.field.anyLocation");
   const type = w.propertyType === "any" ? t("findRoom.field.anyType") : t(`admin.propertyType.${w.propertyType}`);
-  const tgHandle = w.renterTelegram ? `+${w.renterTelegram.replace(/\D/g, "")}` : "";
 
   return (
     <li className="card p-4 sm:p-5">
@@ -83,14 +82,16 @@ function MatchCard({ w }: { w: RoomWanted }) {
       ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-        <a href={`tel:${w.renterPhone.replace(/\s/g, "")}`} className="btn-primary text-sm">
-          <Icon name="phone" className="h-4 w-4" /> {t("matches.contact.call")}
-        </a>
-        {tgHandle && (
-          <a href={`https://t.me/${tgHandle}`} target="_blank" rel="noreferrer" className="btn-secondary text-sm">
-            <Icon name="telegram" className="h-4 w-4" /> {t("matches.contact.telegram")}
+        {(w.renterPhones ?? []).map((p) => (
+          <a key={p} href={`tel:${p.replace(/\s/g, "")}`} className="btn-primary text-sm">
+            <Icon name="phone" className="h-4 w-4" /> {p}
           </a>
-        )}
+        ))}
+        {(w.renterTelegrams ?? []).map((tg) => (
+          <a key={tg} href={`https://t.me/+${tg.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="btn-secondary text-sm">
+            <Icon name="telegram" className="h-4 w-4" /> {tg}
+          </a>
+        ))}
       </div>
     </li>
   );

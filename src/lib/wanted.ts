@@ -19,8 +19,8 @@ export interface RoomWanted {
   id: string;
   renterId: string;
   renterName: string;
-  renterPhone: string;
-  renterTelegram: string; // optional, "" if none
+  renterPhones: string[];    // one or more contact numbers
+  renterTelegrams: string[]; // optional Telegram handles/numbers
   budgetMin: number | null;
   budgetMax: number | null;
   province: string;
