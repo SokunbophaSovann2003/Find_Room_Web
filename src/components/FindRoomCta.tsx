@@ -20,7 +20,7 @@ export default function FindRoomCta() {
       <div className="grid gap-3 sm:grid-cols-2">
         <Link
           href="/find-room"
-          className="group flex items-center justify-center gap-2 rounded-2xl border border-brand/30 bg-white/70 px-4 py-3 text-center text-sm font-semibold text-brand shadow-sm backdrop-blur transition hover:bg-brand hover:text-white"
+          className="group flex items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
         >
           <Icon name="search" className="h-4 w-4 shrink-0" />
           <span>{t("explore.findRoom.cta")}</span>
@@ -28,7 +28,7 @@ export default function FindRoomCta() {
         </Link>
         <Link
           href="/want-room"
-          className="group flex items-center justify-center gap-2 rounded-2xl border border-brand/30 bg-white/70 px-4 py-3 text-center text-sm font-semibold text-brand shadow-sm backdrop-blur transition hover:bg-brand hover:text-white"
+          className="group flex items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
         >
           <Icon name="home" className="h-4 w-4 shrink-0" />
           <span>{t("explore.wantRoom.cta")}</span>
