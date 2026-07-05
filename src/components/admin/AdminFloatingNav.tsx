@@ -39,9 +39,10 @@ export default function AdminFloatingNav() {
   const inIncomingNotifications = pathname === "/user/admin/notifications/incoming";
   const inComposeNotification = pathname === "/user/admin/notifications/compose";
   const { admin: isAdminUser } = useIsAdmin(session);
-  // The admin bottom nav belongs to the admin console only (/user/admin/*).
-  // On public pages an admin navigates via the admin top-nav chrome instead.
-  const shouldRender = isAdminUser && inAdminRoute;
+  // The admin bottom nav belongs to the admin console only (/user/admin/*), and
+  // only during an active admin session — an admin-role account without one is
+  // denied by the shell, so the nav shouldn't appear on that denied screen.
+  const shouldRender = isAdminUser && !!session?.adminSession && inAdminRoute;
 
   // Pages that own their own bottom action bar suppress the global tabbed nav
   // so the two don't stack on top of each other.

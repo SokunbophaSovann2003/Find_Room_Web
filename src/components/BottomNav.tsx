@@ -38,12 +38,10 @@ export default function BottomNav() {
   const t = useT();
 
   if (shouldHide(pathname)) return null;
-  // Admins never see the user bottom nav — they operate entirely in admin
-  // chrome (AdminFloatingNav inside /user/admin/*, admin top nav elsewhere).
-  // This keeps the admin and user experiences completely separate. Uses the
-  // useIsAdmin hook (real Firestore check) rather than isAdmin(session), which
-  // relies on a users cache that isn't populated outside the admin console.
-  if (isAdminUser) return null;
+  // Hide the user bottom nav only when actively acting as admin (admin role AND
+  // an active admin session). An admin-role account signed in through the normal
+  // flow has no admin session, so it browses as a normal user and keeps this nav.
+  if (isAdminUser && !!session?.adminSession) return null;
 
   const onHome = pathname === "/" || pathname?.startsWith("/explore");
   const onProfile = pathname === "/profile";

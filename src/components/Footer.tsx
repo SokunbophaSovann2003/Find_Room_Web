@@ -20,15 +20,17 @@ export default function Footer() {
   const pathname = usePathname();
   const session = useSession();
   const { admin: isAdminUser } = useIsAdmin(session);
+  // "Acting as admin" = admin role AND an active admin session. An admin-role
+  // account on a normal login browses as a user, so it gets the user chrome.
+  const actingAsAdmin = isAdminUser && !!session?.adminSession;
   const t = useT();
 
   // Admin shell owns its own surface — drop the marketing footer.
   if (pathname?.startsWith("/user/admin")) return null;
   // The list-room form owns the full bottom area with its own action bar.
   if (pathname === "/profile/list-room") return null;
-  // Admins don't get the marketing footer on public room pages either — keep
-  // their surface focused. (Reliable useIsAdmin check, not the cache-based one.)
-  if (pathname?.startsWith("/rooms/") && isAdminUser) return null;
+  // Admins actively moderating don't get the marketing footer on room pages.
+  if (pathname?.startsWith("/rooms/") && actingAsAdmin) return null;
 
   return (
     <footer className="relative mt-20 hidden shrink-0 overflow-hidden bg-gradient-to-br from-brand-50 via-white to-amber-50 sm:block">
@@ -37,7 +39,7 @@ export default function Footer() {
 
       <div className="relative mx-auto grid max-w-5xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr] md:py-14">
         <div>
-          <Link href={isAdminUser ? "/user/admin" : "/explore"} className="inline-flex items-center gap-2">
+          <Link href={actingAsAdmin ? "/user/admin" : "/explore"} className="inline-flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white shadow-sm">
               <Icon name="home" className="h-5 w-5" />
             </span>

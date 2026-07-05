@@ -59,11 +59,13 @@ export default function Navbar() {
   }
 
   // onAdmin drives all header chrome (logo target, notification bell, profile
-  // link, hiding "List room"). A signed-in admin is ALWAYS in admin context so
-  // every nav element points to admin destinations consistently — never a mix
-  // of admin logo + user bell/profile. Non-admins never get admin chrome.
+  // link, hiding "List room"). It requires BOTH the admin role AND an active
+  // admin session (i.e. signed in through the admin form). An admin-role account
+  // that logged in through the normal user flow has no admin session and can't
+  // use the console, so it must see the normal user chrome — otherwise the logo
+  // would send them to /user/admin, which correctly denies them.
   const { admin: isAdminUser } = useIsAdmin(session);
-  const onAdmin = isAdminUser;
+  const onAdmin = isAdminUser && !!session?.adminSession;
 
   return (
     <>
