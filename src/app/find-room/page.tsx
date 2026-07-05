@@ -6,7 +6,7 @@ import Icon from "@/components/Icon";
 import PriceRangePicker from "@/components/PriceRangePicker";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import PropertyTypePicker from "@/components/PropertyTypePicker";
-import { useSession } from "@/lib/session";
+import { useSession, getSession } from "@/lib/session";
 import { submitRoomRequest } from "@/lib/requests";
 import { pushIncomingNotification } from "@/lib/admin";
 import { toast } from "@/lib/toast";
@@ -39,8 +39,10 @@ export default function FindRoomPage() {
   // page is only reached signed-in. If someone opens the URL directly while
   // signed out, send them to Explore rather than showing a blank page.
   useEffect(() => {
-    if (!session) router.replace("/explore");
-  }, [session, router]);
+    // Check the synchronous session (localStorage), not the reactive one which
+    // is null on first render — otherwise a logged-in visitor gets bounced.
+    if (!getSession()) router.replace("/explore");
+  }, [router]);
 
   if (!session) return null;
 

@@ -6,7 +6,7 @@ import Icon from "@/components/Icon";
 import PriceRangePicker from "@/components/PriceRangePicker";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import PropertyTypePicker from "@/components/PropertyTypePicker";
-import { useSession } from "@/lib/session";
+import { useSession, getSession } from "@/lib/session";
 import { submitRoomWanted } from "@/lib/wanted";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
@@ -37,8 +37,10 @@ export default function WantRoomPage() {
   // Login is gated by the Explore CTA (popup opens in context). Direct signed-out
   // access to this URL redirects to Explore instead of showing a blank page.
   useEffect(() => {
-    if (!session) router.replace("/explore");
-  }, [session, router]);
+    // Synchronous check so a logged-in visitor (whose reactive session is null
+    // on first render) isn't bounced back to Explore.
+    if (!getSession()) router.replace("/explore");
+  }, [router]);
 
   if (!session) return null;
 
