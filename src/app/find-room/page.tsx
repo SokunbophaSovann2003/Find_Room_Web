@@ -19,7 +19,6 @@ export default function FindRoomPage() {
   const session = useSession();
   const t = useT();
 
-  const [authOpen, setAuthOpen] = useState(false);
   const [name, setName] = useState(session?.username ?? "");
   const [phone, setPhone] = useState(session?.phoneNumber ?? "");
   const [budgetMin, setBudgetMin] = useState("");
@@ -38,18 +37,12 @@ export default function FindRoomPage() {
   const locationLabel = [location.area, location.district, location.province].filter(Boolean).join(", ");
 
   // Not signed in — the feature is for signed-in renters so we can contact them.
+  // Show the login popup straight away; on success the form renders, and if the
+  // renter dismisses it we send them back to Explore rather than a blank page.
   if (!session) {
     return (
-      <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 px-4 py-12 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand">
-          <Icon name="search" className="h-7 w-7" />
-        </span>
-        <h1 className="text-xl font-extrabold">{t("findRoom.login.title")}</h1>
-        <p className="text-sm text-ink-muted">{t("findRoom.login.body")}</p>
-        <button type="button" className="btn-primary" onClick={() => setAuthOpen(true)}>
-          {t("findRoom.login.cta")}
-        </button>
-        <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} onSuccess={() => setAuthOpen(false)} defaultTab="login" />
+      <div className="min-h-[60vh]">
+        <AuthModal open onClose={() => router.push("/explore")} onSuccess={() => {}} defaultTab="login" />
       </div>
     );
   }
