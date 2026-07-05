@@ -67,7 +67,7 @@ export default function SearchBar() {
           <span className={`flex-1 truncate ${locationLabel ? "text-ink" : "text-ink-soft"}`}>
             {locationLabel || t("search.location.placeholder")}
           </span>
-          {locationLabel ? <span className="h-6 w-6 shrink-0" aria-hidden /> : null}
+          {locationLabel ? <span className="h-6 w-6 shrink-0" aria-hidden /> : <Icon name="chevron-down" className="h-4 w-4 shrink-0 text-ink-soft" />}
         </button>
         {locationLabel ? (
           <button
@@ -100,7 +100,7 @@ export default function SearchBar() {
           <span className={`flex-1 truncate capitalize ${filter.type ? "text-ink" : "text-ink-soft"}`}>
             {typeLabel}
           </span>
-          {filter.type ? <span className="h-6 w-6 shrink-0" aria-hidden /> : null}
+          {filter.type ? <span className="h-6 w-6 shrink-0" aria-hidden /> : <Icon name="chevron-down" className="h-4 w-4 shrink-0 text-ink-soft" />}
         </button>
         {filter.type ? (
           <button
@@ -135,7 +135,7 @@ export default function SearchBar() {
           <span className={`flex-1 truncate ${filter.sort ? "text-ink" : "text-ink-soft"}`}>
             {sortLabel}
           </span>
-          {filter.sort ? <span className="h-6 w-6 shrink-0" aria-hidden /> : null}
+          {filter.sort ? <span className="h-6 w-6 shrink-0" aria-hidden /> : <Icon name="chevron-down" className="h-4 w-4 shrink-0 text-ink-soft" />}
         </button>
         {filter.sort ? (
           <button
