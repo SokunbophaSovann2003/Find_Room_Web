@@ -20,6 +20,7 @@ export default function FindRoomPage() {
 
   const [name, setName] = useState(session?.username ?? "");
   const [phone, setPhone] = useState(session?.phoneNumber ?? "");
+  const [telegram, setTelegram] = useState("");
   const [budgetMin, setBudgetMin] = useState("");
   const [budgetMax, setBudgetMax] = useState("");
   const [location, setLocation] = useState<LocationValue>({});
@@ -87,6 +88,7 @@ export default function FindRoomPage() {
         requesterId: session!.uid,
         requesterName: (name.trim() || t("common.anonymousUser")).slice(0, 100),
         requesterPhone: phone.trim().slice(0, 32),
+        requesterTelegram: telegram.trim().slice(0, 32),
         budgetMin: posInt(budgetMin),
         budgetMax: posInt(budgetMax),
         province: location.province ?? "",
@@ -142,6 +144,17 @@ export default function FindRoomPage() {
             {phoneError && <p className="mt-1 text-xs text-red-500">{phoneError}</p>}
           </label>
         </div>
+
+        <label className="block">
+          <span className="label">{t("wantRoom.field.telegram")}</span>
+          <input
+            className="input mt-1"
+            type="tel"
+            placeholder={t("wantRoom.field.telegram.placeholder")}
+            value={telegram}
+            onChange={(e) => setTelegram(e.target.value)}
+          />
+        </label>
 
         {/* Budget */}
         <div>

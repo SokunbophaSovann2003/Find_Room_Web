@@ -55,9 +55,16 @@ export default function AdminRoomRequestsPage() {
                       {t(`admin.requests.status.${r.status}`)}
                     </span>
                   </div>
-                  <a href={`tel:${r.requesterPhone.replace(/\s/g, "")}`} className="mt-0.5 inline-flex items-center gap-1 text-sm font-medium text-brand">
-                    <Icon name="phone" className="h-3.5 w-3.5" /> {r.requesterPhone}
-                  </a>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <a href={`tel:${r.requesterPhone.replace(/\s/g, "")}`} className="inline-flex items-center gap-1 text-sm font-medium text-brand">
+                      <Icon name="phone" className="h-3.5 w-3.5" /> {r.requesterPhone}
+                    </a>
+                    {r.requesterTelegram ? (
+                      <a href={`https://t.me/+${r.requesterTelegram.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-brand">
+                        <Icon name="telegram" className="h-3.5 w-3.5" /> {r.requesterTelegram}
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
                 <span className="text-[11px] text-ink-soft">{new Date(r.createdAt).toLocaleDateString()}</span>
               </div>

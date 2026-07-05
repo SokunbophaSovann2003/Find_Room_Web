@@ -18,6 +18,7 @@ export interface RoomRequest {
   requesterId: string;
   requesterName: string;
   requesterPhone: string;
+  requesterTelegram: string; // optional, "" if none
   budgetMin: number | null;
   budgetMax: number | null;
   province: string;
