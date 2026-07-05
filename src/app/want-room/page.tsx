@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/Icon";
-import AuthModal from "@/components/AuthModal";
 import PriceRangePicker from "@/components/PriceRangePicker";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import PropertyTypePicker from "@/components/PropertyTypePicker";
@@ -35,15 +34,13 @@ export default function WantRoomPage() {
 
   const locationLabel = [location.area, location.district, location.province].filter(Boolean).join(", ");
 
-  // Not signed in — show the login popup immediately; on success the form
-  // renders, and dismissing it returns the renter to Explore.
-  if (!session) {
-    return (
-      <div className="min-h-[60vh]">
-        <AuthModal open onClose={() => router.push("/explore")} onSuccess={() => {}} defaultTab="login" />
-      </div>
-    );
-  }
+  // Login is gated by the Explore CTA (popup opens in context). Direct signed-out
+  // access to this URL redirects to Explore instead of showing a blank page.
+  useEffect(() => {
+    if (!session) router.replace("/explore");
+  }, [session, router]);
+
+  if (!session) return null;
 
   if (sent) {
     return (
