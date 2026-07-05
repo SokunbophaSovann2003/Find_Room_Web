@@ -31,8 +31,8 @@ const DICT: Dict = {
     km: "ស្វែងរកកន្លែងសម្រាប់ការរស់នៅទៅអ្នកតាមតំបន់ ប្រភេទ និងតម្លៃ នៃតម្រូវការរបស់អ្នក។ ទាក់ទងភ្លាមៗទៅម្ចាស់បន្ទប់។",
     en: "Search for your perfect home by location, type, and price. Contact the host directly."
   },
-  "explore.findRoom.cta": { km: "មិនមានពេលស្វែងរក? ឱ្យយើងជួយស្វែងរកបន្ទប់ឱ្យអ្នក", en: "No time to search? Let us find a room for you" },
-  "explore.wantRoom.cta": { km: "ខ្ញុំចង់បានបន្ទប់បែបនេះ — ម្ចាស់បន្ទប់ដែលសាកសមនឹងទាក់ទងទៅអ្នក", en: "I want this type of room — matching landlords will contact you" },
+  "explore.findRoom.cta": { km: "ជួយខ្ញុំស្វែងរកបន្ទប់", en: "Help me find a room" },
+  "explore.wantRoom.cta": { km: "ខ្ញុំចង់បានបន្ទប់បែបនេះ", en: "I want this type of room" },
 
   // "Help me find a room" — renter request form
   "findRoom.title.before": { km: "ជួយខ្ញុំ", en: "Help me find" },
