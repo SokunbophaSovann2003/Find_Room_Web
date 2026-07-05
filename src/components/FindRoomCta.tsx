@@ -17,22 +17,22 @@ export default function FindRoomCta() {
   const session = useSession();
   return (
     <div className="mx-auto mt-5 max-w-4xl space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <Link
           href="/find-room"
-          className="group flex items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
+          className="group flex items-center justify-center gap-1.5 rounded-2xl bg-brand px-3 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
         >
           <Icon name="search" className="h-4 w-4 shrink-0" />
           <span>{t("explore.findRoom.cta")}</span>
-          <Icon name="arrow-right" className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+          <Icon name="arrow-right" className="hidden h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5 sm:block" />
         </Link>
         <Link
           href="/want-room"
-          className="group flex items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
+          className="group flex items-center justify-center gap-1.5 rounded-2xl bg-brand px-3 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
         >
           <Icon name="home" className="h-4 w-4 shrink-0" />
           <span>{t("explore.wantRoom.cta")}</span>
-          <Icon name="arrow-right" className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+          <Icon name="arrow-right" className="hidden h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5 sm:block" />
         </Link>
       </div>
       {session && <MatchingWantedBanner />}
