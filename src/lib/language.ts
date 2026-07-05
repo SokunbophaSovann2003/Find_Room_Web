@@ -41,6 +41,7 @@ const DICT: Dict = {
   "findRoom.login.title": { km: "សូមចូលគណនីដើម្បីស្នើសុំ", en: "Sign in to make a request" },
   "findRoom.login.body": { km: "យើងត្រូវការគណនីរបស់អ្នក ដើម្បីទាក់ទងទៅអ្នកវិញជាមួយបន្ទប់ដែលសាកសម។", en: "We need your account so we can contact you back with matching rooms." },
   "findRoom.login.cta": { km: "ចូលគណនី", en: "Log in" },
+  "findRoom.contact.title": { km: "ព័ត៌មានទំនាក់ទំនង", en: "Contact" },
   "findRoom.field.name": { km: "ឈ្មោះរបស់អ្នក", en: "Your name" },
   "findRoom.field.phone": { km: "លេខទូរស័ព្ទទំនាក់ទំនង", en: "Contact phone" },
   "findRoom.field.budget": { km: "ថវិកា (ក្នុងមួយខែ)", en: "Budget (per month)" },

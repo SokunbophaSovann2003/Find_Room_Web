@@ -17,8 +17,8 @@ export interface RoomRequest {
   id: string;
   requesterId: string;
   requesterName: string;
-  requesterPhone: string;
-  requesterTelegram: string; // optional, "" if none
+  requesterPhones: string[];    // one or more contact numbers
+  requesterTelegrams: string[]; // optional Telegram handles/numbers
   budgetMin: number | null;
   budgetMax: number | null;
   province: string;

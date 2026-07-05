@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/Icon";
+import ContactListEditor from "@/components/ContactListEditor";
 import PriceRangePicker from "@/components/PriceRangePicker";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import PropertyTypePicker from "@/components/PropertyTypePicker";
@@ -19,8 +20,8 @@ export default function FindRoomPage() {
   const t = useT();
 
   const [name, setName] = useState(session?.username ?? "");
-  const [phone, setPhone] = useState(session?.phoneNumber ?? "");
-  const [telegram, setTelegram] = useState("");
+  const [phones, setPhones] = useState<string[]>([session?.phoneNumber ?? ""]);
+  const [telegrams, setTelegrams] = useState<string[]>([""]);
   const [budgetMin, setBudgetMin] = useState("");
   const [budgetMax, setBudgetMax] = useState("");
   const [location, setLocation] = useState<LocationValue>({});
@@ -72,7 +73,9 @@ export default function FindRoomPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPhoneError("");
-    if (!phone.trim()) {
+    const cleanPhones = phones.map((p) => p.trim()).filter(Boolean).slice(0, 5);
+    const cleanTelegrams = telegrams.map((t) => t.trim()).filter(Boolean).slice(0, 5);
+    if (cleanPhones.length === 0) {
       setPhoneError(t("findRoom.error.phoneRequired"));
       return;
     }
@@ -87,8 +90,8 @@ export default function FindRoomPage() {
       const id = await submitRoomRequest({
         requesterId: session!.uid,
         requesterName: (name.trim() || t("common.anonymousUser")).slice(0, 100),
-        requesterPhone: phone.trim().slice(0, 32),
-        requesterTelegram: telegram.trim().slice(0, 32),
+        requesterPhones: cleanPhones,
+        requesterTelegrams: cleanTelegrams,
         budgetMin: posInt(budgetMin),
         budgetMax: posInt(budgetMax),
         province: location.province ?? "",
@@ -127,34 +130,33 @@ export default function FindRoomPage() {
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Contact */}
-        <div className="grid gap-4 sm:grid-cols-2">
+        {/* Contact — add as many phone numbers / Telegram handles as needed */}
+        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
+          <h2 className="text-base font-semibold text-ink">{t("findRoom.contact.title")}</h2>
           <label className="block">
             <span className="label">{t("findRoom.field.name")}</span>
             <input className="input mt-1" value={name} onChange={(e) => setName(e.target.value)} />
           </label>
-          <label className="block">
-            <span className="label">{t("findRoom.field.phone")}</span>
-            <input
-              className={`input mt-1 ${phoneError ? "border-red-400" : ""}`}
-              type="tel"
-              value={phone}
-              onChange={(e) => { setPhone(e.target.value); setPhoneError(""); }}
+          <div>
+            <ContactListEditor
+              label={t("listRoom.contact.phones.heading")}
+              iconName="phone"
+              placeholder="+855 12 345 678"
+              values={phones}
+              onChange={(next) => { setPhones(next); setPhoneError(""); }}
+              addLabel={t("listRoom.contact.phone.add")}
             />
             {phoneError && <p className="mt-1 text-xs text-red-500">{phoneError}</p>}
-          </label>
-        </div>
-
-        <label className="block">
-          <span className="label">{t("wantRoom.field.telegram")}</span>
-          <input
-            className="input mt-1"
-            type="tel"
-            placeholder={t("wantRoom.field.telegram.placeholder")}
-            value={telegram}
-            onChange={(e) => setTelegram(e.target.value)}
+          </div>
+          <ContactListEditor
+            label={t("listRoom.contact.telegram.heading")}
+            iconName="telegram"
+            placeholder="+855 12 345 678"
+            values={telegrams}
+            onChange={setTelegrams}
+            addLabel={t("listRoom.contact.telegram.add")}
           />
-        </label>
+        </section>
 
         {/* Budget */}
         <div>
