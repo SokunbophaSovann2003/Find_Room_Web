@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import Icon from "./Icon";
 import AuthModal from "./AuthModal";
-import PropertyTypePicker from "./PropertyTypePicker";
 import { useSession } from "@/lib/session";
 import { useKeyboardOpen } from "@/lib/use-keyboard-open";
 import { useIsAdmin } from "@/lib/admin";
@@ -29,10 +28,9 @@ export default function BottomNav() {
   const pathname = usePathname();
   const session = useSession();
   const [authOpen, setAuthOpen] = useState(false);
-  // When an unauthenticated user taps the FAB or Profile, remember where to
+  // When an unauthenticated user taps Activity or Profile, remember where to
   // send them after sign-in so the action they tried isn't lost.
   const [authNext, setAuthNext] = useState<string | null>(null);
-  const [typePickerOpen, setTypePickerOpen] = useState(false);
   const keyboardOpen = useKeyboardOpen();
   const { admin: isAdminUser } = useIsAdmin(session);
   const t = useT();
@@ -44,16 +42,8 @@ export default function BottomNav() {
   if (isAdminUser && !!session?.adminSession) return null;
 
   const onHome = pathname === "/" || pathname?.startsWith("/explore");
+  const onActivity = pathname?.startsWith("/activity") ?? false;
   const onProfile = pathname === "/profile";
-
-  function handleListRoom() {
-    if (session) {
-      setTypePickerOpen(true);
-    } else {
-      setAuthNext(LIST_ROOM_PATH);
-      setAuthOpen(true);
-    }
-  }
 
   function handleProfile() {
     if (session) {
@@ -90,16 +80,17 @@ export default function BottomNav() {
             <span>{t("bottomNav.home")}</span>
           </Link>
 
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={handleListRoom}
-              aria-label={t("bottomNav.listRoom.aria")}
-              className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-white shadow-cardHover ring-4 ring-white transition hover:bg-brand-dark active:scale-95"
-            >
-              <Icon name="plus" className="h-6 w-6" />
-            </button>
-          </div>
+          <Link
+            href="/activity"
+            aria-current={onActivity ? "page" : undefined}
+            aria-label={t("bottomNav.activity.aria")}
+            className={`flex flex-col items-center gap-0.5 text-[11px] font-semibold transition ${
+              onActivity ? "text-brand" : "text-ink-muted hover:text-ink"
+            }`}
+          >
+            <Icon name="list" className="h-5 w-5" />
+            <span>{t("bottomNav.activity")}</span>
+          </Link>
 
           <button
             type="button"
@@ -126,24 +117,7 @@ export default function BottomNav() {
           setAuthOpen(false);
           const next = authNext;
           setAuthNext(null);
-          // After sign-in via "List room", open the type picker (same as
-          // the signed-in path) rather than navigating without a type.
-          if (next === LIST_ROOM_PATH) {
-            setTypePickerOpen(true);
-          } else if (next) {
-            router.push(next);
-          } else {
-            router.push("/profile");
-          }
-        }}
-      />
-
-      <PropertyTypePicker
-        open={typePickerOpen}
-        onClose={() => setTypePickerOpen(false)}
-        onPick={(type) => {
-          setTypePickerOpen(false);
-          router.push(`${LIST_ROOM_PATH}?type=${type}`);
+          router.push(next ?? "/profile");
         }}
       />
     </>

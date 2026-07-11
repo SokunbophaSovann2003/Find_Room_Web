@@ -132,16 +132,18 @@ export default function Navbar() {
               </button>
             )}
 
-            {/* Desktop-only: on mobile the bottom nav owns this action. Sits
-                last so it reads as the primary call-to-action after the user's
-                identity affordances. */}
+            {/* "List a room" — the mobile entry point for listing now that the
+                bottom nav's center tab is Activity. Full icon + label on every
+                screen; the button just scales down on mobile to stay compact.
+                Sits last so it reads as the primary call-to-action after the
+                user's identity affordances. */}
             {onAdmin || pathname === LIST_ROOM_PATH ? null : (
               <button
                 type="button"
                 onClick={handleListRoom}
-                className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full border border-brand bg-white px-4 text-sm font-semibold text-brand transition hover:bg-brand/5 sm:inline-flex"
+                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-brand bg-white px-2.5 text-xs font-semibold text-brand transition hover:bg-brand/5 sm:h-10 sm:gap-1.5 sm:px-4 sm:text-sm"
               >
-                <Icon name="plus" className="h-4 w-4" />
+                <Icon name="plus" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 {t("nav.listRoom")}
               </button>
             )}

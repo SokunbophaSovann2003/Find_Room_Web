@@ -19,6 +19,11 @@ export default function FindRoomPage() {
   const session = useSession();
   const t = useT();
 
+  // How-it-works + consent gate. The user must tick the checkbox and continue
+  // once per visit before the form is shown — an explicit consent record in
+  // case of a later dispute.
+  const [agreed, setAgreed] = useState(false);
+  const [confirm, setConfirm] = useState(false);
   const [phones, setPhones] = useState<string[]>([session?.phoneNumber ?? ""]);
   const [telegrams, setTelegrams] = useState<string[]>([""]);
   const [budgetMin, setBudgetMin] = useState("");
@@ -121,6 +126,89 @@ export default function FindRoomPage() {
     }
   }
 
+  if (!agreed) {
+    const steps = [t("findRoom.terms.how.step1"), t("findRoom.terms.how.step2"), t("findRoom.terms.how.step3")];
+    const goods: { icon: string; text: string }[] = [
+      { icon: "check", text: t("findRoom.terms.good.free") },
+      { icon: "message", text: t("findRoom.terms.good.contact") },
+      { icon: "home", text: t("findRoom.terms.good.view") },
+      { icon: "shield", text: t("findRoom.terms.good.money") },
+      { icon: "bell", text: t("findRoom.terms.disclaimer") },
+    ];
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+        <header className="mb-6">
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t("findRoom.terms.title")}</h1>
+          <p className="mt-2 text-sm text-ink-muted">{t("findRoom.terms.subtitle")}</p>
+        </header>
+
+        <div className="space-y-4">
+          {/* How it works */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t("findRoom.terms.how.title")}</h2>
+            <ol className="mt-3 space-y-3">
+              {steps.map((step, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/10 text-xs font-bold text-brand">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm text-ink">{step}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          {/* Public-request warning — the one visually dominant item */}
+          <section className="flex gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4">
+            <Icon name="eye" className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <h2 className="text-sm font-bold text-amber-900">{t("findRoom.terms.notice.title")}</h2>
+              <p className="mt-0.5 text-[13px] leading-relaxed text-amber-800">{t("findRoom.terms.notice.body")}</p>
+            </div>
+          </section>
+
+          {/* Good to know — scannable one-liners */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t("findRoom.terms.good.title")}</h2>
+            <ul className="mt-3 space-y-3.5">
+              {goods.map((g, i) => (
+                <li key={i} className="flex items-start gap-3 text-sm leading-relaxed text-ink">
+                  <Icon name={g.icon as never} className="mt-0.5 h-4 w-4 shrink-0 text-ink-soft" />
+                  <span>{g.text}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* Explicit consent checkbox — unlocks the continue button */}
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <input
+              type="checkbox"
+              checked={confirm}
+              onChange={(e) => setConfirm(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-brand"
+            />
+            <span className="text-sm text-ink">{t("findRoom.terms.confirm")}</span>
+          </label>
+
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+            <button type="button" className="btn-ghost justify-center" onClick={() => router.push("/explore")}>
+              {t("findRoom.terms.back")}
+            </button>
+            <button
+              type="button"
+              className="btn-primary justify-center"
+              disabled={!confirm}
+              onClick={() => setAgreed(true)}
+            >
+              {t("findRoom.terms.agree")}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
       <header className="mb-6">
@@ -142,6 +230,7 @@ export default function FindRoomPage() {
               values={phones}
               onChange={(next) => { setPhones(next); setPhoneError(""); }}
               addLabel={t("listRoom.contact.phone.add")}
+              required
             />
             {phoneError && <p className="mt-1 text-xs text-red-500">{phoneError}</p>}
           </div>

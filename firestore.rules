@@ -124,11 +124,14 @@ service cloud.firestore {
 
     // ─── "Help me find a room" requests ───────────────────────────────────
     // A signed-in renter may create a request for themselves (requesterId must
-    // be their own uid). Only admins may read, update, or delete them.
+    // be their own uid). Renters may read and cancel (delete) their OWN requests
+    // — this powers the Activity view. Status changes (update) stay admin-only.
     match /room_requests/{requestId} {
       allow create: if isSignedIn()
         && request.auth.uid == request.resource.data.requesterId;
-      allow read, update, delete: if isAdmin();
+      allow read, delete: if isAdmin()
+        || (isSignedIn() && request.auth.uid == resource.data.requesterId);
+      allow update: if isAdmin();
     }
 
     // ─── "I want this type of room" demand posts ──────────────────────────

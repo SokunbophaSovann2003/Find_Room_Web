@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy
+  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, where
 } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "./firebase";
 
@@ -76,6 +76,31 @@ export async function deleteRoomRequest(id: string): Promise<void> {
     return;
   }
   await deleteDoc(doc(db, "room_requests", id));
+}
+
+// A signed-in renter's own requests, for their Activity view. Filtered by
+// requesterId so Firestore rules permit the read (owner-scoped). Sorted
+// client-side to avoid needing a composite index for where + orderBy.
+export function useMyRoomRequests(uid: string | undefined): RoomRequest[] {
+  const [list, setList] = useState<RoomRequest[]>([]);
+  useEffect(() => {
+    if (!uid) { setList([]); return; }
+    if (isFirebaseConfigured && db) {
+      const q = query(collection(db, "room_requests"), where("requesterId", "==", uid));
+      return onSnapshot(q, (snap) => {
+        const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() } as RoomRequest));
+        rows.sort((a, b) => b.createdAt - a.createdAt);
+        setList(rows);
+      }, () => {});
+    }
+    const sync = () =>
+      setList(getLocal().filter((r) => r.requesterId === uid).sort((a, b) => b.createdAt - a.createdAt));
+    sync();
+    window.addEventListener(EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => { window.removeEventListener(EVENT, sync); window.removeEventListener("storage", sync); };
+  }, [uid]);
+  return list;
 }
 
 // Admin-only list (the page is gated by AdminShell, so the reader is an admin).

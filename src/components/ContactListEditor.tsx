@@ -12,7 +12,8 @@ export default function ContactListEditor({
   values,
   onChange,
   addLabel,
-  emptyHint
+  emptyHint,
+  required
 }: {
   label: string;
   iconName: React.ComponentProps<typeof Icon>["name"];
@@ -21,6 +22,7 @@ export default function ContactListEditor({
   onChange: (next: string[]) => void;
   addLabel: string;
   emptyHint?: string;
+  required?: boolean;
 }) {
   const t = useT();
   function update(i: number, val: string) {
@@ -38,6 +40,7 @@ export default function ContactListEditor({
       <span className="label flex items-center gap-1.5">
         <Icon name={iconName} className="h-4 w-4 text-brand" />
         {label}
+        {required ? <span className="text-red-500" aria-hidden>*</span> : null}
       </span>
       <ul className="space-y-2">
         {values.map((v, i) => (
