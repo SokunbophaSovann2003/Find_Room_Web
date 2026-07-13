@@ -57,3 +57,52 @@ body {
     @apply border-brand bg-brand text-white hover:border-brand-dark hover:text-white;
   }
 }
+
+/* "Before you start" onboarding — hero animations. Kept in one place so the
+   3-screen splash stays lively without pulling in an animation library. */
+.onb-rise { animation: onb-rise 0.5s both; }
+.onb-bob { animation: onb-bob 3s ease-in-out infinite; }
+.onb-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: onb-pulse 2.4s ease-out infinite;
+}
+.onb-draw {
+  stroke-dasharray: 64;
+  stroke-dashoffset: 64;
+  animation: onb-draw 0.9s ease 0.3s forwards;
+}
+@keyframes onb-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes onb-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes onb-pulse { 0% { opacity: 0.5; transform: scale(0.6); } 80%, 100% { opacity: 0; transform: scale(1.7); } }
+@keyframes onb-draw { to { stroke-dashoffset: 0; } }
+
+/* Respect reduced-motion: show the finished state, skip the motion. */
+@media (prefers-reduced-motion: reduce) {
+  .onb-rise, .onb-bob, .onb-pulse, .onb-draw { animation: none !important; }
+  .onb-draw { stroke-dashoffset: 0; }
+  .onb-pulse { opacity: 0; }
+}
+
+/* "Before you start" layout — one column stacked on phones, a two-column
+   split (illustration panel + content) from lg up. Grid areas let the same
+   markup rearrange without duplicating it. */
+.gate-grid {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-areas: "progress" "hero" "body" "actions";
+}
+.gate-progress { grid-area: progress; }
+.gate-hero { grid-area: hero; }
+.gate-body { grid-area: body; }
+.gate-actions { grid-area: actions; }
+@media (min-width: 1024px) {
+  .gate-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "hero progress"
+      "hero body"
+      "hero actions";
+  }
+}
