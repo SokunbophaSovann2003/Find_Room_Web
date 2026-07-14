@@ -98,10 +98,13 @@ export default function BeforeYouStart({
     else setStep((s) => s - 1);
   }
 
+  // Screen order: How it works → Terms & safety → Public warning (last, so the
+  // "everyone can see this" reminder is the final beat before the consent
+  // checkbox + Agree). The checkbox lives on the last screen.
   const heroByStep = [
     { bg: "bg-emerald-50", node: <HeroSearch /> },
-    { bg: "bg-amber-50", node: <HeroEye /> },
     { bg: "bg-teal-50", node: <HeroShield /> },
+    { bg: "bg-amber-50", node: <HeroEye /> },
   ];
   const hero = heroByStep[step];
 
@@ -127,30 +130,30 @@ export default function BeforeYouStart({
     if (step === 1) {
       return (
         <>
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink lg:text-3xl">{t("findRoom.terms.notice.title")}</h1>
-          <p className="mt-1 text-sm text-ink-muted">{t("findRoom.terms.notice.sub")}</p>
-          <div className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-4">
-            <div className="flex items-center gap-2">
-              <Icon name="eye" className="h-5 w-5 shrink-0 text-amber-700" />
-              <span className="text-sm font-bold text-amber-900">{t("findRoom.terms.notice.eyebrow")}</span>
-            </div>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-amber-800">{t("findRoom.terms.notice.body")}</p>
-          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-ink lg:text-3xl">{t("findRoom.terms.good.title")}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{t("findRoom.terms.good.sub")}</p>
+          <ul className="mt-4 space-y-3">
+            {safety.map((s, i) => (
+              <li key={i} className="flex items-start gap-3 text-[13px] leading-relaxed text-ink">
+                <Icon name={s.icon} className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                <span>{s.text}</span>
+              </li>
+            ))}
+          </ul>
         </>
       );
     }
     return (
       <>
-        <h1 className="text-2xl font-extrabold tracking-tight text-ink lg:text-3xl">{t("findRoom.terms.good.title")}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t("findRoom.terms.good.sub")}</p>
-        <ul className="mt-4 space-y-3">
-          {safety.map((s, i) => (
-            <li key={i} className="flex items-start gap-3 text-[13px] leading-relaxed text-ink">
-              <Icon name={s.icon} className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-              <span>{s.text}</span>
-            </li>
-          ))}
-        </ul>
+        <h1 className="text-2xl font-extrabold tracking-tight text-ink lg:text-3xl">{t("findRoom.terms.notice.title")}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t("findRoom.terms.notice.sub")}</p>
+        <div className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-4">
+          <div className="flex items-center gap-2">
+            <Icon name="eye" className="h-5 w-5 shrink-0 text-amber-700" />
+            <span className="text-sm font-bold text-amber-900">{t("findRoom.terms.notice.eyebrow")}</span>
+          </div>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-amber-800">{t("findRoom.terms.notice.body")}</p>
+        </div>
         <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <input
             type="checkbox"

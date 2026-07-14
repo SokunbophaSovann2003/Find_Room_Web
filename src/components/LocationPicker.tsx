@@ -51,6 +51,10 @@ export default function LocationPicker({
   const [view, setView] = useState<View>("province");
   const [draft, setDraft] = useState<{ province?: string; district?: string }>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // In dropdown mode the panel opens downward from the anchor field. Cap its
+  // height to the space remaining below the field so it never runs off the
+  // bottom of the screen — responsive to the viewport height.
+  const [dropdownMaxH, setDropdownMaxH] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -86,6 +90,20 @@ export default function LocationPicker({
       document.body.style.overflow = prev;
     };
   }, [open, mode]);
+
+  useEffect(() => {
+    if (!open || mode !== "dropdown") return;
+    function measure() {
+      const el = dropdownRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top;
+      // Leave a 16px gap to the viewport bottom.
+      setDropdownMaxH(Math.max(200, window.innerHeight - top - 16));
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [open, mode, view]);
 
   useEffect(() => {
     if (!open || mode !== "dropdown") return;
@@ -230,6 +248,7 @@ export default function LocationPicker({
         ref={dropdownRef}
         role="dialog"
         aria-label={t("locationPicker.aria")}
+        style={{ maxHeight: dropdownMaxH ?? undefined }}
         className="absolute left-0 top-full z-[1100] mt-2 flex max-h-96 w-full min-w-[280px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-cardHover"
       >
         {header}

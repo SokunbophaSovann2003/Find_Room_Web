@@ -7,6 +7,11 @@ import RoomCard from "@/components/RoomCard";
 import Icon, { propertyIcon } from "@/components/Icon";
 import ListingActionMenu from "@/components/ListingActionMenu";
 import LoadMoreSentinel from "@/components/admin/LoadMoreSentinel";
+import StatCard from "@/components/StatCard";
+import FilterSelect from "@/components/FilterSelect";
+import DateRangePicker from "@/components/DateRangePicker";
+import PriceRangePicker from "@/components/PriceRangePicker";
+import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import { signOut, updateLoginPhone } from "@/lib/auth";
 import { useSession } from "@/lib/session";
 import { seedSampleListings, updateRoom, useRooms } from "@/lib/rooms";
@@ -17,7 +22,7 @@ import {
   saveOverrides,
   type ProfileOverrides
 } from "@/lib/profile-overrides";
-import { getAdminSettings, updateAdminUser, useAdminSettings } from "@/lib/admin";
+import { ALL_PROPERTY_TYPES, getAdminSettings, updateAdminUser, useAdminSettings } from "@/lib/admin";
 import { isAutoOccupied, daysSinceActivity } from "@/lib/auto-occupy";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
@@ -26,6 +31,9 @@ import type { PropertyType, Room } from "@/lib/types";
 import PropertyTypePicker from "@/components/PropertyTypePicker";
 
 const LISTINGS_PAGE_SIZE = 20;
+
+type StatusFilter = "all" | "pending" | "available" | "occupied";
+type TypeFilter = "all" | PropertyType;
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -40,6 +48,17 @@ export default function ProfilePage() {
   const [pickTypeOpen, setPickTypeOpen] = useState(false);
   const [listingsView, setListingsView] = useState<"grid" | "list">("grid");
   const [listingsVisible, setListingsVisible] = useState(LISTINGS_PAGE_SIZE);
+  // Listings dashboard filters (mirrors the admin rooms page).
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [locationFilter, setLocationFilter] = useState<LocationValue>({});
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -68,13 +87,55 @@ export default function ProfilePage() {
     [allLocalRooms, session]
   );
 
-  // Reset the infinite-scroll window when the owner changes; reveal more on
-  // scroll. All three listing views (mobile list, desktop grid, desktop table)
-  // share this window since only one is visible per breakpoint.
+  const stats = useMemo(() => {
+    const pending = listings.filter((r) => r.status === "pending").length;
+    const published = listings.filter((r) => (r.status ?? "published") === "published");
+    const occupied = published.filter((r) => r.isOccupied || isAutoOccupied(r, autoOccupyDays)).length;
+    const available = published.length - occupied;
+    // Exclude rejected listings from the total so available + occupied + pending = total.
+    return { total: pending + published.length, available, occupied, pending };
+  }, [listings, autoOccupyDays]);
+
+  const locationLabel =
+    locationFilter.area ?? locationFilter.district ?? locationFilter.province ?? "";
+
+  const filteredListings = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const fromMs = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toMs = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
+    const minP = priceMin ? Number(priceMin) : null;
+    const maxP = priceMax ? Number(priceMax) : null;
+    return listings.filter((r) => {
+      const effectivelyOccupied = r.isOccupied || isAutoOccupied(r, autoOccupyDays);
+      const roomStatus = r.status ?? "published";
+      if (statusFilter === "pending" && roomStatus !== "pending") return false;
+      if (statusFilter === "available" && (roomStatus !== "published" || effectivelyOccupied)) return false;
+      if (statusFilter === "occupied" && (roomStatus !== "published" || !effectivelyOccupied)) return false;
+      if (typeFilter !== "all" && r.type !== typeFilter) return false;
+      if (locationFilter.province && r.city !== locationFilter.province) return false;
+      if (locationFilter.district && r.district !== locationFilter.district) return false;
+      if (locationFilter.area && r.area !== locationFilter.area) return false;
+      if (fromMs !== null && r.createdAt < fromMs) return false;
+      if (toMs !== null && r.createdAt > toMs) return false;
+      if (minP !== null && !Number.isNaN(minP) && r.price < minP) return false;
+      if (maxP !== null && !Number.isNaN(maxP) && r.price > maxP) return false;
+      if (!q) return true;
+      return (
+        r.title.toLowerCase().includes(q) ||
+        r.address.toLowerCase().includes(q) ||
+        (r.district?.toLowerCase().includes(q) ?? false)
+      );
+    });
+  }, [listings, query, statusFilter, typeFilter, locationFilter, dateFrom, dateTo, priceMin, priceMax, autoOccupyDays]);
+
+  // Reset the infinite-scroll window when the owner changes or the filters
+  // narrow the set; reveal more on scroll. All three listing views (mobile
+  // list, desktop grid, desktop table) share this window since only one is
+  // visible per breakpoint.
   useEffect(() => {
     setListingsVisible(LISTINGS_PAGE_SIZE);
-  }, [session?.uid]);
-  const shownListings = listings.slice(0, listingsVisible);
+  }, [session?.uid, query, statusFilter, typeFilter, locationFilter, dateFrom, dateTo, priceMin, priceMax]);
+  const shownListings = filteredListings.slice(0, listingsVisible);
 
   if (!session) return null;
 
@@ -145,7 +206,7 @@ export default function ProfilePage() {
         type="button"
         onClick={handleBack}
         style={{ touchAction: "manipulation" }}
-        className="mb-3 -ml-2 inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-sm font-medium text-ink-muted transition hover:bg-slate-100 hover:text-brand active:scale-[0.98]"
+        className="mb-3 -ml-2 hidden h-9 items-center gap-1.5 rounded-full px-2 text-sm font-medium text-ink-muted transition hover:bg-slate-100 hover:text-brand active:scale-[0.98] sm:inline-flex"
         aria-label={t("common.back")}
       >
         <Icon name="arrow-right" className="h-4 w-4 rotate-180" />
@@ -282,6 +343,162 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {listings.length > 0 ? (
+          <>
+            <div className="mb-4 grid grid-cols-3 gap-2 sm:gap-3">
+              <StatCard
+                label={t("admin.rooms.stat.pending")}
+                value={stats.pending}
+                icon="bell"
+                highlight={stats.pending > 0}
+              />
+              <StatCard
+                label={t("admin.rooms.stat.available")}
+                value={stats.available}
+                icon="home"
+              />
+              <StatCard
+                label={t("admin.rooms.stat.occupied")}
+                value={stats.occupied}
+                icon="check"
+              />
+            </div>
+
+            <div className="mb-4 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_140px_140px_160px_auto_auto] lg:items-center">
+              {/* Search + filters-toggle row. Toggle hides on lg+ where filters stay inline. */}
+              <div className="flex items-center gap-2 lg:contents">
+                <div className="relative flex-1 lg:col-span-1">
+                  <Icon
+                    name="search"
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft"
+                  />
+                  <input
+                    className="input pl-9"
+                    placeholder={t("profile.listings.search.placeholder")}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen((v) => !v)}
+                  aria-expanded={filtersOpen}
+                  aria-controls="profile-filter-controls"
+                  aria-label={filtersOpen ? t("admin.filter.hideFilters") : t("admin.filter.showFilters")}
+                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-ink-muted transition hover:bg-slate-50 hover:text-ink lg:hidden"
+                >
+                  <Icon
+                    name="chevron-down"
+                    className={`h-4 w-4 transition ${filtersOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+              </div>
+
+              {/* Mobile-only backdrop for the filter popup. */}
+              {filtersOpen ? (
+                <div
+                  className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+                  onClick={() => setFiltersOpen(false)}
+                  aria-hidden
+                />
+              ) : null}
+
+              <div
+                id="profile-filter-controls"
+                className={`${
+                  filtersOpen
+                    ? "fixed left-1/2 top-1/2 z-50 flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col gap-3 overflow-visible rounded-3xl bg-white p-4 shadow-2xl"
+                    : "hidden"
+                } lg:static lg:z-auto lg:max-h-none lg:w-auto lg:max-w-none lg:translate-x-0 lg:translate-y-0 lg:overflow-visible lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none lg:contents`}
+              >
+                {/* Popup header — mobile only. */}
+                <div className="mb-1 flex items-center justify-between lg:hidden">
+                  <h3 className="text-base font-bold">{t("admin.filter.title")}</h3>
+                  <button
+                    type="button"
+                    onClick={() => setFiltersOpen(false)}
+                    aria-label={t("admin.filter.hideFilters")}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-100 hover:text-ink"
+                  >
+                    <Icon name="x" className="h-5 w-5" />
+                  </button>
+                </div>
+                <FilterSelect
+                  ariaLabel={t("admin.filter.statusLabel")}
+                  value={statusFilter}
+                  onChange={(v) => setStatusFilter(v as StatusFilter)}
+                  options={[
+                    { value: "all", label: t("admin.filter.anyStatus") },
+                    { value: "pending", label: t("listing.status.pending") + (stats.pending > 0 ? ` (${stats.pending})` : "") },
+                    { value: "available", label: t("admin.status.available") },
+                    { value: "occupied", label: t("admin.status.occupied") }
+                  ]}
+                />
+                <FilterSelect
+                  ariaLabel={t("admin.filter.typeLabel")}
+                  value={typeFilter}
+                  onChange={(v) => setTypeFilter(v as TypeFilter)}
+                  options={[
+                    { value: "all", label: t("admin.filter.anyType") },
+                    ...ALL_PROPERTY_TYPES.map((pt) => ({
+                      value: pt,
+                      label: t(`admin.propertyType.${pt}`)
+                    }))
+                  ]}
+                />
+                <div className="relative">
+                  <button
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-expanded={locationOpen}
+                    onClick={() => setLocationOpen((v) => !v)}
+                    className="input flex w-full items-center justify-between gap-2 text-left"
+                  >
+                    <span className={`truncate ${locationLabel ? "text-ink" : "text-ink-soft"}`}>
+                      {locationLabel || t("admin.filter.anyLocation")}
+                    </span>
+                    <Icon name="map-pin" className="h-4 w-4 shrink-0 text-ink-soft" />
+                  </button>
+                  <LocationPicker
+                    open={locationOpen}
+                    onClose={() => setLocationOpen(false)}
+                    mode="dropdown"
+                    intent="browse"
+                    value={locationFilter}
+                    onChange={setLocationFilter}
+                  />
+                </div>
+                <DateRangePicker
+                  from={dateFrom}
+                  to={dateTo}
+                  placeholder={t("admin.filter.anyCreatedDate")}
+                  onChange={(f, to) => {
+                    setDateFrom(f);
+                    setDateTo(to);
+                  }}
+                />
+                <PriceRangePicker
+                  min={priceMin}
+                  max={priceMax}
+                  placeholder={t("admin.filter.anyPrice")}
+                  onChange={(mn, mx) => {
+                    setPriceMin(mn);
+                    setPriceMax(mx);
+                  }}
+                />
+                {/* Apply/close button — mobile only. */}
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                  className="btn-primary mt-1 w-full lg:hidden"
+                >
+                  {t("admin.filter.done")}
+                </button>
+              </div>
+            </div>
+          </>
+        ) : null}
+
         {roomsLoading && listings.length === 0 ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }, (_, i) => (
@@ -311,6 +528,15 @@ export default function ProfilePage() {
             >
               {t("profile.empty.cta")}
             </button>
+          </div>
+        ) : filteredListings.length === 0 ? (
+          <div className="card flex flex-col items-center gap-3 px-6 py-14 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-ink-muted">
+              <Icon name="search" className="h-7 w-7" />
+            </span>
+            <p className="max-w-sm text-sm text-ink-muted">
+              {t("profile.listings.noMatches")}
+            </p>
           </div>
         ) : (
           <>
@@ -566,7 +792,7 @@ export default function ProfilePage() {
               </div>
             )}
             <LoadMoreSentinel
-              hasMore={listingsVisible < listings.length}
+              hasMore={listingsVisible < filteredListings.length}
               onLoadMore={() => setListingsVisible((c) => c + LISTINGS_PAGE_SIZE)}
             />
           </>

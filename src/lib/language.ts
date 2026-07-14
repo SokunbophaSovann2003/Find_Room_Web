@@ -25,7 +25,7 @@ type Dict = Record<string, Record<Language, string>>;
 
 const DICT: Dict = {
   // Explore hero
-  "explore.hero.title.before": { km: "ស្វែងរកកន្លែងរស់នៅសម្រាប់ជួល", en: "Find your perfect place to rent for living" },
+  "explore.hero.title.before": { km: "ស្វែងរកកន្លែងសម្រាប់ជួលដ៏សាក់សម", en: "Find your perfect place to rent" },
   "explore.hero.title.highlight": { km: "នៅទីនេះ", en: "Here" },
   "explore.hero.subtitle": {
     km: "ស្វែងរកកន្លែងសម្រាប់ការរស់នៅទៅអ្នកតាមតំបន់ ប្រភេទ និងតម្លៃ នៃតម្រូវការរបស់អ្នក។ ទាក់ទងភ្លាមៗទៅម្ចាស់បន្ទប់។",
@@ -33,7 +33,7 @@ const DICT: Dict = {
   },
   "explore.findRoom.cta": { km: "ស្វែងរកឱ្យខ្ញុំ", en: "Find for Me" },
   "explore.wantRoom.cta": { km: "ប្រកាសស្វែងរក", en: "Post a Request" },
-  "explore.request.cta": { km: "ប្រកាសសំណើសុំជួលបន្ទប់របស់ខ្ញុំ", en: "Post my renting request" },
+  "explore.request.cta": { km: "ប្រកាសស្វែងរកបន្ទប់ជួល", en: "Post my renting request" },
 
   // "Help me find a room" — renter request form
   "findRoom.title.before": { km: "ជួយខ្ញុំ", en: "Help me find" },
@@ -342,6 +342,8 @@ const DICT: Dict = {
   "profile.list.col.details": { km: "ព័ត៌មាន", en: "Details" },
   "profile.list.col.price": { km: "តម្លៃ", en: "Price" },
   "profile.available": { km: "បន្ទប់ទំនេរ", en: "Available" },
+  "profile.listings.search.placeholder": { km: "ស្វែងរកចំណងជើង ឬអាសយដ្ឋាន", en: "Search title or address" },
+  "profile.listings.noMatches": { km: "គ្មានបន្ទប់ត្រូវនឹងតម្រងទាំងនេះ។", en: "No listings match these filters." },
 
   // Edit profile modal
   "profile.edit.title": { km: "កែប្រែប្រវត្តិរូប", en: "Edit profile" },
@@ -357,7 +359,7 @@ const DICT: Dict = {
   "profile.edit.error.saveFailed": { km: "មិនអាចរក្សាការផ្លាស់ប្តូរ។", en: "Could not save changes." },
 
   // Property type picker (profile)
-  "pick.type.title": { km: "តើអ្នកចង់ផ្សាយអ្វី?", en: "What are you listing?" },
+  "pick.type.title": { km: "តើអ្នកចង់ដាក់អ្វីសម្រាប់ជួល?", en: "What are you listing?" },
   "pick.type.aria": { km: "ជ្រើសរើសប្រភេទកន្លែង", en: "Pick a property type" },
   "pick.type.room.hint": { km: "បន្ទប់មួយក្នុងផ្ទះ", en: "A single room within a property" },
   "pick.type.apartment.hint": { km: "អាផាតមិនឯករាជ្យក្នុងអគារ", en: "Self-contained unit in a building" },
@@ -619,6 +621,8 @@ const DICT: Dict = {
   "admin.filter.anyCreatedDate": { km: "គ្រប់កាលបរិច្ឆេទបង្កើត", en: "Any created date" },
   "admin.filter.showFilters": { km: "បង្ហាញតម្រង", en: "Show filters" },
   "admin.filter.hideFilters": { km: "លាក់តម្រង", en: "Hide filters" },
+  "admin.filter.title": { km: "តម្រង", en: "Filters" },
+  "admin.filter.done": { km: "រួចរាល់", en: "Done" },
   "admin.filter.statusLabel": { km: "ស្ថានភាព", en: "Status" },
   "admin.filter.typeLabel": { km: "ប្រភេទកន្លែង", en: "Property type" },
   "admin.filter.roleLabel": { km: "តួនាទី", en: "Role" },

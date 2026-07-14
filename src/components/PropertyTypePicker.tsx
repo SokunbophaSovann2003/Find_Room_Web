@@ -6,13 +6,13 @@ import { getAdminSettings } from "@/lib/admin";
 import { useT } from "@/lib/language";
 import type { PropertyType } from "@/lib/types";
 
-const PROPERTY_TYPE_CHOICES: { value: PropertyType; labelKey: string; hintKey: string }[] = [
-  { value: "room",      labelKey: "type.room",      hintKey: "pick.type.room.hint" },
-  { value: "apartment", labelKey: "type.apartment", hintKey: "pick.type.apartment.hint" },
-  { value: "condo",     labelKey: "type.condo",     hintKey: "pick.type.condo.hint" },
-  { value: "flat",      labelKey: "type.flat",      hintKey: "pick.type.flat.hint" },
-  { value: "house",     labelKey: "type.house",     hintKey: "pick.type.house.hint" },
-  { value: "villa",     labelKey: "type.villa",     hintKey: "pick.type.villa.hint" },
+const PROPERTY_TYPE_CHOICES: { value: PropertyType; labelKey: string }[] = [
+  { value: "room",      labelKey: "type.room" },
+  { value: "apartment", labelKey: "type.apartment" },
+  { value: "condo",     labelKey: "type.condo" },
+  { value: "flat",      labelKey: "type.flat" },
+  { value: "house",     labelKey: "type.house" },
+  { value: "villa",     labelKey: "type.villa" },
 ];
 
 export default function PropertyTypePicker({
@@ -101,7 +101,7 @@ export default function PropertyTypePicker({
                   type="button"
                   disabled={pending !== null}
                   onClick={() => { setPending(p.value); onPick(p.value); }}
-                  className="relative flex h-full w-full flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-brand hover:bg-brand/5 disabled:pointer-events-none"
+                  className="relative flex h-full w-full flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-center transition hover:border-brand hover:bg-brand/5 disabled:pointer-events-none"
                 >
                   {pending === p.value ? (
                     <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/80">
@@ -112,9 +112,6 @@ export default function PropertyTypePicker({
                     <Icon name={propertyIcon(p.value)} className="h-5 w-5" />
                   </span>
                   <span className="text-sm font-bold text-ink">{t(p.labelKey)}</span>
-                  <span className="text-xs leading-snug text-ink-muted">
-                    {t(p.hintKey)}
-                  </span>
                 </button>
               </li>
             ))}

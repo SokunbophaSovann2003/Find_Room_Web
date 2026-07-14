@@ -28,7 +28,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const session = useSession();
   const [authOpen, setAuthOpen] = useState(false);
-  // When an unauthenticated user taps Activity or Profile, remember where to
+  // When an unauthenticated user taps Activity or List room, remember where to
   // send them after sign-in so the action they tried isn't lost.
   const [authNext, setAuthNext] = useState<string | null>(null);
   const keyboardOpen = useKeyboardOpen();
@@ -45,7 +45,9 @@ export default function BottomNav() {
   const onActivity = pathname?.startsWith("/activity") ?? false;
   const onProfile = pathname === "/profile";
 
-  function handleProfile() {
+  // The "List room" tab opens the profile screen — the hub where the user sees
+  // their listings summary and starts a new listing via "List a room".
+  function handleListRoom() {
     if (session) {
       router.push("/profile");
     } else {
@@ -94,14 +96,15 @@ export default function BottomNav() {
 
           <button
             type="button"
-            onClick={handleProfile}
+            onClick={handleListRoom}
             aria-current={onProfile ? "page" : undefined}
+            aria-label={t("bottomNav.listRoom.aria")}
             className={`flex flex-col items-center gap-0.5 text-[11px] font-semibold transition ${
               onProfile ? "text-brand" : "text-ink-muted hover:text-ink"
             }`}
           >
-            <Icon name="user" className="h-5 w-5" />
-            <span>{t("bottomNav.profile")}</span>
+            <Icon name="plus" className="h-5 w-5" />
+            <span>{t("nav.listRoom")}</span>
           </button>
         </div>
       </nav>

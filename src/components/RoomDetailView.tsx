@@ -238,9 +238,13 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
 
   // Profile-link target: admins land in the moderation detail page, everyone
   // else (including signed-out renters) lands on the public host profile.
+  // When the viewer is the room's owner, "View profile" should take them back to
+  // their own profile page rather than the public owner page.
   const ownerProfileHref = adminViewActive
     ? `/user/admin/users/${room.owner.id}`
-    : `/users/${room.owner.id}`;
+    : isOwner
+      ? "/profile"
+      : `/users/${room.owner.id}`;
 
   const hostCard = (
     <section>

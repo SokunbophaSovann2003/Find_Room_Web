@@ -66,6 +66,9 @@ export default function Navbar() {
   // would send them to /user/admin, which correctly denies them.
   const { admin: isAdminUser } = useIsAdmin(session);
   const onAdmin = isAdminUser && !!session?.adminSession;
+  // The Explore/home hero hosts its own "List room" button next to the request
+  // CTA, so the navbar's copy is hidden there to avoid showing it twice.
+  const onExplore = pathname === "/" || (pathname?.startsWith("/explore") ?? false);
 
   return (
     <>
@@ -91,7 +94,8 @@ export default function Navbar() {
             <LanguageToggle />
 
             {session ? (
-              // Desktop-only: on mobile the bottom-nav Profile tab handles this.
+              // Profile lives in the top bar on every screen now that the
+              // bottom nav's third tab is List room.
               <Link
                 href={onAdmin ? `/user/admin/users/${session.uid}` : "/profile"}
                 aria-label={t("nav.profile")}
@@ -99,7 +103,7 @@ export default function Navbar() {
                   if (pathname === LIST_ROOM_PATH)
                     sessionStorage.setItem(FROM_LIST_ROOM_KEY, "1");
                 }}
-                className={`${onAdmin ? "block" : "hidden sm:block"} h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 transition hover:ring-2 hover:ring-brand/30`}
+                className="block h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 transition hover:ring-2 hover:ring-brand/30"
               >
                 {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -132,18 +136,17 @@ export default function Navbar() {
               </button>
             )}
 
-            {/* "List a room" — the mobile entry point for listing now that the
-                bottom nav's center tab is Activity. Full icon + label on every
-                screen; the button just scales down on mobile to stay compact.
-                Sits last so it reads as the primary call-to-action after the
-                user's identity affordances. */}
-            {onAdmin || pathname === LIST_ROOM_PATH ? null : (
+            {/* "List a room" — desktop entry point for listing. On mobile this
+                lives in the bottom nav's third tab, so the top-bar button is
+                hidden below the sm breakpoint. Sits last so it reads as the
+                primary call-to-action after the user's identity affordances. */}
+            {onAdmin || onExplore || pathname === LIST_ROOM_PATH ? null : (
               <button
                 type="button"
                 onClick={handleListRoom}
-                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-brand bg-white px-2.5 text-xs font-semibold text-brand transition hover:bg-brand/5 sm:h-10 sm:gap-1.5 sm:px-4 sm:text-sm"
+                className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full border border-brand bg-white px-4 text-sm font-semibold text-brand transition hover:bg-brand/5 sm:inline-flex"
               >
-                <Icon name="plus" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <Icon name="plus" className="h-4 w-4" />
                 {t("nav.listRoom")}
               </button>
             )}
