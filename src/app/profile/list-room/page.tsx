@@ -107,6 +107,8 @@ export default function ListRoomPage() {
   const [description, setDescription] = useState("");
   const [type, setType] = useState<PropertyType>(initialType);
   const [bedrooms, setBedrooms] = useState(1);
+  const [bathrooms, setBathrooms] = useState(1);
+  const [kitchens, setKitchens] = useState(1);
   const [floor, setFloor] = useState(1);
   const [areaSqm, setAreaSqm] = useState<string>("");
   const [location, setLocation] = useState<LocationValue>({});
@@ -178,6 +180,8 @@ export default function ListRoomPage() {
     setDescription(source.description);
     setType(source.type);
     setBedrooms(source.bedrooms);
+    setBathrooms(source.bathrooms ?? 1);
+    setKitchens(source.kitchens ?? 1);
     setFloor(source.floor ?? 1);
     setAreaSqm(source.areaSqm ? String(source.areaSqm) : "");
     setLocation({
@@ -241,6 +245,8 @@ export default function ListRoomPage() {
     setDescription(source.description);
     setType(source.type);
     setBedrooms(source.bedrooms);
+    setBathrooms(source.bathrooms ?? 1);
+    setKitchens(source.kitchens ?? 1);
     setFloor(source.floor ?? 1);
     setAreaSqm(source.areaSqm ? String(source.areaSqm) : "");
     setLocation({
@@ -346,6 +352,7 @@ export default function ListRoomPage() {
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [rentError, setRentError] = useState<string | null>(null);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const errorRef = useRef<HTMLParagraphElement | null>(null);
@@ -436,6 +443,8 @@ export default function ListRoomPage() {
     setTitle("");
     setDescription("");
     setBedrooms(1);
+    setBathrooms(1);
+    setKitchens(1);
     setFloor(1);
     setAreaSqm("");
     setLocation({});
@@ -452,6 +461,7 @@ export default function ListRoomPage() {
     setDescriptionError(null);
     setLocationError(null);
     setRentError(null);
+    setDetailsError(null);
     setPhotoError(null);
     // Also discard the persisted prefs so the cleared state sticks across
     // visits — otherwise the next mount would re-hydrate what we just wiped.
@@ -469,6 +479,7 @@ export default function ListRoomPage() {
     e.preventDefault();
     if (submitting) return;
     setError(null);
+    setDetailsError(null);
 
     if (!session) {
       setError(t("listRoom.error.signInRequired"));
@@ -482,6 +493,14 @@ export default function ListRoomPage() {
     const rentValue = Number(rentFee?.price);
     if (!rentFee || !Number.isFinite(rentValue) || rentValue <= 0) {
       setRentError(t("listRoom.error.rentRequired"));
+      return;
+    }
+
+    // Bedrooms, bathrooms, and floor are required and must be at least 1.
+    // Kitchen and area stay optional.
+    if (bedrooms < 1 || bathrooms < 1 || floor < 1) {
+      setDetailsError(t("listRoom.error.detailsRequired"));
+      setDetailsOpen(true);
       return;
     }
 
@@ -550,6 +569,8 @@ export default function ListRoomPage() {
           lat: pin?.lat,
           lng: pin?.lng,
           bedrooms,
+          bathrooms,
+          kitchens,
           areaSqm: num(areaSqm),
           floor,
           amenities: Array.from(selected),
@@ -596,6 +617,8 @@ export default function ListRoomPage() {
         lat: pin?.lat,
         lng: pin?.lng,
         bedrooms,
+        bathrooms,
+        kitchens,
         areaSqm: num(areaSqm),
         floor,
         amenities: Array.from(selected),
@@ -792,13 +815,29 @@ export default function ListRoomPage() {
               </span>{" "}
               {t("listRoom.details.heading")}
             </h2>
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div
+              className={`overflow-hidden rounded-2xl border bg-white ${
+                detailsError ? "border-red-400" : "border-slate-200"
+              }`}
+            >
               <ul className="flex flex-wrap items-center gap-x-5 gap-y-1.5 px-4 py-3.5 text-sm text-ink-muted">
                 <li className="inline-flex items-center gap-1.5">
                   <Icon name="bed" className="h-4 w-4 text-brand" />
                   {bedrooms === 1
                     ? t("listRoom.details.bed.one")
                     : t("listRoom.details.bed.many", { n: bedrooms })}
+                </li>
+                <li className="inline-flex items-center gap-1.5">
+                  <Icon name="bath" className="h-4 w-4 text-brand" />
+                  {bathrooms === 1
+                    ? t("listRoom.details.bath.one")
+                    : t("listRoom.details.bath.many", { n: bathrooms })}
+                </li>
+                <li className="inline-flex items-center gap-1.5">
+                  <Icon name="kitchen" className="h-4 w-4 text-brand" />
+                  {kitchens === 1
+                    ? t("listRoom.details.kitchen.one")
+                    : t("listRoom.details.kitchen.many", { n: kitchens })}
                 </li>
                 {areaSqm ? (
                   <li className="inline-flex items-center gap-1.5">
@@ -822,6 +861,9 @@ export default function ListRoomPage() {
                 {t("listRoom.details.edit")}
               </button>
             </div>
+            {detailsError ? (
+              <p className="mt-1 text-xs text-red-600">{detailsError}</p>
+            ) : null}
           </section>
 
           {/* About this place */}
@@ -1170,11 +1212,18 @@ export default function ListRoomPage() {
 
       <DetailsSheet
         open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
+        onClose={() => {
+          setDetailsOpen(false);
+          if (bedrooms >= 1 && bathrooms >= 1 && floor >= 1) setDetailsError(null);
+        }}
         type={type}
         setType={setType}
         bedrooms={bedrooms}
         setBedrooms={setBedrooms}
+        bathrooms={bathrooms}
+        setBathrooms={setBathrooms}
+        kitchens={kitchens}
+        setKitchens={setKitchens}
         floor={floor}
         setFloor={setFloor}
         areaSqm={areaSqm}
@@ -1578,6 +1627,10 @@ function DetailsSheet({
   setType,
   bedrooms,
   setBedrooms,
+  bathrooms,
+  setBathrooms,
+  kitchens,
+  setKitchens,
   floor,
   setFloor,
   areaSqm,
@@ -1589,6 +1642,10 @@ function DetailsSheet({
   setType: (t: PropertyType) => void;
   bedrooms: number;
   setBedrooms: (n: number) => void;
+  bathrooms: number;
+  setBathrooms: (n: number) => void;
+  kitchens: number;
+  setKitchens: (n: number) => void;
   floor: number;
   setFloor: (n: number) => void;
   areaSqm: string;
@@ -1651,6 +1708,28 @@ function DetailsSheet({
             />
           </label>
           <label className="flex items-center gap-3 border-t border-slate-100 px-4 py-3 focus-within:bg-slate-50">
+            <Icon name="bath" className="h-4 w-4 shrink-0 text-brand" />
+            <span className="flex-1 text-sm text-ink">{t("listRoom.field.bathrooms")}</span>
+            <input
+              type="number"
+              min={0}
+              value={bathrooms}
+              onChange={(e) => setBathrooms(Math.max(0, Number(e.target.value) || 0))}
+              className="w-20 rounded border border-slate-200 px-2 py-1.5 text-right text-sm font-semibold text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+            />
+          </label>
+          <label className="flex items-center gap-3 border-t border-slate-100 px-4 py-3 focus-within:bg-slate-50">
+            <Icon name="kitchen" className="h-4 w-4 shrink-0 text-brand" />
+            <span className="flex-1 text-sm text-ink">{t("listRoom.field.kitchen")}</span>
+            <input
+              type="number"
+              min={0}
+              value={kitchens}
+              onChange={(e) => setKitchens(Math.max(0, Number(e.target.value) || 0))}
+              className="w-20 rounded border border-slate-200 px-2 py-1.5 text-right text-sm font-semibold text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+            />
+          </label>
+          <label className="flex items-center gap-3 border-t border-slate-100 px-4 py-3 focus-within:bg-slate-50">
             <Icon name="ruler" className="h-4 w-4 shrink-0 text-brand" />
             <span className="flex-1 text-sm text-ink">{t("listRoom.field.area")}</span>
             <input
@@ -1675,13 +1754,27 @@ function DetailsSheet({
           </label>
         </div>
         <div
-          className="border-t border-slate-100 px-4 py-3 sm:px-5"
+          className="flex items-center gap-3 border-t border-slate-100 px-4 py-3 sm:px-5"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
         >
           <button
             type="button"
+            onClick={() => {
+              setBedrooms(0);
+              setBathrooms(0);
+              setKitchens(0);
+              setFloor(0);
+              setAreaSqm("");
+            }}
+            className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-ink-muted transition hover:bg-slate-50"
+          >
+            <Icon name="trash" className="h-4 w-4" />
+            {t("common.clear")}
+          </button>
+          <button
+            type="button"
             onClick={onClose}
-            className="btn-primary h-11 w-full justify-center"
+            className="btn-primary h-11 flex-1 justify-center"
           >
             {t("listRoom.modal.done")}
           </button>

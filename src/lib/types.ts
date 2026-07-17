@@ -44,6 +44,8 @@ export interface Room {
   lng?: number;
   images: string[];
   bedrooms: number;
+  bathrooms?: number;
+  kitchens?: number;
   areaSqm?: number;
   floor?: number;
   amenities: string[];

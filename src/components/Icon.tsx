@@ -6,6 +6,7 @@ export type IconName =
   | "search"
   | "map-pin"
   | "bed"
+  | "bath"
   | "ruler"
   | "wifi"
   | "parking"
@@ -79,6 +80,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M3 13h18V9a3 3 0 0 0-3-3H9a3 3 0 0 0-3 3v4" />
       <path d="M21 20v-7" />
       <path d="M3 17h18" />
+    </>
+  ),
+  bath: (
+    <>
+      <path d="M4 12V6a2 2 0 0 1 2-2 2 2 0 0 1 2 2M4 12h16a1 1 0 0 1 1 1v2a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4v-2a1 1 0 0 1 1-1Z" />
+      <path d="M6 19l-1 2M18 19l1 2" />
+      <circle cx="6" cy="6" r="0.8" />
     </>
   ),
   ruler:<path d="M15.8 2.2 21.8 8.2a1 1 0 0 1 0 1.4l-12 12a1 1 0 0 1-1.4 0l-6-6a1 1 0 0 1 0-1.4l12-12a1 1 0 0 1 1.4 0Zm-1.6 2.4L8 10.8l1.5 1.5M11 7.8l1.5 1.5M14 4.8l1.5 1.5M5 13.8l1.5 1.5M8 10.8l1.5 1.5" />,

@@ -406,6 +406,12 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
             */}
             <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8">
               <StatChip icon="bed" value={room.bedrooms} label={t("room.stat.bed")} />
+              {room.bathrooms != null ? (
+                <StatChip icon="bath" value={room.bathrooms} label={t("room.stat.bath")} />
+              ) : null}
+              {room.kitchens != null ? (
+                <StatChip icon="kitchen" value={room.kitchens} label={t("room.stat.kitchen")} />
+              ) : null}
               {room.areaSqm ? (
                 <StatChip icon="ruler" value={room.areaSqm} label="m²" />
               ) : null}
@@ -842,7 +848,7 @@ function StatChip({
   value,
   label
 }: {
-  icon: "bed" | "ruler" | "elevator";
+  icon: "bed" | "bath" | "kitchen" | "ruler" | "elevator";
   value: number | string;
   label: string;
 }) {
