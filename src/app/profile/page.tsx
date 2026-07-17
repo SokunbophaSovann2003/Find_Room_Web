@@ -25,7 +25,8 @@ import {
 import { ALL_PROPERTY_TYPES, getAdminSettings, updateAdminUser, useAdminSettings } from "@/lib/admin";
 import { isAutoOccupied, daysSinceActivity } from "@/lib/auto-occupy";
 import { toast } from "@/lib/toast";
-import { useT } from "@/lib/language";
+import { useT, useLanguage } from "@/lib/language";
+import { locationDisplayName } from "@/lib/locations";
 import { copyToClipboard } from "@/lib/clipboard";
 import type { PropertyType, Room } from "@/lib/types";
 import PropertyTypePicker from "@/components/PropertyTypePicker";
@@ -39,6 +40,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const session = useSession();
   const t = useT();
+  const { language } = useLanguage();
   const { rooms: allLocalRooms, loading: roomsLoading } = useRooms();
   const { autoOccupyDays } = useAdminSettings();
   const [overrides, setOverrides] = useState<ProfileOverrides>({});
@@ -96,8 +98,9 @@ export default function ProfilePage() {
     return { total: pending + published.length, available, occupied, pending };
   }, [listings, autoOccupyDays]);
 
-  const locationLabel =
+  const locationKey =
     locationFilter.area ?? locationFilter.district ?? locationFilter.province ?? "";
+  const locationLabel = locationKey ? locationDisplayName(locationKey, language) : "";
 
   const filteredListings = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -427,6 +430,7 @@ export default function ProfilePage() {
                   ariaLabel={t("admin.filter.statusLabel")}
                   value={statusFilter}
                   onChange={(v) => setStatusFilter(v as StatusFilter)}
+                  clearValue="all"
                   options={[
                     { value: "all", label: t("admin.filter.anyStatus") },
                     { value: "pending", label: t("listing.status.pending") + (stats.pending > 0 ? ` (${stats.pending})` : "") },
@@ -438,6 +442,7 @@ export default function ProfilePage() {
                   ariaLabel={t("admin.filter.typeLabel")}
                   value={typeFilter}
                   onChange={(v) => setTypeFilter(v as TypeFilter)}
+                  clearValue="all"
                   options={[
                     { value: "all", label: t("admin.filter.anyType") },
                     ...ALL_PROPERTY_TYPES.map((pt) => ({
@@ -457,8 +462,29 @@ export default function ProfilePage() {
                     <span className={`truncate ${locationLabel ? "text-ink" : "text-ink-soft"}`}>
                       {locationLabel || t("admin.filter.anyLocation")}
                     </span>
-                    <Icon name="map-pin" className="h-4 w-4 shrink-0 text-ink-soft" />
+                    {locationLabel ? (
+                      <span className="h-4 w-4 shrink-0" aria-hidden />
+                    ) : (
+                      <Icon
+                        name="chevron-down"
+                        className={`h-4 w-4 shrink-0 text-ink-soft transition ${locationOpen ? "rotate-180" : ""}`}
+                      />
+                    )}
                   </button>
+                  {locationLabel ? (
+                    <button
+                      type="button"
+                      aria-label={t("common.clear")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLocationFilter({});
+                        setLocationOpen(false);
+                      }}
+                      className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-200 hover:text-ink"
+                    >
+                      <Icon name="x" className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
                   <LocationPicker
                     open={locationOpen}
                     onClose={() => setLocationOpen(false)}

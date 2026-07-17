@@ -97,8 +97,11 @@ export default function LocationPicker({
       const el = dropdownRef.current;
       if (!el) return;
       const top = el.getBoundingClientRect().top;
-      // Leave a 16px gap to the viewport bottom.
-      setDropdownMaxH(Math.max(200, window.innerHeight - top - 16));
+      // Reserve room below the panel so its last rows stay reachable. On mobile
+      // the fixed bottom nav (~80px, hidden at sm+) would otherwise cover them,
+      // so leave a larger gap there; on desktop a small 16px gap is enough.
+      const bottomGap = window.innerWidth < 640 ? 92 : 16;
+      setDropdownMaxH(Math.max(200, window.innerHeight - top - bottomGap));
     }
     measure();
     window.addEventListener("resize", measure);
@@ -108,7 +111,13 @@ export default function LocationPicker({
   useEffect(() => {
     if (!open || mode !== "dropdown") return;
     function onClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (!dropdownRef.current) return;
+      // Treat the whole anchor wrapper (which also holds the trigger button) as
+      // "inside", not just the panel. Otherwise a click on the trigger closes
+      // the panel here on mousedown, then the trigger's own onClick toggle
+      // reopens it — so the dropdown never closes from its own button.
+      const root = dropdownRef.current.parentElement ?? dropdownRef.current;
+      if (!root.contains(e.target as Node)) {
         onClose();
       }
     }

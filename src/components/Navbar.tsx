@@ -103,7 +103,7 @@ export default function Navbar() {
                   if (pathname === LIST_ROOM_PATH)
                     sessionStorage.setItem(FROM_LIST_ROOM_KEY, "1");
                 }}
-                className="block h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 transition hover:ring-2 hover:ring-brand/30"
+                className="hidden h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 transition hover:ring-2 hover:ring-brand/30 sm:block"
               >
                 {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element

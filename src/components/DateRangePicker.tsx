@@ -82,8 +82,26 @@ export default function DateRangePicker({
         <span className={`truncate whitespace-nowrap ${empty ? "text-ink-soft" : "text-ink"}`}>
           {label}
         </span>
-        <Icon name="calendar" className="h-4 w-4 shrink-0 text-ink-muted" />
+        {empty ? (
+          <Icon name="calendar" className="h-4 w-4 shrink-0 text-ink-muted" />
+        ) : (
+          <span className="h-4 w-4 shrink-0" aria-hidden />
+        )}
       </button>
+      {!empty ? (
+        <button
+          type="button"
+          aria-label={t("common.clear")}
+          onClick={(e) => {
+            e.stopPropagation();
+            onChange("", "");
+            setOpen(false);
+          }}
+          className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-200 hover:text-ink"
+        >
+          <Icon name="x" className="h-3.5 w-3.5" />
+        </button>
+      ) : null}
       {open ? (
         <PickerPanel
           from={from}

@@ -107,26 +107,7 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
 
   return (
     <>
-      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">{t("explore.heading")}</h2>
-          <p className="text-sm text-ink-muted">
-            {view === "map"
-              ? t(
-                  visibleRooms.length === 1
-                    ? "explore.counter.inArea.one"
-                    : "explore.counter.inArea.many",
-                  { n: visibleRooms.length }
-                )
-              : t(
-                  allRooms.length === 1
-                    ? "explore.counter.available.one"
-                    : "explore.counter.available.many",
-                  { n: allRooms.length }
-                )}
-          </p>
-        </div>
-
+      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-end">
         <div role="tablist" className="flex gap-1 self-start rounded-full border border-slate-200 bg-white p-1">
           <ViewTab active={view === "list"} onClick={() => changeView("list")} icon="menu" label={t("explore.tab.list")} />
           <ViewTab active={view === "map"} onClick={() => changeView("map")} icon="map-pin" label={t("explore.tab.map")} />
