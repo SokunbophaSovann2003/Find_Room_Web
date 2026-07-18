@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Icon, { amenityIcon } from "@/components/Icon";
+import Icon, { amenityIcon, amenityLabel } from "@/components/Icon";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import ContactListEditor from "@/components/ContactListEditor";
 import { useSession } from "@/lib/session";
@@ -903,7 +903,7 @@ export default function ListRoomPage() {
                   className="inline-flex items-center gap-1.5 rounded-full border border-brand bg-white px-3 py-1.5 text-sm text-brand"
                 >
                   <Icon name={amenityIcon(a)} className="h-3.5 w-3.5 text-brand" />
-                  <span className="font-semibold">{a}</span>
+                  <span className="font-semibold">{amenityLabel(a, t)}</span>
                 </li>
               ))}
             </ul>
@@ -1596,7 +1596,7 @@ function AmenitiesSheet({
                       name={amenityIcon(a)}
                       className={`h-3.5 w-3.5 ${active ? "text-white" : "text-brand"}`}
                     />
-                    <span className="font-semibold">{a}</span>
+                    <span className="font-semibold">{amenityLabel(a, t)}</span>
                   </button>
                 </li>
               );

@@ -354,7 +354,7 @@ export function propertyIcon(type: string): IconName {
 
 export function amenityIcon(amenity: string): IconName {
   const a = amenity.toLowerCase();
-  if (a.includes("wifi")) return "wifi";
+  if (a.includes("wifi") || a.includes("wi-fi")) return "wifi";
   if (a.includes("parking")) return "parking";
   if (a.includes("air") || a === "ac") return "ac";
   if (a.includes("security")) return "shield";
@@ -365,4 +365,29 @@ export function amenityIcon(amenity: string): IconName {
   if (a.includes("laundry")) return "laundry";
   if (a.includes("balcony")) return "balcony";
   return "check";
+}
+
+// Maps a stored amenity string (e.g. "Air conditioning") to a translation key,
+// or null for custom admin-added amenities that have no built-in translation.
+// Mirrors amenityIcon's substring matching so labels and icons stay in sync.
+export function amenityKey(amenity: string): string | null {
+  const a = amenity.toLowerCase();
+  if (a.includes("wifi") || a.includes("wi-fi")) return "amenity.wifi";
+  if (a.includes("parking")) return "amenity.parking";
+  if (a.includes("air") || a === "ac") return "amenity.ac";
+  if (a.includes("security")) return "amenity.security";
+  if (a.includes("elevator") || a.includes("lift")) return "amenity.elevator";
+  if (a.includes("pool")) return "amenity.pool";
+  if (a.includes("gym")) return "amenity.gym";
+  if (a.includes("kitchen")) return "amenity.kitchen";
+  if (a.includes("laundry")) return "amenity.laundry";
+  if (a.includes("balcony")) return "amenity.balcony";
+  return null;
+}
+
+// Localised amenity label: translated when it's a known amenity, otherwise the
+// original string (so custom amenities still display as entered).
+export function amenityLabel(amenity: string, t: (key: string) => string): string {
+  const key = amenityKey(amenity);
+  return key ? t(key) : amenity;
 }

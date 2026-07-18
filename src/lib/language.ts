@@ -817,6 +817,19 @@ const DICT: Dict = {
   "admin.settings.amenities.placeholder": { km: "បន្ថែមសេវាកម្ម (ឧ. ដំបូល)", en: "Add an amenity (e.g. Rooftop)" },
   "admin.settings.amenities.empty": { km: "មិនទាន់មានសេវាកម្ម។", en: "No amenities yet." },
   "admin.settings.amenities.removeAria": { km: "ដក {name}", en: "Remove {name}" },
+
+  // Amenity labels — translated names for the built-in amenities. Custom
+  // admin-added amenities fall back to their raw string via amenityLabel().
+  "amenity.wifi": { km: "វ៉ាយហ្វាយ", en: "Wi-Fi" },
+  "amenity.ac": { km: "ម៉ាស៊ីនត្រជាក់", en: "Air conditioning" },
+  "amenity.parking": { km: "កន្លែងចតរថយន្ត", en: "Parking" },
+  "amenity.security": { km: "សន្តិសុខ", en: "Security" },
+  "amenity.kitchen": { km: "ផ្ទះបាយ", en: "Kitchen" },
+  "amenity.elevator": { km: "ជណ្ដើរយន្ត", en: "Elevator" },
+  "amenity.pool": { km: "អាងហែលទឹក", en: "Pool" },
+  "amenity.gym": { km: "កន្លែងហាត់ប្រាណ", en: "Gym" },
+  "amenity.laundry": { km: "បោកគក់", en: "Laundry" },
+  "amenity.balcony": { km: "រានហាល", en: "Balcony" },
   "admin.settings.pricing.title": { km: "តម្លៃលំនាំដើម", en: "Pricing defaults" },
   "admin.settings.pricing.desc": { km: "បំពេញទម្រង់ផ្សាយបន្ទប់ជាមុនដើម្បីកុំឱ្យម្ចាស់ផ្ទះវាយលេខដដែលៗ។", en: "Pre-fill the list-room form so hosts don't enter the same numbers every time." },
   "admin.settings.pricing.defaultPeriod": { km: "ខួបតម្លៃលំនាំដើម", en: "Default price period" },
