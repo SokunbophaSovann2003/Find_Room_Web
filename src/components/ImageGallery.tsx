@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Icon, { propertyIcon } from "./Icon";
 import { useT } from "@/lib/language";
 
@@ -87,7 +88,7 @@ export default function ImageGallery({
         </div>
       ) : null}
 
-      {viewerOpen ? (
+      {viewerOpen ? createPortal(
         <div
           role="dialog"
           aria-modal="true"
@@ -158,7 +159,8 @@ export default function ImageGallery({
               ))}
             </div>
           ) : null}
-        </div>
+        </div>,
+        document.body
       ) : null}
     </div>
   );

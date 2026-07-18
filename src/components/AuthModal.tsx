@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Icon from "./Icon";
 import { loginWithPhone, registerWithPhone, resetPassword, checkPhoneAccountExists } from "@/lib/auth";
 import { sendOtp, verifyOtp, verifyOtpForReset } from "@/lib/otp";
@@ -63,7 +64,10 @@ export default function AuthModal({
 
   if (!open) return null;
 
-  return (
+  // Portal to <body> so the overlay is immune to parent layout — a `space-y`/
+  // margin, transform, or stacking context on an ancestor would otherwise shift
+  // or clip the fixed backdrop (e.g. leaving the top bar uncovered).
+  return createPortal(
     <div className="fixed inset-0 z-[1100] flex items-end justify-center px-0 sm:items-center sm:px-4">
       <div
         className="absolute inset-0 bg-ink/50 backdrop-blur-sm"
@@ -107,7 +111,8 @@ export default function AuthModal({
           <ForgotPasswordForm onSuccess={onSuccess} switchToLogin={() => setTab("login")} />
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
