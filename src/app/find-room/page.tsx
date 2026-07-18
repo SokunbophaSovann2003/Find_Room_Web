@@ -259,9 +259,19 @@ export default function FindRoomPage() {
           />
         </label>
 
-        <button type="submit" className="btn-primary w-full justify-center" disabled={submitting}>
-          {submitting ? t("findRoom.submitting") : t("findRoom.submit")}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.push("/explore")}
+            className="btn-secondary shrink-0 justify-center"
+            disabled={submitting}
+          >
+            {t("common.cancel")}
+          </button>
+          <button type="submit" className="btn-primary flex-1 justify-center" disabled={submitting}>
+            {submitting ? t("findRoom.submitting") : t("findRoom.submit")}
+          </button>
+        </div>
       </form>
     </div>
   );
