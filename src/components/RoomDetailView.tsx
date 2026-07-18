@@ -4,17 +4,19 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ImageGallery from "@/components/ImageGallery";
-import Icon, { amenityIcon, type IconName } from "@/components/Icon";
+import Icon, { amenityIcon, amenityLabel, type IconName } from "@/components/Icon";
 import ConfirmModal from "@/components/ConfirmModal";
 import AuthModal from "@/components/AuthModal";
 import { findRoomById } from "@/lib/mock-data";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { deleteRoom, getRoomById, updateRoom } from "@/lib/rooms";
 import { useSession } from "@/lib/session";
+import { loadOverrides } from "@/lib/profile-overrides";
 import { pushIncomingNotification, useAdminSettings } from "@/lib/admin";
 import { isAutoOccupied } from "@/lib/auto-occupy";
 import { toast } from "@/lib/toast";
-import { useT } from "@/lib/language";
+import { useLanguage, useT } from "@/lib/language";
+import { locationDisplayName } from "@/lib/locations";
 import type { Room } from "@/lib/types";
 
 const REPORT_REASONS = [
@@ -32,12 +34,12 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
   const router = useRouter();
   const session = useSession();
   const t = useT();
+  const { language } = useLanguage();
   const [room, setRoom] = useState<RoomState>(
     () => (!isFirebaseConfigured ? findRoomById(roomId) : undefined) ?? "loading"
   );
   const [trackedId, setTrackedId] = useState(roomId);
   const [contactOpen, setContactOpen] = useState(false);
-  const [locationOpen, setLocationOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authIntent, setAuthIntent] = useState<"contact" | "location" | "report" | null>(null);
@@ -66,25 +68,22 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
   }, [roomId]);
 
   useEffect(() => {
-    if (!contactOpen && !locationOpen) return;
+    if (!contactOpen) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setContactOpen(false);
-        setLocationOpen(false);
-      }
+      if (e.key === "Escape") setContactOpen(false);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [contactOpen, locationOpen]);
+  }, [contactOpen]);
 
   useEffect(() => {
-    if (!contactOpen && !locationOpen) return;
+    if (!contactOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [contactOpen, locationOpen]);
+  }, [contactOpen]);
 
   if (room === "loading") {
     return (
@@ -132,6 +131,15 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
   }
 
   const isOwner = session?.uid === room.owner.id;
+  // The name stored on a listing is a snapshot from when it was created, so it
+  // can be stale or a placeholder ("User"). When the viewer is the owner we can
+  // show their current name live (local profile edit → session → snapshot).
+  // Firestore rules only let a user read their own /users doc, so other viewers
+  // still fall back to the snapshot.
+  const ownerName =
+    (isOwner && session
+      ? loadOverrides(session.uid).username ?? session.username
+      : null) || room.owner.name;
   // Admin chrome: the admin has switched to "Admin" view and we're rendering
   // /rooms/[id] outside the admin shell. In that mode we surface moderation
   // actions in place of the renter-facing CTAs (Contact / Location), hide the
@@ -149,13 +157,16 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
   const priceSuffix = t(`room.suffix.${pricePeriod}`);
   const rentLabel = t(`room.fee.rent.${pricePeriod}`);
 
+  // Location parts are stored as English keys; translate each through the
+  // locations dataset so the address matches the app language (like the picker).
   const fullAddress = [room.area, room.district, room.city]
     .filter(Boolean)
+    .map((part) => locationDisplayName(part as string, language))
     .join(", ") || room.address;
 
   const locationCard = (
     <section>
-      <div className="mb-2 flex items-end justify-between">
+      <div className="mb-1 flex items-end justify-between">
         <h2 className="text-base font-semibold">{t("room.section.location")}</h2>
         {session ? (
           <a
@@ -213,12 +224,12 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={room.owner.avatarUrl}
-            alt={room.owner.name}
+            alt={ownerName}
             className="h-full w-full object-cover"
           />
         ) : (
           <span className="flex h-full w-full items-center justify-center text-lg font-bold text-brand">
-            {room.owner.name.trim().charAt(0).toUpperCase() || "?"}
+            {ownerName.trim().charAt(0).toUpperCase() || "?"}
           </span>
         )}
       </div>
@@ -226,7 +237,7 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
         <p className="text-[11px] uppercase tracking-wide text-ink-soft">
           {t("room.host.listedBy")}
         </p>
-        <p className="truncate font-semibold text-ink">{room.owner.name}</p>
+        <p className="truncate font-semibold text-ink">{ownerName}</p>
         {!adminViewActive ? (
           <p className="mt-0.5 truncate text-[11px] font-medium text-brand">
             {t("room.host.viewProfile")}
@@ -376,19 +387,21 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
         <ImageGallery images={room.images} title={room.title} typeLabel={room.type} />
 
         <div className="mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8">
-          <div className="space-y-6">
+          <div className="space-y-4">
             <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
               <div className="min-w-0">
+                {/* Price above the title on mobile. Desktop shows it top-right
+                    of the header (block below), so hide this at sm+. */}
+                <p className="mb-1 whitespace-nowrap sm:hidden">
+                  <span className="text-2xl font-extrabold leading-tight text-brand">${room.price}</span>
+                  <span className="ml-1 text-sm font-medium text-ink-muted">{priceSuffix}</span>
+                </p>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <h1 className="text-lg font-semibold tracking-tight sm:text-xl lg:text-2xl">
                     {room.title}
                   </h1>
                   {adminViewActive ? <AdminStatusPill occupied={effectivelyOccupied} /> : null}
                 </div>
-                <p className="mt-1 inline-flex items-center gap-1 text-sm text-ink-muted">
-                  <Icon name="map-pin" className="h-4 w-4" />
-                  {fullAddress}
-                </p>
               </div>
               <div className="hidden shrink-0 whitespace-nowrap sm:block sm:pt-1">
                 <span className="text-3xl font-semibold text-brand sm:text-4xl">
@@ -404,48 +417,35 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
               of viewport width — fixes the huge empty gutters on desktop
               where the parent column is ~730px wide.
             */}
+            {/* Only show a stat when it has a non-zero value — a 0 count (e.g.
+                "0 Kitchen") adds no information, so hide it. */}
             <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-x-8">
-              <StatChip icon="bed" value={room.bedrooms} label={t("room.stat.bed")} />
-              {room.bathrooms != null ? (
+              {room.bedrooms ? (
+                <StatChip icon="bed" value={room.bedrooms} label={t("room.stat.bed")} />
+              ) : null}
+              {room.bathrooms ? (
                 <StatChip icon="bath" value={room.bathrooms} label={t("room.stat.bath")} />
               ) : null}
-              {room.kitchens != null ? (
+              {room.kitchens ? (
                 <StatChip icon="kitchen" value={room.kitchens} label={t("room.stat.kitchen")} />
               ) : null}
               {room.areaSqm ? (
                 <StatChip icon="ruler" value={room.areaSqm} label="m²" />
               ) : null}
-              {room.floor != null ? (
+              {room.floor ? (
                 <StatChip icon="elevator" value={room.floor} label={t("room.stat.floor")} />
               ) : null}
             </ul>
 
             <section>
-              <h2 className="mb-2 text-base font-semibold">{t("room.section.about")}</h2>
+              <h2 className="mb-1 text-base font-semibold">{t("room.section.about")}</h2>
               <p className="text-sm leading-relaxed text-ink-muted">
                 {room.description}
               </p>
             </section>
 
-            {room.amenities.length > 0 ? (
-              <section>
-                <h2 className="mb-3 text-base font-semibold">{t("room.section.amenities")}</h2>
-                <ul className="flex flex-wrap gap-2">
-                  {room.amenities.map((a) => (
-                    <li
-                      key={a}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm"
-                    >
-                      <Icon name={amenityIcon(a)} className="h-4 w-4 text-brand" />
-                      <span className="font-semibold text-ink">{a}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
             <section>
-              <h2 className="mb-2 text-base font-semibold">{t("room.section.fees")}</h2>
+              <h2 className="mb-1 text-base font-semibold">{t("room.section.fees")}</h2>
               <dl className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                 <FeeRow label={rentLabel} value={`$${room.price} ${priceSuffix}`} />
                 {room.deposit != null ? (
@@ -465,6 +465,30 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
                 ))}
               </dl>
             </section>
+
+            {room.amenities.length > 0 ? (
+              <section>
+                <h2 className="mb-2 text-base font-semibold">{t("room.section.amenities")}</h2>
+                <ul className="flex flex-wrap gap-2">
+                  {room.amenities.map((a) => (
+                    <li
+                      key={a}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm"
+                    >
+                      <Icon name={amenityIcon(a)} className="h-4 w-4 text-brand" />
+                      <span className="font-semibold text-ink">{amenityLabel(a, t)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {/* Location — inline on mobile. Tablet and desktop render it in the
+                column/aside below, so it's hidden here at sm+. Replaces the old
+                sticky-bar location popup. */}
+            <div className="sm:hidden">
+              {locationCard}
+            </div>
 
             <div className="hidden space-y-8 sm:block lg:hidden">
               {hostCard}
@@ -544,23 +568,44 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
           className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-4 py-3 sm:hidden"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)", touchAction: "manipulation" }}
         >
-          <div className="flex items-center gap-2">
-            <div className="shrink-0 whitespace-nowrap">
-              <span className="text-xl font-extrabold leading-tight text-brand">${room.price}</span>
-              <span className="ml-0.5 text-xs font-medium text-ink-muted">{priceSuffix}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => session ? setLocationOpen(true) : (setAuthIntent("location"), setAuthOpen(true))}
-              className="btn-secondary h-11 flex-1 justify-center px-3"
+          <div className="flex items-center gap-3">
+            {/* Host profile — a tappable row (chevron + press feedback) that
+                opens the owner's profile. */}
+            <Link
+              href={ownerProfileHref}
+              className="group -ml-1 flex min-w-0 flex-1 items-center gap-2 rounded-xl p-1 transition hover:bg-slate-50 active:scale-[0.98]"
             >
-              <Icon name="map-pin" className="h-4 w-4" />
-              {t("room.cta.location")}
-            </button>
+              <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-200 ring-2 ring-brand/20">
+                {room.owner.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={room.owner.avatarUrl}
+                    alt={ownerName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-sm font-bold text-brand">
+                    {ownerName.trim().charAt(0).toUpperCase() || "?"}
+                  </span>
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] uppercase tracking-wide text-ink-soft">
+                  {t("room.host.listedBy")}
+                </span>
+                <span className="block truncate text-sm font-semibold text-ink transition-colors group-hover:text-brand">
+                  {ownerName}
+                </span>
+              </span>
+              <Icon
+                name="chevron-right"
+                className="h-4 w-4 shrink-0 text-ink-soft transition-transform group-hover:translate-x-0.5"
+              />
+            </Link>
             <button
               type="button"
               onClick={() => session ? setContactOpen(true) : (setAuthIntent("contact"), setAuthOpen(true))}
-              className="btn-primary h-11 flex-1 justify-center px-3"
+              className="btn-primary h-11 shrink-0 justify-center px-4"
             >
               <Icon name="phone" className="h-4 w-4" />
               {t("room.cta.contact")}
@@ -574,8 +619,9 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
         onClose={() => setAuthOpen(false)}
         onSuccess={() => {
           setAuthOpen(false);
+          // Location shows inline once signed in, so only Contact/Report need
+          // to reopen their sheet after auth.
           if (authIntent === "contact") setContactOpen(true);
-          else if (authIntent === "location") setLocationOpen(true);
           else if (authIntent === "report") {
             setReportReason(null);
             setReportDetails("");
@@ -611,35 +657,9 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
         onClose={() => setContactOpen(false)}
       >
         <div className="overflow-y-auto p-4">
-          <Link
-            href={ownerProfileHref}
-            onClick={() => setContactOpen(false)}
-            className="-m-2 flex items-center gap-3 rounded-xl p-2 transition hover:bg-slate-50"
-          >
-            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-slate-200 ring-2 ring-brand/20">
-              {room.owner.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={room.owner.avatarUrl}
-                  alt={room.owner.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center text-lg font-bold text-brand">
-                  {room.owner.name.trim().charAt(0).toUpperCase() || "?"}
-                </span>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] uppercase tracking-wide text-ink-soft">{t("room.host.listedBy")}</p>
-              <p className="truncate font-semibold text-ink">{room.owner.name}</p>
-              <p className="mt-0.5 truncate text-[11px] font-medium text-brand">
-                {t("room.host.viewProfile")}
-              </p>
-            </div>
-            <Icon name="chevron-right" className="h-4 w-4 shrink-0 text-ink-soft" />
-          </Link>
-          <ul className="mt-4 space-y-2">
+          {/* Host profile is shown in the sticky bottom bar, so it's omitted
+              here — this sheet is just the contact details. */}
+          <ul className="space-y-2">
             {phoneNumbers.map((p) => (
               <ContactRow
                 key={`tel-${p}`}
@@ -663,48 +683,6 @@ export default function RoomDetailView({ roomId, admin }: { roomId: string; admi
             })}
           </ul>
         </div>
-      </SheetModal>
-
-      <SheetModal
-        open={locationOpen}
-        title={t("room.section.location")}
-        onClose={() => setLocationOpen(false)}
-        bodyClassName="flex flex-1 flex-col overflow-hidden"
-        panelClassName="h-[85vh] sm:h-auto"
-      >
-        <div className="flex items-start gap-2 border-b border-slate-100 px-4 py-3">
-          <Icon name="map-pin" className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-          <p className="text-sm font-medium leading-snug text-ink">{fullAddress}</p>
-        </div>
-        <div className="relative w-full flex-1 bg-slate-100 sm:aspect-[16/10] sm:flex-none">
-          {mapLoaded ? (
-            <iframe
-              title={`${room.title} — map`}
-              src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=15&output=embed`}
-              className="h-full w-full border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setMapLoaded(true)}
-              className="flex h-full w-full flex-col items-center justify-center gap-2 text-ink-muted transition hover:bg-slate-200/60"
-            >
-              <Icon name="map-pin" className="h-10 w-10 text-brand" />
-              <span className="text-sm font-semibold text-ink">{t("room.location.showMap")}</span>
-              <span className="text-[11px] text-ink-soft">{t("room.location.loadsGoogleMaps")}</span>
-            </button>
-          )}
-        </div>
-        <a
-          href={mapsLink}
-          target="_blank"
-          rel="noreferrer"
-          className="border-t border-slate-100 px-4 py-3 text-center text-sm font-semibold text-brand hover:bg-brand/5"
-        >
-          {t("room.location.openMaps")}
-        </a>
       </SheetModal>
 
       <SheetModal
