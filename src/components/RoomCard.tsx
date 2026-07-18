@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import Icon, { propertyIcon } from "./Icon";
-import { useT } from "@/lib/language";
+import { useLanguage, useT } from "@/lib/language";
+import { locationDisplayName } from "@/lib/locations";
 import type { Room } from "@/lib/types";
 
 export default function RoomCard({ room }: { room: Room }) {
   const t = useT();
+  const { language } = useLanguage();
   const pricePeriod = room.pricePeriod ?? "monthly";
   return (
     <Link
@@ -45,21 +47,35 @@ export default function RoomCard({ room }: { room: Room }) {
         <p className="mt-1 flex items-center gap-1 text-sm text-ink-muted">
           <Icon name="map-pin" className="h-4 w-4 shrink-0" />
           <span className="line-clamp-1">
-            {room.district ? `${room.district}, ` : ""}
-            {room.city}
+            {room.district ? `${locationDisplayName(room.district, language)}, ` : ""}
+            {locationDisplayName(room.city, language)}
           </span>
         </p>
 
+        {/* Same stats as the detail page — Bed / Bath / Kitchen / Area / Floor,
+            each hidden when its value is 0 or missing. */}
         <div className="mt-3 flex items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-ink-muted sm:gap-3">
-          <span className="inline-flex items-center gap-1">
-            <Icon name="bed" className="h-4 w-4 shrink-0" /> {room.bedrooms}
-          </span>
+          {room.bedrooms ? (
+            <span className="inline-flex items-center gap-1">
+              <Icon name="bed" className="h-4 w-4 shrink-0" /> {room.bedrooms}
+            </span>
+          ) : null}
+          {room.bathrooms ? (
+            <span className="inline-flex items-center gap-1">
+              <Icon name="bath" className="h-4 w-4 shrink-0" /> {room.bathrooms}
+            </span>
+          ) : null}
+          {room.kitchens ? (
+            <span className="inline-flex items-center gap-1">
+              <Icon name="kitchen" className="h-4 w-4 shrink-0" /> {room.kitchens}
+            </span>
+          ) : null}
           {room.areaSqm ? (
             <span className="inline-flex items-center gap-1">
               <Icon name="ruler" className="h-4 w-4 shrink-0" /> {room.areaSqm}m²
             </span>
           ) : null}
-          {room.floor != null ? (
+          {room.floor ? (
             <span className="inline-flex items-center gap-1">
               <Icon name="elevator" className="h-4 w-4 shrink-0" /> {room.floor}{t("roomCard.floor.short")}
             </span>
