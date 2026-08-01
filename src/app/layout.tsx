@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Poppins, Noto_Sans_Khmer } from "next/font/google";
+import { cookies } from "next/headers";
+import { LanguageProvider } from "@/lib/language";
+import { LANGUAGE_COOKIE, toLanguage } from "@/lib/language-shared";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import AdminFloatingNav from "@/components/admin/AdminFloatingNav";
@@ -76,22 +79,29 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Read the language from the cookie so the server renders the correct
+  // language — and matching <html lang> — on the first paint. Defaults to "km"
+  // (the Cambodian audience) when the cookie isn't set yet.
+  const lang = toLanguage(cookies().get(LANGUAGE_COOKIE)?.value);
+
   return (
     <html
-      lang="en"
+      lang={lang}
       className={`${poppins.variable} ${notoKhmer.variable}`}
     >
       <body className="flex min-h-screen flex-col">
-        <Navbar />
-        <main className="flex-1">
-          {children}
-          <BottomNav />
-          <AdminFloatingNav />
-        </main>
-        <Footer />
-        <Toaster />
-        <OfflineBanner />
-        <HtmlLangSync />
+        <LanguageProvider initial={lang}>
+          <Navbar />
+          <main className="flex-1">
+            {children}
+            <BottomNav />
+            <AdminFloatingNav />
+          </main>
+          <Footer />
+          <Toaster />
+          <OfflineBanner />
+          <HtmlLangSync />
+        </LanguageProvider>
       </body>
     </html>
   );

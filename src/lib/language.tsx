@@ -1,19 +1,56 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode
+} from "react";
+import { LANGUAGE_COOKIE, type Language } from "./language-shared";
 
-export type Language = "km" | "en";
+export type { Language } from "./language-shared";
 
 const STORAGE_KEY = "findroom.language";
 const EVENT = "findroom:language-change";
 
+function readCookie(): Language | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)findroom_lang=(km|en)/);
+  return match ? (match[1] as Language) : null;
+}
+
+/**
+ * The persisted language, read on the client. Prefers the cookie (the value the
+ * server also sees) and falls back to localStorage so visitors from before the
+ * cookie existed keep their choice. Defaults to "km" — the Cambodian audience.
+ */
 function readStored(): Language {
   if (typeof window === "undefined") return "km";
+  const cookie = readCookie();
+  if (cookie) return cookie;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     return raw === "en" ? "en" : "km";
   } catch {
     return "km";
+  }
+}
+
+/** Writes the choice to both the cookie and localStorage. */
+function persist(next: Language): void {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, next);
+  } catch {
+    // localStorage may be unavailable (private mode, etc.) — non-fatal.
+  }
+  try {
+    // 1 year, site-wide, Lax so it rides along with normal navigations.
+    document.cookie = `${LANGUAGE_COOKIE}=${next}; path=/; max-age=31536000; SameSite=Lax`;
+  } catch {
+    // document.cookie can throw in rare sandboxed contexts — non-fatal.
   }
 }
 
@@ -28,12 +65,20 @@ const DICT: Dict = {
   "explore.hero.title.before": { km: "ស្វែងរកកន្លែងសម្រាប់ជួលដ៏សាក់សម", en: "Find your perfect place to rent" },
   "explore.hero.title.highlight": { km: "នៅទីនេះ", en: "Here" },
   "explore.hero.subtitle": {
-    km: "ស្វែងរកកន្លែងសម្រាប់ការរស់នៅទៅអ្នកតាមតំបន់ ប្រភេទ និងតម្លៃ នៃតម្រូវការរបស់អ្នក។ ទាក់ទងភ្លាមៗទៅម្ចាស់បន្ទប់។",
-    en: "Search for your perfect home by location, type, and price. Contact the host directly."
+    km: "ស្វែងរកបន្ទប់ជួល • ដាក់បន្ទប់សម្រាប់ជួល កាន់តែងាយស្រួល ឆាប់រហ័ស និងឥតគិតថ្លៃ។",
+    en: "Find a room to rent • List a room for rent — easier, faster, and free."
   },
   "explore.findRoom.cta": { km: "ស្វែងរកឱ្យខ្ញុំ", en: "Find for Me" },
   "explore.wantRoom.cta": { km: "ប្រកាសស្វែងរក", en: "Post a Request" },
   "explore.request.cta": { km: "ប្រកាសស្វែងរកបន្ទប់ជួល", en: "Post my renting request" },
+  // Explore concept cards (mobile) — two ways to use Joul.
+  "explore.card.find.title": { km: "គ្មានពេលស្វែងរកបន្ទប់ជួល?", en: "No time to find a room?" },
+  "explore.card.find.desc": { km: "ប្រកាសសំណើ ឲ្យសហគមន៍ជួយរកជូន", en: "Post a request, let the community help" },
+  "explore.card.find.cta": { km: "ប្រកាសសំណើ", en: "Post a request" },
+  "explore.card.list.title": { km: "ដាក់បន្ទប់ជួល", en: "List your room" },
+  "explore.card.list.desc": { km: "ដាក់បន្ទប់ជួលជាមួយពួកយើងដោយ", en: "List your room with us" },
+  "explore.card.list.desc.free": { km: "ឥតគិតថ្លៃ", en: "for free" },
+  "explore.card.list.cta": { km: "ដាក់ជួល", en: "List a room" },
 
   // "Help me find a room" — renter request form
   "findRoom.title.before": { km: "ជួយខ្ញុំ", en: "Help me find" },
@@ -43,10 +88,10 @@ const DICT: Dict = {
   "findRoom.terms.title": { km: "មុននឹងចាប់ផ្តើម", en: "Before you start" },
   "findRoom.terms.subtitle": { km: "នេះជារបៀបដែលដំណើរការ និងអ្វីដែលអ្នកកំពុងយល់ព្រម។ សូមអានវាឲ្យបានច្បាស់មុននឹងបន្ត។", en: "Here's how it works and what you're agreeing to. Please read it carefully before you continue." },
   "findRoom.terms.how.title": { km: "របៀបដំណើរការ", en: "How it works" },
-  "findRoom.terms.how.sub": { km: "បីជំហានងាយៗ — ចំណាយពេលតែមួយនាទីប៉ុណ្ណោះ។", en: "Three simple steps — this only takes a minute." },
-  "findRoom.terms.how.step1": { km: "ប្រាប់យើងពីអ្វីដែលអ្នកកំពុងស្វែងរក — ថវិការបស់អ្នក តំបន់ដែលអ្នកចង់បាន និងប្រភេទបន្ទប់។", en: "Tell us what you're looking for — your budget, the area you want, and the type of room." },
-  "findRoom.terms.how.step2": { km: "យើងបង្ហោះសំណើរបស់អ្នកជាសាធារណៈទៅសហគមន៍របស់យើង ដើម្បីឲ្យសមាជិកដែលដឹងអំពីបន្ទប់ទំនេរ អាចមើលឃើញ។", en: "We post your request publicly to our community so members who know of available rooms can see it." },
-  "findRoom.terms.how.step3": { km: "បន្ទាប់មក អ្នកនៅក្នុងសហគមន៍ដែលអាចជួយបាន នឹងទាក់ទងមកអ្នកដោយផ្ទាល់ តាមរយៈព័ត៌មានដែលអ្នកបានផ្តល់។", en: "People in our community who can help will then contact you directly, using the details you provide." },
+  "findRoom.terms.how.sub": { km: "ចំណាយពេលត្រឹមតែមួយនាទី ជាមួយ ៣ ជំហានងាយៗ។", en: "Three simple steps — this only takes a minute." },
+  "findRoom.terms.how.step1": { km: "ប្រាប់យើងអំពីបន្ទប់ដែលអ្នកកំពុងស្វែងរក ដូចជាតំបន់ ថវិកា និងប្រភេទបន្ទប់ដែលអ្នកត្រូវការ។", en: "Tell us what you're looking for, including your budget, preferred area, and room type." },
+  "findRoom.terms.how.step2": { km: "JoulKH នឹងជួយផ្សព្វផ្សាយសំណើរបស់អ្នក ទៅកាន់ម្ចាស់ផ្ទះ និងភ្នាក់ងារជួលដោយផ្ទាល់។", en: "We publish your request so landlords, rental agents, and other interested people can see it." },
+  "findRoom.terms.how.step3": { km: "ម្ចាស់ផ្ទះ ឬភ្នាក់ងារជួល នឹងទាក់ទងអ្នកដោយផ្ទាល់ ប្រសិនបើមានបន្ទប់សមស្របនឹងតម្រូវការរបស់អ្នក។", en: "People with matching rooms can contact you directly using the details you provide." },
   "findRoom.terms.notice.title": { km: "សំណើរបស់អ្នកនឹងជាសាធារណៈ", en: "Your request will be public" },
   "findRoom.terms.notice.sub": { km: "នេះជាការបង្ហោះជាសាធារណៈ — មិនមែនជាសាររបស់ឯកជនទេ។", en: "This is a community post — not a private message." },
   "findRoom.terms.notice.eyebrow": { km: "នរណាក៏មើលឃើញ", en: "Everyone can see it" },
@@ -55,11 +100,19 @@ const DICT: Dict = {
   "findRoom.terms.good.sub": { km: "រឿងមួយចំនួនដើម្បីរក្សាសុវត្ថិភាពរបស់អ្នក។", en: "A few things to keep you safe." },
   "findRoom.terms.skip": { km: "រំលង", en: "Skip" },
   "findRoom.terms.stepOf": { km: "ជំហាន {n} នៃ {total}", en: "Step {n} of {total}" },
+  // Terms & safety bullet points. Legal/policy copy — flagged for human review.
+  "findRoom.terms.point1": { km: "សេវានេះឥតគិតថ្លៃទាំងស្រុង។ JoulKH មិនមែនជាភ្នាក់ងារជួលទេ ហើយមិនគិតកម្រៃសេវាណាមួយសម្រាប់ការជួយបង្ហោះសំណើរបស់អ្នកឡើយ។", en: "This service is completely free. JoulKH is not a rental agency and does not charge any fees for helping you publish your request." },
+  "findRoom.terms.point2": { km: "ព័ត៌មានដែលអ្នកផ្តល់ក្នុងសំណើរបស់អ្នក អាចត្រូវបានបង្ហោះ និងចែករំលែកជាសាធារណៈ។", en: "The information you provide in your request may be published and shared." },
+  "findRoom.terms.point3": { km: "ម្ចាស់ផ្ទះ ភ្នាក់ងារជួល និងអ្នកដែលចាប់អារម្មណ៍ផ្សេងទៀត អាចទាក់ទងអ្នកដោយផ្ទាល់ ដោយផ្អែកលើព័ត៌មានដែលអ្នកបានផ្តល់។", en: "Landlords, rental agents, and other interested people may contact you directly based on the information you provide." },
+  "findRoom.terms.point4": { km: "ម្ចាស់ផ្ទះ ភ្នាក់ងារជួល និងអ្នកផ្សេងទៀតដែលទាក់ទងអ្នក គឺជាបុគ្គលឯករាជ្យ និងមិនស្ថិតក្រោមការគ្រប់គ្រងរបស់ JoulKH ឡើយ។", en: "Landlords, rental agents, and other people who contact you are independent third parties and are not controlled by JoulKH." },
+  "findRoom.terms.point5": { km: "សូមទៅពិនិត្យបន្ទប់ និងជួបម្ចាស់ផ្ទះដោយផ្ទាល់ មុនពេលបង់ប្រាក់កក់ ឬថ្លៃជួលណាមួយ។", en: "Always visit the room and meet the landlord in person before paying any deposit or rent." },
+  "findRoom.terms.point6": { km: "JoulKH គ្រាន់តែជាវេទិកាសម្រាប់ភ្ជាប់អ្នកស្វែងរកបន្ទប់ជួលជាមួយម្ចាស់ផ្ទះ និងភ្នាក់ងារជួលប៉ុណ្ណោះ។ យើងមិនទទួលខុសត្រូវចំពោះកិច្ចព្រមព្រៀង ការទូទាត់ប្រាក់ វិវាទ ការឆបោក ការខូចខាត ឬការបាត់បង់ណាមួយ ដែលកើតឡើងពីការទាក់ទងរវាងអ្នកប្រើប្រាស់ឡើយ។", en: "JoulKH only provides a platform to connect renters and landlords. We are not responsible for any agreements, payments, disputes, fraud, damages, or losses arising from interactions between users." },
+  "findRoom.terms.point7": { km: "អ្នកប្រើប្រាស់មានទំនួលខុសត្រូវក្នុងការផ្ទៀងផ្ទាត់ព័ត៌មានទាំងអស់ មុនពេលធ្វើការសម្រេចចិត្តដោយខ្លួនឯង។", en: "Users are responsible for verifying all information before making their own decisions." },
   "findRoom.terms.good.free": { km: "សេវានេះឥតគិតថ្លៃទាំងស្រុង។ JoulKH មិនមែនជាភ្នាក់ងារ ហើយមិនដែលគិតលុយពីអ្នកឡើយ — យើងគ្រាន់តែបង្ហោះសំណើរបស់អ្នកទៅសហគមន៍ប៉ុណ្ណោះ។", en: "This service is completely free. JoulKH is not an agency and never charges you — we simply post your request to our community." },
   "findRoom.terms.good.contact": { km: "នរណាម្នាក់ក្នុងសហគមន៍អាចទាក់ទងមកអ្នកដោយផ្ទាល់ នៅពេលណាក៏បាន។ យើងមិនអាចជ្រើសរើស ឬគ្រប់គ្រងអ្នកដែលទាក់ទងមកអ្នកឡើយ។", en: "Anyone in the community may contact you directly, at any time. We don't choose or control who reaches out to you." },
   "findRoom.terms.good.view": { km: "សូមទៅមើលបន្ទប់ និងជួបម្ចាស់បន្ទប់ដោយផ្ទាល់ជានិច្ច មុននឹងអ្នកបង់ប្រាក់កក់ ឬថ្លៃឈ្នួល។", en: "Always go and see the room, and meet the landlord in person, before you pay any deposit or rent." },
   "findRoom.terms.good.money": { km: "កុំផ្ទេរប្រាក់ មុននឹងអ្នកបានឃើញបន្ទប់ដោយផ្ទាល់ ហើយច្បាស់ថាវាពិតប្រាកដ។", en: "Never transfer money before you have seen the room in person and confirmed that it is genuine." },
-  "findRoom.terms.confirm": { km: "ខ្ញុំយល់ និងយល់ព្រមតាមលក្ខខណ្ឌខាងលើ។", en: "I understand and agree to the terms above." },
+  "findRoom.terms.confirm": { km: "ខ្ញុំយល់ព្រម និងបន្ត។", en: "I agree and continue" },
   "findRoom.terms.disclaimer": { km: "JoulKH មិនទទួលខុសត្រូវចំពោះជម្លោះ ការទូទាត់ប្រាក់ ឬការខាតបង់ណាមួយ រវាងអ្នក និងអ្នកដែលទាក់ទងមកអ្នកឡើយ។ សូមប្រុងប្រយ័ត្ន និងសម្រេចចិត្តដោយខ្លួនឯង។", en: "JoulKH is not responsible for any disputes, payments, or losses between you and anyone who contacts you. Please deal carefully and at your own discretion." },
   "findRoom.terms.agree": { km: "យល់ព្រម និងបន្ត", en: "Agree and continue" },
   "findRoom.terms.back": { km: "ត្រឡប់ក្រោយ", en: "Back" },
@@ -69,8 +122,8 @@ const DICT: Dict = {
   "findRoom.contact.title": { km: "ព័ត៌មានទំនាក់ទំនង", en: "Contact" },
   "findRoom.field.name": { km: "ឈ្មោះរបស់អ្នក", en: "Your name" },
   "findRoom.field.phone": { km: "លេខទូរស័ព្ទទំនាក់ទំនង", en: "Contact phone" },
-  "findRoom.field.budget": { km: "ថវិកា (ក្នុងមួយខែ)", en: "Budget (per month)" },
-  "findRoom.field.anyBudget": { km: "ថវិកាណាមួយ", en: "Any budget" },
+  "findRoom.field.budget": { km: "តម្លៃជួល (ក្នុងមួយខែ)", en: "Rental price (per month)" },
+  "findRoom.field.anyBudget": { km: "តម្លៃជួលណាមួយ", en: "Any rental price" },
   "findRoom.field.location": { km: "ទីតាំងដែលចង់បាន", en: "Preferred location" },
   "findRoom.field.anyLocation": { km: "ទីតាំងណាមួយ", en: "Any location" },
   "findRoom.field.type": { km: "ប្រភេទបន្ទប់", en: "Property type" },
@@ -125,6 +178,11 @@ const DICT: Dict = {
   "search.clearLocation": { km: "សម្អាតទីតាំង", en: "Clear location" },
   "search.clearType": { km: "សម្អាតប្រភេទអចលនទ្រព្យ", en: "Clear property type" },
   "search.clearSort": { km: "សម្អាតការកំណត់តម្លៃ", en: "Clear sort" },
+  "search.filters.title": { km: "តម្រង", en: "Filters" },
+  "search.filters.placeholder": { km: "តម្រង៖ ទីតាំង ប្រភេទ តម្លៃ", en: "Filter by location, type, price" },
+  "search.filters.location": { km: "ទីតាំង", en: "Location" },
+  "search.filters.apply": { km: "បង្ហាញលទ្ធផល", en: "Show results" },
+  "search.filters.clear": { km: "សម្អាតតម្រង", en: "Clear filters" },
 
   // Property type labels
   "type.room": { km: "បន្ទប់", en: "Room" },
@@ -207,12 +265,13 @@ const DICT: Dict = {
   "language.toggle.aria": { km: "ភាសាបច្ចុប្បន្ន៖ {current}។ ចុចដើម្បីប្តូរទៅ {next}។", en: "Current language: {current}. Tap to switch to {next}." },
 
   // Bottom nav
-  "bottomNav.home": { km: "ទំព័រដើម", en: "Home" },
+  "bottomNav.home": { km: "រុករក", en: "Explore" },
   "bottomNav.activity": { km: "សកម្មភាព", en: "Activity" },
   "bottomNav.activity.aria": { km: "សំណើរបស់ខ្ញុំ", en: "My requests" },
   "bottomNav.profile": { km: "ប្រវត្តិរូប", en: "Profile" },
   "bottomNav.login": { km: "ចូល", en: "Login" },
   "bottomNav.listRoom.aria": { km: "ផ្សាយបន្ទប់របស់អ្នក", en: "List your room" },
+  "bottomNav.myRooms": { km: "បន្ទប់របស់ខ្ញុំ", en: "My Rooms" },
   "bottomNav.primary.aria": { km: "ការរុករកសំខាន់", en: "Primary" },
   // Activity — the renter's own "Post my renting request" submissions.
   "activity.title": { km: "សំណើរបស់ខ្ញុំ", en: "My requests" },
@@ -222,6 +281,8 @@ const DICT: Dict = {
   "activity.empty.title": { km: "មិនទាន់មានសំណើ", en: "No requests yet" },
   "activity.empty.body": { km: "នៅពេលអ្នកបង្ហោះសំណើសុំជួលបន្ទប់ វានឹងបង្ហាញនៅទីនេះ។", en: "When you post a renting request, it'll show up here." },
   "activity.empty.cta": { km: "បង្ហោះសំណើ", en: "Post a request" },
+  "activity.empty.hook": { km: "ឈប់ចំណាយពេលស្វែងរកទៀតទៅ ទុកឱ្យ JoulKH ជួយអ្នកវិញ។", en: "Why keep searching when JoulKH can find for you?" },
+  "activity.empty.pitch": { km: "គ្រាន់តែប្រាប់អំពីអ្វីដែលអ្នកចង់ជួល ហើយទុកឱ្យម្ចាស់ផ្ទះ និងភ្នាក់ងារជួល ទាក់ទងទៅកាន់អ្នកដោយផ្ទាល់វិញ។", en: "Just tell us what you want to rent, then let landlords and rental agents contact you directly." },
   "activity.status.open": { km: "កំពុងដំណើរការ", en: "Active" },
   "activity.status.handled": { km: "កំពុងជួយ", en: "Being helped" },
   "activity.status.closed": { km: "បានបិទ", en: "Closed" },
@@ -1119,21 +1180,41 @@ const DICT: Dict = {
   "explore.map.loadFailed": { km: "ផែនទីបរាជ័យក្នុងការផ្ទុក។ ប្តូរទៅទិដ្ឋភាពបញ្ជីបន្តស្វែងរក។", en: "Map failed to load. Switch to list view to keep browsing." }
 };
 
-/**
- * Minimal language preference hook.
- *
- * - Defaults to "km" (Khmer) because the audience is Cambodian.
- * - Persists the choice in localStorage so it survives reloads.
- * - Starts with "km" on both server and client to avoid React hydration
- *   mismatches; the stored value is synced in an effect on mount.
- */
-export function useLanguage() {
-  const [language, setLanguageState] = useState<Language>("km");
+type LanguageContextValue = {
+  language: Language;
+  setLanguage: (next: Language) => void;
+  toggleLanguage: () => void;
+};
 
-  useLayoutEffect(() => {
-    // Fires synchronously before the browser's first paint — the language
-    // correction happens invisibly so the user never sees a Khmer flash.
-    setLanguageState(readStored());
+const LanguageContext = createContext<LanguageContextValue | null>(null);
+
+/**
+ * Single source of truth for the language preference. Seeded from `initial`,
+ * which the server derives from the cookie so the first client render matches
+ * the server HTML exactly (no hydration mismatch, no flash). One subscription
+ * lives here instead of one per component, and every `useLanguage()` /
+ * `useT()` in the tree reads from it.
+ */
+export function LanguageProvider({
+  initial,
+  children
+}: {
+  initial: Language;
+  children: ReactNode;
+}) {
+  const [language, setLanguageState] = useState<Language>(initial);
+
+  useEffect(() => {
+    // Reconcile with the client-only stored value. Normally this equals the
+    // server-provided `initial`, so nothing changes. It only differs for
+    // returning visitors whose choice lived solely in localStorage before the
+    // cookie existed — persist() below then writes the cookie so the very next
+    // load is already correct.
+    const stored = readStored();
+    if (stored !== language) {
+      setLanguageState(stored);
+      persist(stored);
+    }
     const sync = () => setLanguageState(readStored());
     window.addEventListener(EVENT, sync);
     const onStorage = (e: StorageEvent) => {
@@ -1144,19 +1225,44 @@ export function useLanguage() {
       window.removeEventListener(EVENT, sync);
       window.removeEventListener("storage", onStorage);
     };
+    // Run once on mount; `language` is intentionally read as the seed value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const toggleLanguage = useCallback(() => {
-    const next: Language = readStored() === "km" ? "en" : "km";
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      // localStorage may be unavailable (private mode, etc.) — non-fatal.
-    }
+  const setLanguage = useCallback((next: Language) => {
+    persist(next);
+    // Notify every subscriber (this tab and, via the storage event, others).
     window.dispatchEvent(new Event(EVENT));
   }, []);
 
-  return { language, toggleLanguage };
+  const toggleLanguage = useCallback(() => {
+    setLanguage(readStored() === "km" ? "en" : "km");
+  }, [setLanguage]);
+
+  const value = useMemo<LanguageContextValue>(
+    () => ({ language, setLanguage, toggleLanguage }),
+    [language, setLanguage, toggleLanguage]
+  );
+
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+}
+
+const noop = () => {};
+
+/**
+ * Language preference hook. Reads from the {@link LanguageProvider} that wraps
+ * the app, so every consumer shares one reactive value. Returns the current
+ * language plus `toggleLanguage` / `setLanguage`.
+ */
+export function useLanguage() {
+  const ctx = useContext(LanguageContext);
+  if (!ctx) {
+    // The app is wrapped in <LanguageProvider>, so this only happens in an
+    // out-of-tree render (e.g. an isolated test). Fall back to a non-reactive
+    // read instead of crashing.
+    return { language: readStored(), setLanguage: noop, toggleLanguage: noop };
+  }
+  return ctx;
 }
 
 /**
