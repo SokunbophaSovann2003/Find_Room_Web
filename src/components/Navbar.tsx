@@ -75,10 +75,9 @@ export default function Navbar() {
       <header className="sticky top-0 z-[1050] border-b border-slate-200/70 bg-white/80 backdrop-blur">
         <nav className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
           <Link href={onAdmin ? "/user/admin" : "/explore"} className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white">
-              <Icon name="home" className="h-5 w-5" />
-            </span>
-            <span className="text-lg font-extrabold tracking-tight">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-icon.svg" alt="" aria-hidden className="h-7 w-7 shrink-0" />
+            <span className="text-xl font-bold tracking-tight">
               Joul<span className="text-brand">KH</span>
             </span>
           </Link>

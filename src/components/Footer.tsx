@@ -40,9 +40,8 @@ export default function Footer() {
       <div className="relative mx-auto grid max-w-5xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr] md:py-14">
         <div>
           <Link href={actingAsAdmin ? "/user/admin" : "/explore"} className="inline-flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white shadow-sm">
-              <Icon name="home" className="h-5 w-5" />
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-icon.svg" alt="" aria-hidden className="h-9 w-9 shrink-0" />
             <span className="text-lg font-extrabold tracking-tight">
               Joul<span className="text-brand">KH</span>
             </span>

@@ -1,9 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="630" height="630" viewBox="197 174 630 630" role="img" aria-labelledby="title desc">
   <title id="title">JoulKH house icon</title>
   <desc id="desc">Minimal house outline split between black and green, with a four-pane green window.</desc>
-  <!-- Full-bleed white background keeps the icon safe for maskable (adaptive)
-       cropping; the house sits well within the inner 80% safe zone. -->
-  <rect width="1024" height="1024" fill="#ffffff"/>
 
   <!-- Left half of the house -->
   <path d="M468 220 L304 384 Q286 402 286 428 L286 724 Q286 758 320 758 L450 758"

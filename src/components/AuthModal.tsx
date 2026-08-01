@@ -91,9 +91,8 @@ export default function AuthModal({
         ) : null}
 
         <div className="mb-5 flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white">
-            <Icon name="home" className="h-5 w-5" />
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-icon.svg" alt="" aria-hidden className="h-9 w-9 shrink-0" />
           <span className="text-base font-extrabold tracking-tight">
             Joul<span className="text-brand">KH</span>
           </span>
