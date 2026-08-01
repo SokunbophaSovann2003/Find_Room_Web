@@ -51,7 +51,8 @@ export type IconName =
   | "eye-off"
   | "arrows-up-down"
   | "wifi-off"
-  | "refresh-cw";
+  | "refresh-cw"
+  | "filter";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V10.5Z" />,
@@ -66,6 +67,16 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <circle cx="11" cy="11" r="7" />
       <path d="m20 20-3.5-3.5" />
+    </>
+  ),
+  filter: (
+    <>
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="17" x2="20" y2="17" />
+      <circle cx="15" cy="7" r="2.4" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="12" r="2.4" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="17" r="2.4" fill="currentColor" stroke="none" />
     </>
   ),
   "map-pin": (

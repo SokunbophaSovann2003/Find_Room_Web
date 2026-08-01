@@ -98,13 +98,13 @@ export default function BottomNav() {
             type="button"
             onClick={handleListRoom}
             aria-current={onProfile ? "page" : undefined}
-            aria-label={t("bottomNav.listRoom.aria")}
+            aria-label={t("bottomNav.myRooms")}
             className={`flex flex-col items-center gap-0.5 text-[11px] font-semibold transition ${
               onProfile ? "text-brand" : "text-ink-muted hover:text-ink"
             }`}
           >
-            <Icon name="plus" className="h-5 w-5" />
-            <span>{t("nav.listRoom")}</span>
+            <Icon name="building" className="h-5 w-5" />
+            <span>{t("bottomNav.myRooms")}</span>
           </button>
         </div>
       </nav>

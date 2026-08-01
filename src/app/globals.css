@@ -83,26 +83,3 @@ body {
   .onb-draw { stroke-dashoffset: 0; }
   .onb-pulse { opacity: 0; }
 }
-
-/* "Before you start" layout — one column stacked on phones, a two-column
-   split (illustration panel + content) from lg up. Grid areas let the same
-   markup rearrange without duplicating it. */
-.gate-grid {
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
-  grid-template-areas: "progress" "hero" "body" "actions";
-}
-.gate-progress { grid-area: progress; }
-.gate-hero { grid-area: hero; }
-.gate-body { grid-area: body; }
-.gate-actions { grid-area: actions; }
-@media (min-width: 1024px) {
-  .gate-grid {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      "hero progress"
-      "hero body"
-      "hero actions";
-  }
-}

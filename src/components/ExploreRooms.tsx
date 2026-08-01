@@ -107,15 +107,15 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
 
   return (
     <>
-      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-end">
-        <div role="tablist" className="flex gap-1 self-start rounded-full border border-slate-200 bg-white p-1">
+      <div className="mb-5 flex items-center justify-end gap-4">
+        <div role="tablist" className="flex w-full gap-1 rounded-full border border-slate-200 bg-white p-1 sm:w-auto">
           <ViewTab active={view === "list"} onClick={() => changeView("list")} icon="menu" label={t("explore.tab.list")} />
           <ViewTab active={view === "map"} onClick={() => changeView("map")} icon="map-pin" label={t("explore.tab.map")} />
         </div>
       </div>
 
       {view === "map" ? (
-        <div className="mb-5 h-[320px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 lg:h-[480px]">
+        <div className="mb-5 h-[300px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 lg:h-[480px]">
           <ErrorBoundary
             fallback={
               <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-sm text-ink-muted">
@@ -212,7 +212,7 @@ function ViewTab({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition ${
+      className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition sm:flex-none ${
         active ? "bg-brand text-white shadow" : "text-ink-muted hover:text-ink"
       }`}
     >

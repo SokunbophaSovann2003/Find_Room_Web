@@ -43,21 +43,30 @@ export default function MyRequestsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
-      <header className="mb-6">
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t("activity.title")}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t("activity.subtitle")}</p>
-      </header>
+      {/* The empty state carries its own headline, so the page title only
+          shows once the user has requests. */}
+      {requests.length > 0 ? (
+        <header className="mb-6">
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t("activity.title")}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{t("activity.subtitle")}</p>
+        </header>
+      ) : null}
 
       {requests.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-white p-10 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand">
-            <Icon name="search" className="h-7 w-7" />
-          </span>
-          <div>
-            <h2 className="text-base font-bold text-ink">{t("activity.empty.title")}</h2>
-            <p className="mt-1 text-sm text-ink-muted">{t("activity.empty.body")}</p>
+        <div className="flex flex-col items-center px-2 pt-6 text-center">
+          {/* Friendly "search for a home" illustration in a soft blob. */}
+          <div className="flex h-60 w-60 items-center justify-center rounded-[44%] bg-gradient-to-br from-brand/10 via-brand/5 to-amber-100/50">
+            <SearchHomeArt />
           </div>
-          <button type="button" onClick={postRequest} className="btn-primary mt-1">{t("activity.empty.cta")}</button>
+          <h2 className="mt-7 max-w-sm text-xl font-extrabold leading-snug tracking-tight text-ink sm:text-2xl">
+            {t("activity.empty.hook")}
+          </h2>
+          <p className="mt-2.5 max-w-xs text-sm leading-relaxed text-ink-muted">
+            {t("activity.empty.pitch")}
+          </p>
+          <button type="button" onClick={postRequest} className="btn-primary mt-7 w-full max-w-sm">
+            {t("activity.empty.cta")}
+          </button>
         </div>
       ) : (
         <ul className="space-y-3">
@@ -123,6 +132,31 @@ export default function MyRequestsPage() {
         onSuccess={() => { setAuthOpen(false); router.push("/find-room"); }}
       />
     </div>
+  );
+}
+
+// Original "searching for a home" illustration — a house with a magnifying
+// glass, in the app's brand palette. Purely decorative.
+function SearchHomeArt() {
+  return (
+    <svg width="176" height="176" viewBox="0 0 200 200" role="img" aria-hidden="true">
+      <ellipse cx="100" cy="170" rx="58" ry="8" fill="#0f172a" opacity="0.06" />
+      {/* house */}
+      <path
+        d="M56 100 L100 64 L144 100 V150 a5 5 0 0 1-5 5 H61 a5 5 0 0 1-5-5 Z"
+        fill="#ffffff"
+        stroke="#059669"
+        strokeWidth="4"
+        strokeLinejoin="round"
+      />
+      <path d="M46 105 L100 60 L154 105" fill="none" stroke="#047857" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="90" y="123" width="20" height="32" rx="3" fill="#A7F3D0" />
+      <rect x="66" y="112" width="16" height="16" rx="3" fill="#6EE7B7" />
+      {/* magnifying glass */}
+      <circle cx="129" cy="118" r="30" fill="#FEF3C7" opacity="0.65" />
+      <circle cx="129" cy="118" r="30" fill="none" stroke="#F59E0B" strokeWidth="7" />
+      <line x1="151" y1="140" x2="174" y2="163" stroke="#F59E0B" strokeWidth="9" strokeLinecap="round" />
+    </svg>
   );
 }
 

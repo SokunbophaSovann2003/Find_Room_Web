@@ -5,15 +5,15 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { LocationValue } from "./LocationPicker";
 import type { Room, PropertyType } from "@/lib/types";
 
-export type SortOrder = "" | "price-asc" | "price-desc";
-
 export interface ExploreFilter {
   location: LocationValue;
   type: PropertyType | "";
-  sort: SortOrder;
+  // Price range in USD, kept as raw input strings ("" = no bound).
+  priceMin: string;
+  priceMax: string;
 }
 
-const empty: ExploreFilter = { location: {}, type: "", sort: "" };
+const empty: ExploreFilter = { location: {}, type: "", priceMin: "", priceMax: "" };
 
 const Ctx = createContext<{
   filter: ExploreFilter;
@@ -36,7 +36,8 @@ export function ExploreFilterProvider({ children }: { children: ReactNode }) {
         area: searchParams?.get("area") ?? undefined
       },
       type: (searchParams?.get("type") as PropertyType | null) ?? "",
-      sort: (searchParams?.get("sort") as SortOrder | null) ?? ""
+      priceMin: searchParams?.get("priceMin") ?? "",
+      priceMax: searchParams?.get("priceMax") ?? ""
     }),
     [searchParams]
   );
@@ -48,7 +49,8 @@ export function ExploreFilterProvider({ children }: { children: ReactNode }) {
       if (next.location.district) params.set("district", next.location.district);
       if (next.location.area) params.set("area", next.location.area);
       if (next.type) params.set("type", next.type);
-      if (next.sort) params.set("sort", next.sort);
+      if (next.priceMin) params.set("priceMin", next.priceMin);
+      if (next.priceMax) params.set("priceMax", next.priceMax);
       const qs = params.toString();
       router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
     },
@@ -80,10 +82,13 @@ export function applyFilter(rooms: Room[], filter: ExploreFilter): Room[] {
   if (filter.type) {
     out = out.filter((r) => r.type === filter.type);
   }
-  if (filter.sort === "price-asc") {
-    out = [...out].sort((a, b) => a.price - b.price);
-  } else if (filter.sort === "price-desc") {
-    out = [...out].sort((a, b) => b.price - a.price);
+  const min = filter.priceMin ? Number(filter.priceMin) : null;
+  const max = filter.priceMax ? Number(filter.priceMax) : null;
+  if (min != null && Number.isFinite(min)) {
+    out = out.filter((r) => r.price >= min);
+  }
+  if (max != null && Number.isFinite(max)) {
+    out = out.filter((r) => r.price <= max);
   }
   return out;
 }

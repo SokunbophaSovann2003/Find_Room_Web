@@ -14,7 +14,7 @@ import { useT } from "@/lib/language";
  * agreement feel like a welcome instead of a wall of terms.
  */
 
-const TOTAL = 3;
+const TOTAL = 2;
 
 function HeroSearch() {
   return (
@@ -30,19 +30,6 @@ function HeroSearch() {
       <path d="M48 92 q16 -20 32 0 z" fill="#ECFDF5" />
       <circle cx="96" cy="96" r="15" fill="none" stroke="#047857" strokeWidth="5" />
       <line x1="106" y1="107" x2="120" y2="121" stroke="#047857" strokeWidth="6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function HeroEye() {
-  return (
-    <svg width="200" height="150" viewBox="0 0 200 150" role="img" aria-hidden="true">
-      <circle className="onb-pulse" cx="100" cy="70" r="34" fill="#FCD34D" />
-      <circle className="onb-pulse" style={{ animationDelay: "0.8s" }} cx="100" cy="70" r="34" fill="#FCD34D" />
-      <path d="M64 70 q36 -32 72 0 q-36 32 -72 0 z" fill="#fff" stroke="#F59E0B" strokeWidth="3" />
-      <circle cx="100" cy="70" r="13" fill="#F59E0B" />
-      <circle cx="100" cy="70" r="5" fill="#78350F" />
-      <circle cx="104" cy="66" r="2.5" fill="#fff" />
     </svg>
   );
 }
@@ -80,11 +67,13 @@ export default function BeforeYouStart({
 
   const steps = [t("findRoom.terms.how.step1"), t("findRoom.terms.how.step2"), t("findRoom.terms.how.step3")];
   const safety: { icon: IconName; text: string }[] = [
-    { icon: "check", text: t("findRoom.terms.good.free") },
-    { icon: "message", text: t("findRoom.terms.good.contact") },
-    { icon: "home", text: t("findRoom.terms.good.view") },
-    { icon: "shield", text: t("findRoom.terms.good.money") },
-    { icon: "bell", text: t("findRoom.terms.disclaimer") },
+    { icon: "check", text: t("findRoom.terms.point1") },
+    { icon: "eye", text: t("findRoom.terms.point2") },
+    { icon: "message", text: t("findRoom.terms.point3") },
+    { icon: "user", text: t("findRoom.terms.point4") },
+    { icon: "home", text: t("findRoom.terms.point5") },
+    { icon: "shield", text: t("findRoom.terms.point6") },
+    { icon: "check", text: t("findRoom.terms.point7") },
   ];
 
   const isLast = step === TOTAL - 1;
@@ -98,123 +87,120 @@ export default function BeforeYouStart({
     else setStep((s) => s - 1);
   }
 
-  // Screen order: How it works → Terms & safety → Public warning (last, so the
-  // "everyone can see this" reminder is the final beat before the consent
-  // checkbox + Agree). The checkbox lives on the last screen.
+  // Two screens: How it works → Terms & safety (which also carries the public
+  // warning + the consent checkbox, since it's the final step before Agree).
   const heroByStep = [
     { bg: "bg-emerald-50", node: <HeroSearch /> },
     { bg: "bg-teal-50", node: <HeroShield /> },
-    { bg: "bg-amber-50", node: <HeroEye /> },
   ];
   const hero = heroByStep[step];
 
-  function renderBody() {
+  const heads = [
+    { title: t("findRoom.terms.how.title"), sub: t("findRoom.terms.how.sub") },
+    { title: t("findRoom.terms.good.title"), sub: t("findRoom.terms.good.sub") },
+  ];
+
+  // Step body. Flex list items carry `min-w-0` so long Khmer strings (which the
+  // browser can't break at spaces) wrap instead of overflowing.
+  function renderContent() {
     if (step === 0) {
       return (
-        <>
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink lg:text-3xl">{t("findRoom.terms.how.title")}</h1>
-          <p className="mt-1 text-sm text-ink-muted">{t("findRoom.terms.how.sub")}</p>
-          <ol className="mt-5 space-y-3.5">
-            {steps.map((s, i) => (
-              <li key={i} className="onb-rise flex items-start gap-3" style={{ animationDelay: `${0.15 + i * 0.15}s` }}>
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
-                  {i + 1}
-                </span>
-                <span className="text-sm leading-relaxed text-ink">{s}</span>
-              </li>
-            ))}
-          </ol>
-        </>
+        <ol className="space-y-3.5">
+          {steps.map((s, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
+                {i + 1}
+              </span>
+              <span className="min-w-0 text-sm leading-relaxed text-ink">{s}</span>
+            </li>
+          ))}
+        </ol>
       );
     }
-    if (step === 1) {
-      return (
-        <>
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink lg:text-3xl">{t("findRoom.terms.good.title")}</h1>
-          <p className="mt-1 text-sm text-ink-muted">{t("findRoom.terms.good.sub")}</p>
-          <ul className="mt-4 space-y-3">
-            {safety.map((s, i) => (
-              <li key={i} className="flex items-start gap-3 text-[13px] leading-relaxed text-ink">
-                <Icon name={s.icon} className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-                <span>{s.text}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      );
-    }
+    // Final screen: the terms & safety points + consent.
     return (
-      <>
-        <h1 className="text-2xl font-extrabold tracking-tight text-ink lg:text-3xl">{t("findRoom.terms.notice.title")}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t("findRoom.terms.notice.sub")}</p>
-        <div className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-4">
-          <div className="flex items-center gap-2">
-            <Icon name="eye" className="h-5 w-5 shrink-0 text-amber-700" />
-            <span className="text-sm font-bold text-amber-900">{t("findRoom.terms.notice.eyebrow")}</span>
-          </div>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-amber-800">{t("findRoom.terms.notice.body")}</p>
-        </div>
-        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="space-y-5">
+        <ul className="space-y-3">
+          {safety.map((s, i) => (
+            <li key={i} className="flex items-start gap-3 text-[13px] leading-relaxed text-ink">
+              <Icon name={s.icon} className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+              <span className="min-w-0">{s.text}</span>
+            </li>
+          ))}
+        </ul>
+        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <input
             type="checkbox"
             checked={confirm}
             onChange={(e) => setConfirm(e.target.checked)}
             className="mt-0.5 h-4 w-4 shrink-0 accent-brand"
           />
-          <span className="text-sm text-ink">{t("findRoom.terms.confirm")}</span>
+          <span className="min-w-0 text-sm text-ink">{t("findRoom.terms.confirm")}</span>
         </label>
-      </>
+      </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-md px-5 py-5 lg:flex lg:min-h-[calc(100vh-9rem)] lg:max-w-5xl lg:items-center lg:px-6 lg:py-10">
-      <div className="gate-grid min-h-[70vh] w-full lg:min-h-[560px] lg:overflow-hidden lg:rounded-3xl lg:border lg:border-slate-200 lg:bg-white lg:shadow-card">
-        {/* Progress + skip */}
-        <div className="gate-progress flex items-center justify-between lg:px-10 lg:pt-8">
-          <div className="flex items-center gap-1.5" role="progressbar" aria-valuenow={step + 1} aria-valuemin={1} aria-valuemax={TOTAL} aria-label={t("findRoom.terms.stepOf", { n: step + 1, total: TOTAL })}>
-            {Array.from({ length: TOTAL }).map((_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 rounded-full transition-all duration-300 ${i === step ? "w-6 bg-brand" : "w-1.5 bg-slate-300"}`}
-              />
-            ))}
-          </div>
-          {!isLast && (
-            <button type="button" onClick={() => setStep(TOTAL - 1)} className="text-sm font-medium text-ink-soft transition hover:text-ink">
-              {t("findRoom.terms.skip")}
-            </button>
-          )}
-        </div>
-
-        {/* Illustration — a banner on phones, a full-height side panel from lg up.
-            Keyed on step so the entrance animation replays on each screen. */}
+    <div className="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-md flex-col px-5 py-6">
+      {/* Progress + skip */}
+      <div className="flex items-center justify-between">
         <div
-          key={`hero-${step}`}
-          className={`gate-hero onb-rise mt-4 flex h-44 items-center justify-center rounded-3xl ${hero.bg} lg:mt-0 lg:h-auto lg:rounded-none`}
+          className="flex items-center gap-1.5"
+          role="progressbar"
+          aria-valuenow={step + 1}
+          aria-valuemin={1}
+          aria-valuemax={TOTAL}
+          aria-label={t("findRoom.terms.stepOf", { n: step + 1, total: TOTAL })}
         >
-          <div className="lg:scale-150">{hero.node}</div>
+          {Array.from({ length: TOTAL }).map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-300 ${i === step ? "w-6 bg-brand" : "w-1.5 bg-slate-300"}`}
+            />
+          ))}
         </div>
-
-        {/* Text content */}
-        <div key={`body-${step}`} className="gate-body onb-rise flex flex-col pt-6 lg:justify-center lg:overflow-y-auto lg:px-10 lg:pt-6">
-          {renderBody()}
-        </div>
-
-        {/* Actions — normal flow so they never overlap the fixed bottom nav */}
-        <div className="gate-actions mt-6 space-y-1.5 lg:mt-0 lg:px-10 lg:pb-8">
-          <button
-            type="button"
-            className="btn-primary w-full justify-center"
-            disabled={isLast && !confirm}
-            onClick={next}
-          >
-            {isLast ? t("findRoom.terms.agree") : t("common.next")}
+        {!isLast && (
+          <button type="button" onClick={() => setStep(TOTAL - 1)} className="text-sm font-medium text-ink-soft transition hover:text-ink">
+            {t("findRoom.terms.skip")}
           </button>
-          <button type="button" className="btn-ghost w-full justify-center" onClick={back}>
-            {t("findRoom.terms.back")}
-          </button>
-        </div>
+        )}
+      </div>
+
+      {/* Illustration in a soft blob. Keyed on step so the entrance replays. */}
+      <div
+        key={`hero-${step}`}
+        className={`onb-rise mx-auto mt-8 flex h-56 w-56 items-center justify-center rounded-[44%] ${hero.bg}`}
+      >
+        {hero.node}
+      </div>
+
+      {/* Title + subtitle */}
+      <div key={`head-${step}`} className="onb-rise mt-7 text-center">
+        <h1 className="text-xl font-extrabold tracking-tight text-ink sm:text-2xl">{heads[step].title}</h1>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-muted">{heads[step].sub}</p>
+      </div>
+
+      {/* Step body */}
+      <div key={`body-${step}`} className="onb-rise mt-6">
+        {renderContent()}
+      </div>
+
+      <div className="flex-1" />
+
+      {/* Actions */}
+      <div className="mt-8 space-y-1.5">
+        <button
+          type="button"
+          className="btn-primary w-full justify-center"
+          disabled={isLast && !confirm}
+          onClick={next}
+        >
+          {isLast ? t("findRoom.terms.agree") : t("common.next")}
+        </button>
+        <button type="button" className="btn-ghost w-full justify-center" onClick={back}>
+          {t("findRoom.terms.back")}
+        </button>
       </div>
     </div>
   );
