@@ -4,19 +4,21 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/Icon";
 import ContactListEditor from "@/components/ContactListEditor";
-import PriceRangePicker from "@/components/PriceRangePicker";
+import PriceRangeInputs from "@/components/PriceRangeInputs";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import PropertyTypePicker from "@/components/PropertyTypePicker";
 import { useSession, getSession } from "@/lib/session";
 import { submitRoomWanted } from "@/lib/wanted";
 import { toast } from "@/lib/toast";
-import { useT } from "@/lib/language";
+import { useT, useLanguage } from "@/lib/language";
+import { locationDisplayName } from "@/lib/locations";
 import type { PropertyType } from "@/lib/types";
 
 export default function WantRoomPage() {
   const router = useRouter();
   const session = useSession();
   const t = useT();
+  const { language } = useLanguage();
 
   const [phones, setPhones] = useState<string[]>([session?.phoneNumber ?? ""]);
   const [telegrams, setTelegrams] = useState<string[]>([""]);
@@ -26,13 +28,15 @@ export default function WantRoomPage() {
   const [locationOpen, setLocationOpen] = useState(false);
   const [propertyType, setPropertyType] = useState<PropertyType | "any">("any");
   const [typeOpen, setTypeOpen] = useState(false);
-  const [bedrooms, setBedrooms] = useState("");
   const [notes, setNotes] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
 
-  const locationLabel = [location.area, location.district, location.province].filter(Boolean).join(", ");
+  const locationLabel = [location.area, location.district, location.province]
+    .filter((v): v is string => Boolean(v))
+    .map((part) => locationDisplayName(part, language))
+    .join(", ");
 
   // Login is gated by the Explore CTA (popup opens in context). Direct signed-out
   // access to this URL redirects to Explore instead of showing a blank page.
@@ -85,7 +89,7 @@ export default function WantRoomPage() {
         district: location.district ?? "",
         area: location.area ?? "",
         propertyType,
-        bedrooms: posInt(bedrooms),
+        bedrooms: null,
         notes: notes.trim().slice(0, 2000),
       });
       toast.success(t("wantRoom.toast.posted"));
@@ -113,7 +117,7 @@ export default function WantRoomPage() {
             <ContactListEditor
               label={t("listRoom.contact.phones.heading")}
               iconName="phone"
-              placeholder="+855 12 345 678"
+              placeholder="012 345 678"
               values={phones}
               onChange={(next) => { setPhones(next); setPhoneError(""); }}
               addLabel={t("listRoom.contact.phone.add")}
@@ -123,7 +127,7 @@ export default function WantRoomPage() {
           <ContactListEditor
             label={t("listRoom.contact.telegram.heading")}
             iconName="telegram"
-            placeholder="+855 12 345 678"
+            placeholder="012 345 678"
             values={telegrams}
             onChange={setTelegrams}
             addLabel={t("listRoom.contact.telegram.add")}
@@ -132,28 +136,44 @@ export default function WantRoomPage() {
 
         <div>
           <span className="label">{t("findRoom.field.budget")}</span>
-          <div className="mt-1">
-            <PriceRangePicker
-              min={budgetMin}
-              max={budgetMax}
-              placeholder={t("findRoom.field.anyBudget")}
-              onChange={(mn, mx) => { setBudgetMin(mn); setBudgetMax(mx); }}
-            />
-          </div>
+          <PriceRangeInputs
+            className="mt-1"
+            min={budgetMin}
+            max={budgetMax}
+            onChange={(mn, mx) => { setBudgetMin(mn); setBudgetMax(mx); }}
+          />
         </div>
 
         <div>
           <span className="label">{t("findRoom.field.location")}</span>
-          <button
-            type="button"
-            onClick={() => setLocationOpen(true)}
-            className="input mt-1 flex w-full items-center justify-between gap-2 text-left"
-          >
-            <span className={locationLabel ? "text-ink" : "text-ink-soft"}>
+          <div className="input mt-1 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setLocationOpen(true)}
+              className={`flex-1 text-left ${locationLabel ? "text-ink" : "text-ink-soft"}`}
+            >
               {locationLabel || t("findRoom.field.anyLocation")}
-            </span>
-            <Icon name="map-pin" className="h-4 w-4 shrink-0 text-ink-soft" />
-          </button>
+            </button>
+            {locationLabel ? (
+              <button
+                type="button"
+                onClick={() => setLocation({})}
+                aria-label={t("common.clear")}
+                className="shrink-0 rounded-full p-0.5 text-ink-soft transition hover:bg-slate-100 hover:text-ink"
+              >
+                <Icon name="x" className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLocationOpen(true)}
+                aria-label={t("findRoom.field.location")}
+                className="shrink-0 text-ink-soft"
+              >
+                <Icon name="map-pin" className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <LocationPicker
             open={locationOpen}
             onClose={() => setLocationOpen(false)}
@@ -166,20 +186,31 @@ export default function WantRoomPage() {
 
         <div>
           <span className="label">{t("findRoom.field.type")}</span>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="input mt-1 flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setTypeOpen(true)}
-              className="input flex flex-1 items-center justify-between gap-2 text-left"
+              className={`flex-1 text-left ${propertyType !== "any" ? "text-ink" : "text-ink-soft"}`}
             >
-              <span className={propertyType !== "any" ? "text-ink" : "text-ink-soft"}>
-                {propertyType === "any" ? t("findRoom.field.anyType") : t(`admin.propertyType.${propertyType}`)}
-              </span>
-              <Icon name="chevron-down" className="h-4 w-4 shrink-0 text-ink-soft" />
+              {propertyType === "any" ? t("findRoom.field.anyType") : t(`admin.propertyType.${propertyType}`)}
             </button>
-            {propertyType !== "any" && (
-              <button type="button" onClick={() => setPropertyType("any")} className="btn-ghost shrink-0 text-xs">
-                {t("common.clear")}
+            {propertyType === "any" ? (
+              <button
+                type="button"
+                onClick={() => setTypeOpen(true)}
+                aria-label={t("findRoom.field.type")}
+                className="shrink-0 text-ink-soft"
+              >
+                <Icon name="chevron-down" className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPropertyType("any")}
+                aria-label={t("common.clear")}
+                className="shrink-0 rounded-full p-0.5 text-ink-soft transition hover:bg-slate-100 hover:text-ink"
+              >
+                <Icon name="x" className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -189,19 +220,6 @@ export default function WantRoomPage() {
             onPick={(ty) => { setPropertyType(ty); setTypeOpen(false); }}
           />
         </div>
-
-        <label className="block">
-          <span className="label">{t("findRoom.field.bedrooms")}</span>
-          <input
-            className="input mt-1"
-            type="number"
-            min={0}
-            inputMode="numeric"
-            placeholder={t("findRoom.field.anyBedrooms")}
-            value={bedrooms}
-            onChange={(e) => setBedrooms(e.target.value)}
-          />
-        </label>
 
         <label className="block">
           <span className="label">{t("findRoom.field.notes")}</span>

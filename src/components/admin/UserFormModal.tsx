@@ -111,7 +111,7 @@ export default function UserFormModal({
               className="input"
               value={phoneNumber}
               onChange={(e) => { setPhoneNumber(e.target.value); setPhoneError(null); }}
-              placeholder="+855 12 345 678"
+              placeholder="012 345 678"
               inputMode="tel"
               required
             />

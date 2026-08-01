@@ -1309,7 +1309,7 @@ function ContactSheet({
           <ContactListEditor
             label={t("listRoom.contact.phones.heading")}
             iconName="phone"
-            placeholder="+855 12 345 678"
+            placeholder="012 345 678"
             values={contactPhones}
             onChange={setContactPhones}
             addLabel={t("listRoom.contact.phone.add")}
@@ -1317,7 +1317,7 @@ function ContactSheet({
           <ContactListEditor
             label={t("listRoom.contact.telegram.heading")}
             iconName="telegram"
-            placeholder="+855 12 345 678"
+            placeholder="012 345 678"
             values={telegramPhones}
             onChange={setTelegramPhones}
             addLabel={t("listRoom.contact.telegram.add")}

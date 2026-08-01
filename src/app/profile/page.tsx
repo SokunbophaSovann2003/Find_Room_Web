@@ -216,19 +216,11 @@ export default function ProfilePage() {
         {t("common.back")}
       </button>
 
-      <section className="relative rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-6">
-        <div className="absolute right-3 top-3 sm:hidden">
-          <ProfileActionsMenu
-            onEdit={() => setEditing("profile")}
-            onShare={handleShareProfile}
-            onLogout={() => setConfirmLogout(true)}
-            signingOut={signingOut}
-          />
-        </div>
-
-        {/* Mobile: centered vertical layout */}
-        <div className="flex flex-col items-center gap-3 text-center sm:hidden">
-          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-brand/15 text-3xl font-bold text-brand ring-4 ring-brand/10">
+      {/* Card chrome only from sm up; on mobile the row sits directly on the page. */}
+      <section className="sm:rounded-2xl sm:border sm:border-slate-200 sm:bg-white sm:p-6 sm:shadow-card">
+        {/* Mobile: compact row — avatar · name/phone · actions menu */}
+        <div className="flex items-center gap-3 sm:hidden">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand/15 text-xl font-bold text-brand">
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -240,13 +232,18 @@ export default function ProfilePage() {
               <span>{initial}</span>
             )}
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight">{username}</h1>
-          {loginPhone ? (
-            <p className="inline-flex items-center gap-1.5 text-sm text-ink-muted">
-              <Icon name="phone" className="h-4 w-4 text-brand" />
-              {loginPhone}
-            </p>
-          ) : null}
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-base font-bold tracking-tight">{username}</h1>
+            {loginPhone ? (
+              <p className="truncate text-sm text-ink-muted">{loginPhone}</p>
+            ) : null}
+          </div>
+          <ProfileActionsMenu
+            onEdit={() => setEditing("profile")}
+            onShare={handleShareProfile}
+            onLogout={() => setConfirmLogout(true)}
+            signingOut={signingOut}
+          />
         </div>
 
         {/* Desktop: horizontal layout */}
@@ -307,12 +304,11 @@ export default function ProfilePage() {
       </section>
 
       <section className="mt-8">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        {/* Header row (heading + view tabs + action) is desktop-only; on mobile
+            the stats and listings speak for themselves. */}
+        <div className="mb-4 hidden flex-wrap items-center justify-between gap-3 sm:flex">
           <h2 className="text-lg font-bold sm:text-xl">
             {t("profile.myListings")}
-            <span className="ml-2 rounded-full bg-brand/10 px-2.5 py-0.5 text-sm font-semibold text-brand">
-              {listings.length}
-            </span>
           </h2>
           <div className="flex items-center gap-3">
             {listings.length > 0 ? (
@@ -335,10 +331,12 @@ export default function ProfilePage() {
                 />
               </div>
             ) : null}
+            {/* Desktop keeps the action in the header; on mobile it moves below
+                the search row (rendered further down). */}
             <button
               type="button"
               onClick={() => setPickTypeOpen(true)}
-              className="btn-primary"
+              className="btn-primary hidden sm:inline-flex"
             >
               <Icon name="plus" className="h-4 w-4" />
               {t("profile.listARoom")}
@@ -522,6 +520,16 @@ export default function ProfilePage() {
                 </button>
               </div>
             </div>
+
+            {/* Mobile: primary "List a room" action sits under the search row. */}
+            <button
+              type="button"
+              onClick={() => setPickTypeOpen(true)}
+              className="btn-primary mb-4 w-full sm:hidden"
+            >
+              <Icon name="plus" className="h-4 w-4" />
+              {t("profile.listARoom")}
+            </button>
           </>
         ) : null}
 
@@ -597,8 +605,8 @@ export default function ProfilePage() {
                           {room.title}
                         </span>
                         <p className="truncate text-xs text-ink-muted">
-                          {room.district ? `${room.district}, ` : ""}
-                          {room.city}
+                          {room.district ? `${locationDisplayName(room.district, language)}, ` : ""}
+                          {locationDisplayName(room.city, language)}
                         </p>
                         <div className="mt-0.5 flex items-center gap-2">
                           <p className="text-sm font-bold text-brand">
@@ -744,8 +752,8 @@ export default function ProfilePage() {
                             <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-ink-muted">
                               <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
                               <span className="truncate">
-                                {room.district ? `${room.district}, ` : ""}
-                                {room.city}
+                                {room.district ? `${locationDisplayName(room.district, language)}, ` : ""}
+                                {locationDisplayName(room.city, language)}
                               </span>
                             </p>
                           </div>
@@ -1089,7 +1097,7 @@ function EditProfileModal({
               className="input"
               value={loginPhone}
               onChange={(e) => setLoginPhone(e.target.value)}
-              placeholder="+855 12 345 678"
+              placeholder="012 345 678"
               inputMode="tel"
               required
             />
