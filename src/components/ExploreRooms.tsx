@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import RoomCard from "./RoomCard";
 import Icon from "./Icon";
@@ -30,8 +30,6 @@ const ExploreMap = dynamic(() => import("./ExploreMap"), {
   loading: () => <MapLoading />
 });
 
-type View = "list" | "map";
-
 // Cards rendered up front; more load on scroll. Divisible by the 2/3/4-col
 // grid so each batch fills clean rows.
 const EXPLORE_PAGE_SIZE = 24;
@@ -46,15 +44,6 @@ function inBounds(room: Room, bounds: Bounds | null): boolean {
 export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
   const t = useT();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [view, setView] = useState<View>(() =>
-    searchParams.get("view") === "map" ? "map" : "list"
-  );
-
-  function changeView(v: View) {
-    setView(v);
-    router.replace(`?view=${v}`, { scroll: false });
-  }
   const { rooms: localRooms, loading, error, retry } = useRooms();
   const { filter } = useExploreFilter();
   const { autoOccupyDays } = useAdminSettings();
@@ -92,9 +81,10 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
     [province, district, area]
   );
 
+  // The map is always shown, so the list reflects whatever is in the map's view.
   const visibleRooms = useMemo(
-    () => (view === "map" ? allRooms.filter((r) => inBounds(r, bounds)) : allRooms),
-    [allRooms, bounds, view]
+    () => allRooms.filter((r) => inBounds(r, bounds)),
+    [allRooms, bounds]
   );
 
   // Render a first page of cards, then reveal more as the user scrolls. Reset
@@ -107,33 +97,25 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
 
   return (
     <>
-      <div className="mb-5 flex items-center justify-end gap-4">
-        <div role="tablist" className="flex w-full gap-1 rounded-full border border-slate-200 bg-white p-1 sm:w-auto">
-          <ViewTab active={view === "list"} onClick={() => changeView("list")} icon="menu" label={t("explore.tab.list")} />
-          <ViewTab active={view === "map"} onClick={() => changeView("map")} icon="map-pin" label={t("explore.tab.map")} />
-        </div>
+      {/* Map is always shown; the list below reflects the rooms in view. */}
+      <div className="mb-5 h-[220px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 lg:h-[380px]">
+        <ErrorBoundary
+          fallback={
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-sm text-ink-muted">
+              <Icon name="map-pin" className="h-6 w-6 text-brand" />
+              <p>{t("explore.map.loadFailed")}</p>
+            </div>
+          }
+        >
+          <ExploreMap
+            rooms={allRooms}
+            onBoundsChange={setBounds}
+            focus={focus}
+            focusKey={focusKey}
+            onSelect={(id) => router.push(`/rooms/${id}`)}
+          />
+        </ErrorBoundary>
       </div>
-
-      {view === "map" ? (
-        <div className="mb-5 h-[300px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 lg:h-[480px]">
-          <ErrorBoundary
-            fallback={
-              <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-sm text-ink-muted">
-                <Icon name="map-pin" className="h-6 w-6 text-brand" />
-                <p>{t("explore.map.loadFailed")}</p>
-              </div>
-            }
-          >
-            <ExploreMap
-              rooms={allRooms}
-              onBoundsChange={setBounds}
-              focus={focus}
-              focusKey={focusKey}
-              onSelect={(id) => router.push(`/rooms/${id}`)}
-            />
-          </ErrorBoundary>
-        </div>
-      ) : null}
 
       {loading && allRooms.length === 0 ? (
         <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
@@ -156,14 +138,8 @@ export default function ExploreRooms({ rooms }: { rooms: Room[] }) {
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 text-brand">
             <Icon name="search" className="h-6 w-6" />
           </span>
-          <h3 className="text-base font-bold">
-            {view === "map" ? t("explore.empty.map.title") : t("explore.empty.filters.title")}
-          </h3>
-          <p className="max-w-sm text-sm text-ink-muted">
-            {view === "map"
-              ? t("explore.empty.map.hint")
-              : t("explore.empty.filters.hint")}
-          </p>
+          <h3 className="text-base font-bold">{t("explore.empty.map.title")}</h3>
+          <p className="max-w-sm text-sm text-ink-muted">{t("explore.empty.map.hint")}</p>
         </div>
       ) : (
         <>
@@ -195,29 +171,3 @@ function SkeletonCard() {
   );
 }
 
-function ViewTab({
-  active,
-  onClick,
-  icon,
-  label
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: "menu" | "map-pin";
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition sm:flex-none ${
-        active ? "bg-brand text-white shadow" : "text-ink-muted hover:text-ink"
-      }`}
-    >
-      <Icon name={icon} className="h-4 w-4" />
-      {label}
-    </button>
-  );
-}

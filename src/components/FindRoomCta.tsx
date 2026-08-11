@@ -149,7 +149,7 @@ function ConceptCarousel({ slides }: { slides: Slide[] }) {
   }, [n]);
 
   return (
-    <div>
+    <div className="relative">
       <div
         className="overflow-hidden rounded-3xl"
         onTouchStart={(e) => { startX.current = e.touches[0].clientX; }}
@@ -174,7 +174,7 @@ function ConceptCarousel({ slides }: { slides: Slide[] }) {
       </div>
 
       {n > 1 ? (
-        <div className="mt-2.5 flex justify-center gap-1.5">
+        <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
           {slides.map((_, i) => (
             <button
               key={i}
@@ -182,7 +182,7 @@ function ConceptCarousel({ slides }: { slides: Slide[] }) {
               aria-label={`Slide ${i + 1}`}
               aria-current={i === index}
               onClick={() => setIndex(i)}
-              className={`h-1.5 rounded-full transition-all duration-300 ${i === index ? "w-5 bg-brand" : "w-1.5 bg-slate-300"}`}
+              className={`h-1.5 rounded-full transition-all duration-300 ${i === index ? "w-5 bg-white" : "w-1.5 bg-white/60"}`}
             />
           ))}
         </div>

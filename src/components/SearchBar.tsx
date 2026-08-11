@@ -39,6 +39,9 @@ export default function SearchBar() {
   const [pickerOpen, setPickerOpen] = useState<"location" | "type" | null>(null);
   // Mobile: the three filters collapse into a single button that opens this sheet.
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Mobile only: the sheet edits a local draft; nothing is applied to the real
+  // filter (or the results behind the sheet) until "Show results" is tapped.
+  const [draft, setDraft] = useState(filter);
   const isDesktop = useDesktop();
   const mode = isDesktop ? "dropdown" : "modal";
 
@@ -63,13 +66,30 @@ export default function SearchBar() {
   const typeLabel = propertyTypeOptions.find((o) => o.value === filter.type)?.label ?? "";
   const priceLabel = formatPrice(filter.priceMin, filter.priceMax);
 
+  // Labels for the mobile sheet reflect the unsaved draft, not the applied filter.
+  const draftLocationLabel = formatLocation(draft.location, language);
+  const draftTypeLabel = propertyTypeOptions.find((o) => o.value === draft.type)?.label ?? "";
+
   function toggle(key: "location" | "type") {
     setPickerOpen((cur) => (cur === key ? null : key));
   }
 
+  // Seed the draft with the currently applied filter each time the sheet opens.
+  function openSheet() {
+    setDraft(filter);
+    setSheetOpen(true);
+  }
+
+  // Closing (X / backdrop / Escape) discards the draft — nothing is applied.
   function closeSheet() {
     setSheetOpen(false);
     setPickerOpen(null);
+  }
+
+  // "Show results" commits the draft to the real filter, then closes the sheet.
+  function applyDraft() {
+    setFilter(draft);
+    closeSheet();
   }
 
   // Summary of active filters shown on the mobile trigger button.
@@ -86,7 +106,7 @@ export default function SearchBar() {
     <div className="relative sm:hidden">
       <button
         type="button"
-        onClick={() => setSheetOpen(true)}
+        onClick={openSheet}
         className="flex w-full items-center gap-2 rounded-2xl bg-white p-3.5 text-left text-sm shadow-card"
       >
         <Icon name="search" className="h-5 w-5 shrink-0 text-brand" />
@@ -144,20 +164,20 @@ export default function SearchBar() {
                   className="input flex w-full items-center gap-2 text-left"
                 >
                   <Icon name="map-pin" className="h-5 w-5 shrink-0 text-brand" />
-                  <span className={`flex-1 truncate ${locationLabel ? "text-ink" : "text-ink-soft"}`}>
-                    {locationLabel || t("search.location.placeholder")}
+                  <span className={`flex-1 truncate ${draftLocationLabel ? "text-ink" : "text-ink-soft"}`}>
+                    {draftLocationLabel || t("search.location.placeholder")}
                   </span>
-                  {locationLabel ? (
+                  {draftLocationLabel ? (
                     <span className="h-6 w-6 shrink-0" aria-hidden />
                   ) : (
                     <Icon name="chevron-down" className="h-4 w-4 shrink-0 text-ink-soft" />
                   )}
                 </button>
-                {locationLabel ? (
+                {draftLocationLabel ? (
                   <button
                     type="button"
                     aria-label={t("search.clearLocation")}
-                    onClick={() => setFilter({ ...filter, location: {} })}
+                    onClick={() => setDraft({ ...draft, location: {} })}
                     className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-200 hover:text-ink"
                   >
                     <Icon name="x" className="h-3.5 w-3.5" />
@@ -167,8 +187,8 @@ export default function SearchBar() {
                   open={pickerOpen === "location"}
                   onClose={() => setPickerOpen(null)}
                   mode="modal"
-                  value={filter.location}
-                  onChange={(next) => setFilter({ ...filter, location: next })}
+                  value={draft.location}
+                  onChange={(next) => setDraft({ ...draft, location: next })}
                 />
               </div>
             </div>
@@ -183,20 +203,20 @@ export default function SearchBar() {
                   className="input flex w-full items-center gap-2 text-left"
                 >
                   <Icon name="home" className="h-5 w-5 shrink-0 text-brand" />
-                  <span className={`flex-1 truncate ${filter.type ? "text-ink" : "text-ink-soft"}`}>
-                    {filter.type ? typeLabel : t("search.type.any")}
+                  <span className={`flex-1 truncate ${draft.type ? "text-ink" : "text-ink-soft"}`}>
+                    {draft.type ? draftTypeLabel : t("search.type.any")}
                   </span>
-                  {filter.type ? (
+                  {draft.type ? (
                     <span className="h-6 w-6 shrink-0" aria-hidden />
                   ) : (
                     <Icon name="chevron-down" className="h-4 w-4 shrink-0 text-ink-soft" />
                   )}
                 </button>
-                {filter.type ? (
+                {draft.type ? (
                   <button
                     type="button"
                     aria-label={t("search.clearType")}
-                    onClick={() => setFilter({ ...filter, type: "" })}
+                    onClick={() => setDraft({ ...draft, type: "" })}
                     className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-200 hover:text-ink"
                   >
                     <Icon name="x" className="h-3.5 w-3.5" />
@@ -208,8 +228,8 @@ export default function SearchBar() {
                   mode="modal"
                   title={t("search.type.title")}
                   options={propertyTypeOptions}
-                  value={filter.type}
-                  onChange={(next) => setFilter({ ...filter, type: next })}
+                  value={draft.type}
+                  onChange={(next) => setDraft({ ...draft, type: next })}
                 />
               </div>
             </div>
@@ -219,22 +239,22 @@ export default function SearchBar() {
               <span className="mb-1 block text-xs font-semibold text-ink-muted">{t("priceRange.heading")}</span>
               <div className="flex items-center gap-2">
                 <PriceInput
-                  value={filter.priceMin}
+                  value={draft.priceMin}
                   placeholder={t("priceRange.min")}
-                  onChange={(v) => setFilter({ ...filter, priceMin: v })}
+                  onChange={(v) => setDraft({ ...draft, priceMin: v })}
                 />
                 <span className="shrink-0 text-ink-soft">–</span>
                 <PriceInput
-                  value={filter.priceMax}
+                  value={draft.priceMax}
                   placeholder={t("priceRange.max")}
-                  onChange={(v) => setFilter({ ...filter, priceMax: v })}
+                  onChange={(v) => setDraft({ ...draft, priceMax: v })}
                 />
               </div>
             </div>
           </div>
 
           <div className="border-t border-slate-100 p-4">
-            <button type="button" onClick={closeSheet} className="btn-primary w-full justify-center">
+            <button type="button" onClick={applyDraft} className="btn-primary w-full justify-center">
               {t("search.filters.apply")}
             </button>
           </div>

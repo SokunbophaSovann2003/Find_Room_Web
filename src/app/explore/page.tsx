@@ -42,10 +42,11 @@ export default function ExplorePage() {
         </section>
 
         <section id="all" className="mx-auto max-w-7xl px-4 pt-4 pb-16 sm:px-6 sm:pt-10">
-          {/* Mobile-only: filter first, then the concept slider, above the listings. */}
+          {/* Mobile-only: the concept slider on top, then the filter sitting
+              directly above the map/listings below. */}
           <div className="mb-4 space-y-4 sm:hidden">
-            <SearchBar />
             <FindRoomCta />
+            <SearchBar />
           </div>
           <ExploreRooms rooms={rooms} />
         </section>
