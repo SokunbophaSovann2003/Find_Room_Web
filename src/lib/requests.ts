@@ -1,17 +1,16 @@
 "use client";
 
-// "Help me find a room" — renter requests for the team to find a room on their
-// behalf. Stored in Firestore (room_requests) when configured, with a
-// localStorage fallback in demo mode. Admins read/manage; renters create their
-// own. Mirrors the rooms/campaigns service pattern.
+// "Help me find a room" — renter requests, submitted like a simple form: the
+// renter submits once and it appears for admins. No status, approval, or edit
+// flow. Stored in Firestore (room_requests) when configured, with a
+// localStorage fallback in demo mode. Renters create their own; admins read all
+// and may delete.
 
 import { useEffect, useState } from "react";
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, where
+  collection, doc, addDoc, deleteDoc, onSnapshot, query, orderBy, where
 } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "./firebase";
-
-export type RoomRequestStatus = "open" | "handled" | "closed";
 
 export interface RoomRequest {
   id: string;
@@ -28,11 +27,10 @@ export interface RoomRequest {
   bedrooms: number | null;
   moveInDate: string;   // ISO yyyy-mm-dd or ""
   notes: string;
-  status: RoomRequestStatus;
   createdAt: number;
 }
 
-export type NewRoomRequest = Omit<RoomRequest, "id" | "status" | "createdAt">;
+export type NewRoomRequest = Omit<RoomRequest, "id" | "createdAt">;
 
 const LS_KEY = "findroom.room-requests";
 const EVENT = "findroom:room-requests-change";
@@ -52,7 +50,7 @@ function clean<T extends Record<string, unknown>>(obj: T): T {
 }
 
 export async function submitRoomRequest(req: NewRoomRequest): Promise<string> {
-  const data = { ...req, status: "open" as const, createdAt: Date.now() };
+  const data = { ...req, createdAt: Date.now() };
   if (!isFirebaseConfigured || !db) {
     const id = `local-${Date.now()}`;
     writeLocal([{ id, ...data }, ...getLocal()]);
@@ -60,14 +58,6 @@ export async function submitRoomRequest(req: NewRoomRequest): Promise<string> {
   }
   const ref = await addDoc(collection(db, "room_requests"), clean(data));
   return ref.id;
-}
-
-export async function updateRoomRequestStatus(id: string, status: RoomRequestStatus): Promise<void> {
-  if (!isFirebaseConfigured || !db) {
-    writeLocal(getLocal().map((r) => (r.id === id ? { ...r, status } : r)));
-    return;
-  }
-  await updateDoc(doc(db, "room_requests", id), { status });
 }
 
 export async function deleteRoomRequest(id: string): Promise<void> {

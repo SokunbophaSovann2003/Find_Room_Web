@@ -5,19 +5,11 @@ import Icon from "@/components/Icon";
 import ConfirmModal from "@/components/ConfirmModal";
 import {
   useRoomRequests,
-  updateRoomRequestStatus,
   deleteRoomRequest,
   type RoomRequest,
-  type RoomRequestStatus,
 } from "@/lib/requests";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/language";
-
-const STATUS_TONE: Record<RoomRequestStatus, string> = {
-  open: "bg-emerald-50 text-emerald-700",
-  handled: "bg-amber-50 text-amber-700",
-  closed: "bg-slate-100 text-ink-muted",
-};
 
 export default function AdminRoomRequestsPage() {
   const requests = useRoomRequests();
@@ -32,6 +24,31 @@ export default function AdminRoomRequestsPage() {
   }
   function location(r: RoomRequest): string {
     return [r.area, r.district, r.province].filter(Boolean).join(", ") || t("findRoom.field.anyLocation");
+  }
+  function typeLabel(r: RoomRequest): string {
+    return r.propertyType === "any" ? t("findRoom.field.anyType") : t(`admin.propertyType.${r.propertyType}`);
+  }
+
+  // Build a plain-text summary (with the requester's name) to paste into the
+  // Telegram community, then copy it to the clipboard.
+  async function copyForTelegram(r: RoomRequest) {
+    const contacts = [...(r.requesterPhones ?? []), ...(r.requesterTelegrams ?? [])].join(", ");
+    const lines = [
+      t("admin.requests.copy.heading"),
+      `${t("admin.requests.copy.name")}: ${r.requesterName}`,
+      `${t("admin.requests.col.budget")}: ${budget(r)}`,
+      `${t("admin.requests.col.location")}: ${location(r)}`,
+      `${t("admin.requests.col.type")}: ${typeLabel(r)}`,
+      r.moveInDate ? `${t("admin.requests.col.moveIn")}: ${r.moveInDate}` : null,
+      contacts ? `${t("admin.requests.copy.contact")}: ${contacts}` : null,
+      r.notes ? r.notes : null,
+    ].filter(Boolean).join("\n");
+    try {
+      await navigator.clipboard.writeText(lines);
+      toast.success(t("admin.requests.toast.copied"));
+    } catch {
+      toast.error(t("toast.profile.shareFailed"));
+    }
   }
 
   return (
@@ -49,12 +66,7 @@ export default function AdminRoomRequestsPage() {
             <li key={r.id} className="card p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-ink">{r.requesterName}</h2>
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_TONE[r.status]}`}>
-                      {t(`admin.requests.status.${r.status}`)}
-                    </span>
-                  </div>
+                  <h2 className="text-base font-bold text-ink">{r.requesterName}</h2>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1">
                     {(r.requesterPhones ?? []).map((p) => (
                       <a key={p} href={`tel:${p.replace(/\s/g, "")}`} className="inline-flex items-center gap-1 text-sm font-medium text-brand">
@@ -84,21 +96,9 @@ export default function AdminRoomRequestsPage() {
               ) : null}
 
               <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-                {r.status !== "handled" && (
-                  <button type="button" className="btn-secondary text-xs" onClick={() => { void updateRoomRequestStatus(r.id, "handled"); toast.success(t("admin.requests.toast.updated")); }}>
-                    <Icon name="check" className="h-4 w-4" /> {t("admin.requests.action.markHandled")}
-                  </button>
-                )}
-                {r.status !== "open" && (
-                  <button type="button" className="btn-ghost text-xs" onClick={() => { void updateRoomRequestStatus(r.id, "open"); toast.success(t("admin.requests.toast.updated")); }}>
-                    {t("admin.requests.action.reopen")}
-                  </button>
-                )}
-                {r.status !== "closed" && (
-                  <button type="button" className="btn-ghost text-xs" onClick={() => { void updateRoomRequestStatus(r.id, "closed"); toast.success(t("admin.requests.toast.updated")); }}>
-                    {t("admin.requests.action.close")}
-                  </button>
-                )}
+                <button type="button" className="btn-ghost text-xs" onClick={() => void copyForTelegram(r)}>
+                  <Icon name="copy" className="h-4 w-4" /> {t("admin.requests.action.copy")}
+                </button>
                 <button type="button" className="btn-ghost ml-auto text-xs text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => setConfirmDelete(r)}>
                   <Icon name="trash" className="h-4 w-4" /> {t("admin.requests.action.delete")}
                 </button>
