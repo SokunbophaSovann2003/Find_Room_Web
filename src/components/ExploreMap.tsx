@@ -81,34 +81,31 @@ function FocusController({ focus, focusKey }: { focus?: MapFocus | null; focusKe
   return null;
 }
 
-// With no location filter (and no remembered view), frame the map to all the
-// listings once, so they land in view — otherwise the bounds-filtered list can
-// come up empty on load if the default center misses the rooms.
-function FitToRooms({ rooms }: { rooms: PositionedRoom[] }) {
+// Phnom Penh city extent — the default framing on first open (no location
+// filter), so the whole city (and its listings) is visible rather than zoomed
+// tight onto wherever the current rooms happen to sit.
+const PHNOM_PENH_BOUNDS: [[number, number], [number, number]] = [
+  [11.47, 104.79],
+  [11.66, 104.97],
+];
+
+// With no location filter, frame the map to the whole Phnom Penh city once on
+// load — this keeps the listings in view so the bounds-filtered list isn't empty.
+function DefaultCityView() {
   const map = useMap();
   const done = useRef(false);
   useEffect(() => {
-    if (rooms.length === 0) return;
-    // Defer to when the map is actually ready/sized (guards against StrictMode's
-    // double-invoked mount effect firing before layout, which would otherwise
-    // waste a one-shot guard on an ineffective run).
+    // Defer to when the map is actually ready/sized (guards against the mount
+    // effect firing before layout, which would waste the one-shot guard).
     map.whenReady(() => {
       if (done.current) return;
       done.current = true;
       map.invalidateSize();
-      const b = L.latLngBounds(rooms.map((r) => [r.lat, r.lng] as [number, number]));
-      // A single room, or several clustered at (near) the same point, gives a
-      // zero/tiny-area bounds that fitBounds ignores — center on it instead.
-      const tiny = b.getNorth() - b.getSouth() < 0.004 && b.getEast() - b.getWest() < 0.004;
       // animate:false — an animated move during initial load gets interrupted
       // by tile/layout work and silently no-ops.
-      if (!b.isValid() || tiny) {
-        map.setView(b.getCenter(), 15, { animate: false });
-      } else {
-        map.fitBounds(b, { padding: [40, 40], maxZoom: 15, animate: false });
-      }
+      map.fitBounds(PHNOM_PENH_BOUNDS, { animate: false });
     });
-  }, [map, rooms]);
+  }, [map]);
   return null;
 }
 
@@ -231,15 +228,12 @@ function ViewportMarkers({
 export default function ExploreMap({ rooms, activeId, onSelect, onBoundsChange, focus, focusKey }: ExploreMapProps) {
   const positioned: PositionedRoom[] = rooms.filter(isPositioned);
   const saved = loadMapView();
-  const initialCenter: [number, number] = focus?.center
-    ?? saved?.center
-    ?? (positioned.length > 0
-      ? [positioned[0].lat, positioned[0].lng]
-      : [11.5564, 104.9282]);
-  const initialZoom = focus?.zoom ?? saved?.zoom ?? 13;
-  // With no location filter, frame the map to the listings on load so the
-  // bounds-filtered list isn't empty when the default center misses the rooms.
-  const fitToRooms = !focus;
+  // Default to the Phnom Penh city view; DefaultCityView refines it to the exact
+  // city bounds once the map is ready (when there's no location filter).
+  const initialCenter: [number, number] = focus?.center ?? saved?.center ?? [11.5564, 104.9282];
+  const initialZoom = focus?.zoom ?? saved?.zoom ?? 12;
+  // No location filter → frame the whole city on load.
+  const showCityView = !focus;
 
   return (
     <MapContainer
@@ -254,7 +248,7 @@ export default function ExploreMap({ rooms, activeId, onSelect, onBoundsChange, 
       />
       <MapEventBridge onBoundsChange={onBoundsChange} />
       <FocusController focus={focus} focusKey={focusKey} />
-      {fitToRooms ? <FitToRooms rooms={positioned} /> : null}
+      {showCityView ? <DefaultCityView /> : null}
       <MyLocationControl />
       <ViewportMarkers rooms={positioned} activeId={activeId} onSelect={onSelect} />
     </MapContainer>
