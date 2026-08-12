@@ -7,7 +7,6 @@ import Icon from "./Icon";
 import AuthModal from "./AuthModal";
 import { useSession } from "@/lib/session";
 import { useKeyboardOpen } from "@/lib/use-keyboard-open";
-import { useIsAdmin } from "@/lib/admin";
 import { useT } from "@/lib/language";
 
 const LIST_ROOM_PATH = "/profile/list-room";
@@ -32,14 +31,14 @@ export default function BottomNav() {
   // send them after sign-in so the action they tried isn't lost.
   const [authNext, setAuthNext] = useState<string | null>(null);
   const keyboardOpen = useKeyboardOpen();
-  const { admin: isAdminUser } = useIsAdmin(session);
   const t = useT();
 
   if (shouldHide(pathname)) return null;
-  // Hide the user bottom nav only when actively acting as admin (admin role AND
-  // an active admin session). An admin-role account signed in through the normal
-  // flow has no admin session, so it browses as a normal user and keeps this nav.
-  if (isAdminUser && !!session?.adminSession) return null;
+  // NOTE: we intentionally do NOT hide this nav for admins on user-facing pages.
+  // The admin console (/user/admin/*) already suppresses it via shouldHide() and
+  // shows AdminFloatingNav instead. Everywhere else (Explore/Activity/Profile) an
+  // admin is browsing as a normal user and needs these tabs — hiding them here
+  // left admins with no bottom nav at all on those pages.
 
   const onHome = pathname === "/" || pathname?.startsWith("/explore");
   const onActivity = pathname?.startsWith("/activity") ?? false;
