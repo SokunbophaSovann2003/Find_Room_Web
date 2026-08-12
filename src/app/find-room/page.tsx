@@ -6,6 +6,7 @@ import Icon from "@/components/Icon";
 import BeforeYouStart from "@/components/BeforeYouStart";
 import ContactListEditor from "@/components/ContactListEditor";
 import PriceRangeInputs from "@/components/PriceRangeInputs";
+import DatePicker from "@/components/DatePicker";
 import LocationPicker, { type LocationValue } from "@/components/LocationPicker";
 import PropertyTypePicker from "@/components/PropertyTypePicker";
 import { useSession, getSession } from "@/lib/session";
@@ -37,6 +38,7 @@ export default function FindRoomPage() {
   const [moveInDate, setMoveInDate] = useState("");
   const [notes, setNotes] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -81,10 +83,22 @@ export default function FindRoomPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPhoneError("");
+    setFieldErrors({});
     const cleanPhones = phones.map((p) => p.trim()).filter(Boolean).slice(0, 5);
     const cleanTelegrams = telegrams.map((t) => t.trim()).filter(Boolean).slice(0, 5);
-    if (cleanPhones.length === 0) {
-      setPhoneError(t("findRoom.error.phoneRequired"));
+
+    // Every field below the contact block is required. Collect all misses at
+    // once so the user sees every gap in a single pass rather than one at a time.
+    const required = t("findRoom.error.required");
+    const errs: Record<string, string> = {};
+    if (!budgetMin.trim() || !budgetMax.trim()) errs.budget = required;
+    if (!location.province) errs.location = required;
+    if (propertyType === "any") errs.type = required;
+    if (!moveInDate) errs.moveIn = required;
+    const phoneErr = cleanPhones.length === 0 ? t("findRoom.error.phoneRequired") : "";
+    if (phoneErr || Object.keys(errs).length > 0) {
+      setPhoneError(phoneErr);
+      setFieldErrors(errs);
       return;
     }
     setSubmitting(true);
@@ -171,18 +185,25 @@ export default function FindRoomPage() {
 
         {/* Budget */}
         <div>
-          <span className="label">{t("findRoom.field.budget")}</span>
+          <span className="label flex items-center gap-1.5">
+            {t("findRoom.field.budget")}
+            <span className="text-red-500" aria-hidden>*</span>
+          </span>
           <PriceRangeInputs
             className="mt-1"
             min={budgetMin}
             max={budgetMax}
             onChange={(mn, mx) => { setBudgetMin(mn); setBudgetMax(mx); }}
           />
+          {fieldErrors.budget && <p className="mt-1 text-xs text-red-500">{fieldErrors.budget}</p>}
         </div>
 
         {/* Location */}
         <div>
-          <span className="label">{t("findRoom.field.location")}</span>
+          <span className="label flex items-center gap-1.5">
+            {t("findRoom.field.location")}
+            <span className="text-red-500" aria-hidden>*</span>
+          </span>
           <div className="input mt-1 flex items-center justify-between gap-2">
             <button
               type="button"
@@ -219,11 +240,15 @@ export default function FindRoomPage() {
             value={location}
             onChange={setLocation}
           />
+          {fieldErrors.location && <p className="mt-1 text-xs text-red-500">{fieldErrors.location}</p>}
         </div>
 
         {/* Property type */}
         <div>
-          <span className="label">{t("findRoom.field.type")}</span>
+          <span className="label flex items-center gap-1.5">
+            {t("findRoom.field.type")}
+            <span className="text-red-500" aria-hidden>*</span>
+          </span>
           <div className="input mt-1 flex items-center justify-between gap-2">
             <button
               type="button"
@@ -257,13 +282,18 @@ export default function FindRoomPage() {
             onClose={() => setTypeOpen(false)}
             onPick={(ty) => { setPropertyType(ty); setTypeOpen(false); }}
           />
+          {fieldErrors.type && <p className="mt-1 text-xs text-red-500">{fieldErrors.type}</p>}
         </div>
 
         {/* Move-in */}
-        <label className="block">
-          <span className="label">{t("findRoom.field.moveIn")}</span>
-          <input className="input mt-1" type="date" value={moveInDate} onChange={(e) => setMoveInDate(e.target.value)} />
-        </label>
+        <div>
+          <span className="label flex items-center gap-1.5">
+            {t("findRoom.field.moveIn")}
+            <span className="text-red-500" aria-hidden>*</span>
+          </span>
+          <DatePicker className="mt-1" value={moveInDate} onChange={setMoveInDate} />
+          {fieldErrors.moveIn && <p className="mt-1 text-xs text-red-500">{fieldErrors.moveIn}</p>}
+        </div>
 
         {/* Notes */}
         <label className="block">
