@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -78,6 +78,37 @@ function FocusController({ focus, focusKey }: { focus?: MapFocus | null; focusKe
     if (!focus) return;
     map.flyTo(focus.center, focus.zoom, { duration: 0.7 });
   }, [map, focus, focusKey]);
+  return null;
+}
+
+// With no location filter (and no remembered view), frame the map to all the
+// listings once, so they land in view — otherwise the bounds-filtered list can
+// come up empty on load if the default center misses the rooms.
+function FitToRooms({ rooms }: { rooms: PositionedRoom[] }) {
+  const map = useMap();
+  const done = useRef(false);
+  useEffect(() => {
+    if (rooms.length === 0) return;
+    // Defer to when the map is actually ready/sized (guards against StrictMode's
+    // double-invoked mount effect firing before layout, which would otherwise
+    // waste a one-shot guard on an ineffective run).
+    map.whenReady(() => {
+      if (done.current) return;
+      done.current = true;
+      map.invalidateSize();
+      const b = L.latLngBounds(rooms.map((r) => [r.lat, r.lng] as [number, number]));
+      // A single room, or several clustered at (near) the same point, gives a
+      // zero/tiny-area bounds that fitBounds ignores — center on it instead.
+      const tiny = b.getNorth() - b.getSouth() < 0.004 && b.getEast() - b.getWest() < 0.004;
+      // animate:false — an animated move during initial load gets interrupted
+      // by tile/layout work and silently no-ops.
+      if (!b.isValid() || tiny) {
+        map.setView(b.getCenter(), 15, { animate: false });
+      } else {
+        map.fitBounds(b, { padding: [40, 40], maxZoom: 15, animate: false });
+      }
+    });
+  }, [map, rooms]);
   return null;
 }
 
@@ -206,6 +237,9 @@ export default function ExploreMap({ rooms, activeId, onSelect, onBoundsChange, 
       ? [positioned[0].lat, positioned[0].lng]
       : [11.5564, 104.9282]);
   const initialZoom = focus?.zoom ?? saved?.zoom ?? 13;
+  // With no location filter, frame the map to the listings on load so the
+  // bounds-filtered list isn't empty when the default center misses the rooms.
+  const fitToRooms = !focus;
 
   return (
     <MapContainer
@@ -220,6 +254,7 @@ export default function ExploreMap({ rooms, activeId, onSelect, onBoundsChange, 
       />
       <MapEventBridge onBoundsChange={onBoundsChange} />
       <FocusController focus={focus} focusKey={focusKey} />
+      {fitToRooms ? <FitToRooms rooms={positioned} /> : null}
       <MyLocationControl />
       <ViewportMarkers rooms={positioned} activeId={activeId} onSelect={onSelect} />
     </MapContainer>
