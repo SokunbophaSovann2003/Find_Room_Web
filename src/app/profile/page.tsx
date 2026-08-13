@@ -48,7 +48,7 @@ export default function ProfilePage() {
   const [signingOut, setSigningOut] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [pickTypeOpen, setPickTypeOpen] = useState(false);
-  const [listingsView, setListingsView] = useState<"grid" | "list">("grid");
+  const [listingsView, setListingsView] = useState<"grid" | "list">("list");
   const [listingsVisible, setListingsVisible] = useState(LISTINGS_PAGE_SIZE);
   // Listings dashboard filters (mirrors the admin rooms page).
   const [query, setQuery] = useState("");
@@ -101,6 +101,41 @@ export default function ProfilePage() {
   const locationKey =
     locationFilter.area ?? locationFilter.district ?? locationFilter.province ?? "";
   const locationLabel = locationKey ? locationDisplayName(locationKey, language) : "";
+
+  // Summary of applied filters shown on the mobile "Filters" button (mirrors the
+  // Explore filter button). Empty when nothing is filtered → the button shows
+  // the plain "Filters" label instead.
+  const statusSummary =
+    statusFilter === "pending" ? t("listing.status.pending")
+    : statusFilter === "available" ? t("admin.status.available")
+    : statusFilter === "occupied" ? t("admin.status.occupied")
+    : "";
+  const priceSummary =
+    priceMin && priceMax ? `$${priceMin}–$${priceMax}`
+    : priceMin ? `$${priceMin}+`
+    : priceMax ? `≤$${priceMax}`
+    : "";
+  const dateSummary =
+    dateFrom && dateTo ? `${dateFrom} – ${dateTo}` : dateFrom ? `≥ ${dateFrom}` : dateTo ? `≤ ${dateTo}` : "";
+  const filterSummary = [
+    statusSummary,
+    typeFilter !== "all" ? t(`admin.propertyType.${typeFilter}`) : "",
+    locationLabel,
+    priceSummary,
+    dateSummary
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  function clearAllFilters() {
+    setStatusFilter("all");
+    setTypeFilter("all");
+    setLocationFilter({});
+    setDateFrom("");
+    setDateTo("");
+    setPriceMin("");
+    setPriceMax("");
+  }
 
   const filteredListings = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -366,9 +401,12 @@ export default function ProfilePage() {
             </div>
 
             <div className="mb-4 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_140px_140px_160px_auto_auto] lg:items-center">
-              {/* Search + filters-toggle row. Toggle hides on lg+ where filters stay inline. */}
+              {/* Search + controls row. On desktop the search field + inline
+                  filters stay; on mobile the search field is replaced by a
+                  Filter button (opens the popup) and a Grid/List view toggle. */}
               <div className="flex items-center gap-2 lg:contents">
-                <div className="relative flex-1 lg:col-span-1">
+                {/* Desktop: free-text search (first grid column). Hidden on mobile. */}
+                <div className="relative hidden flex-1 lg:col-span-1 lg:block">
                   <Icon
                     name="search"
                     className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft"
@@ -380,25 +418,57 @@ export default function ProfilePage() {
                     onChange={(e) => setQuery(e.target.value)}
                   />
                 </div>
+                {/* Mobile: Filter button — same design as the Explore filter
+                    bar (search-style card). Shows a summary of applied filters
+                    + a clear (✕). */}
+                <div className="relative flex-1 lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setFiltersOpen(true)}
+                    aria-haspopup="dialog"
+                    aria-expanded={filtersOpen}
+                    aria-controls="profile-filter-controls"
+                    className="flex w-full items-center gap-2 rounded-2xl bg-white p-3.5 text-left text-sm shadow-card"
+                  >
+                    <Icon name="search" className="h-5 w-5 shrink-0 text-brand" />
+                    <span className={`flex-1 truncate ${filterSummary ? "text-ink" : "text-ink-soft"}`}>
+                      {filterSummary || t("search.filters.placeholder")}
+                    </span>
+                    {filterSummary ? (
+                      <span className="h-5 w-5 shrink-0" aria-hidden />
+                    ) : (
+                      <Icon name="filter" className="h-4 w-4 shrink-0 text-ink-soft" />
+                    )}
+                  </button>
+                  {filterSummary ? (
+                    <button
+                      type="button"
+                      aria-label={t("search.filters.clear")}
+                      onClick={clearAllFilters}
+                      className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition hover:bg-slate-200 hover:text-ink"
+                    >
+                      <Icon name="x" className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
+                {/* Mobile: toggle the room list between List rows and a card Grid.
+                    Matches the filter bar's card style + height. */}
                 <button
                   type="button"
-                  onClick={() => setFiltersOpen((v) => !v)}
-                  aria-expanded={filtersOpen}
-                  aria-controls="profile-filter-controls"
-                  aria-label={filtersOpen ? t("admin.filter.hideFilters") : t("admin.filter.showFilters")}
-                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-ink-muted transition hover:bg-slate-50 hover:text-ink lg:hidden"
+                  onClick={() => changeListingsView(listingsView === "grid" ? "list" : "grid")}
+                  aria-label={listingsView === "grid" ? t("profile.view.list") : t("profile.view.grid")}
+                  className="flex w-[54px] shrink-0 items-center justify-center self-stretch rounded-2xl bg-white text-ink-muted shadow-card transition hover:text-ink lg:hidden"
                 >
-                  <Icon
-                    name="chevron-down"
-                    className={`h-4 w-4 transition ${filtersOpen ? "rotate-180" : ""}`}
-                  />
+                  <Icon name={listingsView === "grid" ? "list" : "grid"} className="h-5 w-5" />
                 </button>
               </div>
 
-              {/* Mobile-only backdrop for the filter popup. */}
+              {/* Mobile-only backdrop for the filter popup. z above the sticky
+                  navbar / bottom nav (z-1050) so the whole screen dims and the
+                  popup isn't clipped behind the bottom nav. */}
               {filtersOpen ? (
                 <div
-                  className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+                  className="fixed inset-0 z-[1090] bg-black/40 backdrop-blur-sm lg:hidden"
                   onClick={() => setFiltersOpen(false)}
                   aria-hidden
                 />
@@ -408,7 +478,7 @@ export default function ProfilePage() {
                 id="profile-filter-controls"
                 className={`${
                   filtersOpen
-                    ? "fixed left-1/2 top-1/2 z-50 flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col gap-3 overflow-visible rounded-3xl bg-white p-4 shadow-2xl"
+                    ? "fixed left-1/2 top-1/2 z-[1100] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col gap-3 overflow-visible rounded-3xl bg-white p-4 shadow-2xl"
                     : "hidden"
                 } lg:static lg:z-auto lg:max-h-none lg:w-auto lg:max-w-none lg:translate-x-0 lg:translate-y-0 lg:overflow-visible lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none lg:contents`}
               >
@@ -574,6 +644,7 @@ export default function ProfilePage() {
           </div>
         ) : (
           <>
+            {listingsView === "list" ? (
             <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-card sm:hidden">
               {shownListings.map((room) => {
                 const autoOccupied = isAutoOccupied(room, autoOccupyDays);
@@ -657,9 +728,10 @@ export default function ProfilePage() {
                 );
               })}
             </ul>
+            ) : null}
 
             {listingsView === "grid" ? (
-              <div className="hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
                 {shownListings.map((room) => {
                   const autoOccupied = isAutoOccupied(room, autoOccupyDays);
                   const days = daysSinceActivity(room);
