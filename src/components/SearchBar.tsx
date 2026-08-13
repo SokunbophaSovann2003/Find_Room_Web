@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Icon from "./Icon";
 import LocationPicker, { type LocationValue } from "./LocationPicker";
 import OptionPicker from "./OptionPicker";
@@ -131,7 +132,10 @@ export default function SearchBar() {
       ) : null}
     </div>
 
-    {sheetOpen ? (
+    {sheetOpen ? createPortal(
+      // Portal to <body> so the backdrop covers the whole viewport (incl. the
+      // sticky top navbar). An ancestor stacking context would otherwise trap
+      // the fixed overlay below the navbar and leave the top bar uncovered.
       <div
         className="fixed inset-0 z-[1100] flex items-end justify-center sm:hidden"
         role="dialog"
@@ -259,7 +263,8 @@ export default function SearchBar() {
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     ) : null}
 
     {/* Tablet / desktop: the inline three-field search bar. */}
